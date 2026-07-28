@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getAppUrl } from "@/lib/app-url";
 import {
   loginSchema,
   registerSchema,
@@ -120,7 +121,7 @@ export async function forgotPasswordAction(
   }
 
   const supabase = await createClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const appUrl = getAppUrl();
   const { error } = await supabase.auth.resetPasswordForEmail(
     parsed.data.email,
     { redirectTo: `${appUrl}/auth/redefinir-senha` },

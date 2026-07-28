@@ -5,6 +5,7 @@ import { alphaGamerNebula } from "@/features/landing/technebula-data";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, orderItems, orders, payments } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { getAppUrl } from "@/lib/app-url";
 import { createBroskiProvider, BroskiApiError } from "@/payment-providers/broski";
 import { and, eq } from "drizzle-orm";
 
@@ -166,7 +167,7 @@ export async function submitCheckoutAction(
       webhookSecret: process.env.BROSKI_WEBHOOK_SECRET,
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     const result = await provider.createPayment({
       idempotencyKey: order.id,
