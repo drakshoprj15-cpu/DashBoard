@@ -92,7 +92,12 @@
 - Botão "Comprar já" leva a `/checkout/[slug]`, que exibe honestamente "checkout em construção" até as Fases 3/4.
 - Editor por blocos e criação de páginas pelo painel continuam planejados para a Fase 8.
 ### FASE 9 — Clientes e comunicação — ⏳ não iniciada
-### FASE 10 — Produção (testes E2E, CI, deploy) — ⏳ não iniciada
+### FASE 10 — Produção — 🔄 em andamento
+- ✅ **Deploy na Vercel realizado (2026-07-28)** — projeto `dash-board`, time `paineldk-20206`, ligado ao GitHub `drakshoprj15-cpu/DashBoard` (auto-deploy a cada push).
+- URL de produção: **https://dash-board-psi-one.vercel.app** — verificada publicamente acessível (sem Deployment Protection, requisito para o webhook do Broski funcionar).
+- Variáveis de ambiente configuradas na Vercel (Supabase + Broski). `BROSKI_WEBHOOK_SECRET` e `UTMIFY_API_TOKEN` ainda pendentes.
+- `src/lib/app-url.ts`: URL da aplicação resolvida automaticamente (NEXT_PUBLIC_APP_URL → VERCEL_PROJECT_PRODUCTION_URL → VERCEL_URL), evitando quebra ao trocar de domínio.
+- Pendente: domínio próprio, RLS, testes E2E (Playwright), CI no GitHub Actions.
 
 ---
 
