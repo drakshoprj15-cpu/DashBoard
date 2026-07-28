@@ -1,0 +1,171 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Bell, Menu, Search } from "lucide-react";
+
+import { navigation } from "@/lib/navigation";
+import type { SessionUser } from "@/lib/auth/session";
+import { logoutAction } from "@/features/auth/actions";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sidebar } from "@/components/layout/sidebar";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+
+interface HeaderProps {
+  user: SessionUser;
+  demoMode: boolean;
+}
+
+function usePageTitle(): string {
+  const pathname = usePathname();
+  for (const item of navigation) {
+    if (item.items) {
+      const sub = item.items.find(
+        (s) => pathname === s.href || pathname.startsWith(s.href + "/"),
+      );
+      if (sub) return `${item.title} · ${sub.title}`;
+    }
+    if (
+      item.href &&
+      (pathname === item.href || pathname.startsWith(item.href + "/"))
+    ) {
+      return item.title;
+    }
+  }
+  return "Painel";
+}
+
+export function Header({ user, demoMode }: HeaderProps) {
+  const title = usePageTitle();
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+  const initials = user.name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <header className="bg-background/80 sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur-sm md:px-6">
+      {/* Drawer mobile */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Abrir menu"
+          >
+            <Menu className="size-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side="left"
+          className="w-64 border-0 p-0 sm:max-w-64"
+          showClose={false}
+        >
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+          <Sidebar
+            user={user}
+            demoMode={demoMode}
+            initialCollapsed={false}
+            inDrawer
+            onNavigate={() => setDrawerOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <h1 className="truncate text-base font-semibold md:text-lg">{title}</h1>
+
+      <div className="ml-auto flex items-center gap-1.5 md:gap-2">
+        {/* Busca */}
+        <div className="relative hidden lg:block">
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+          <Input
+            placeholder="Buscar pedidos, produtos, clientes…"
+            className="bg-card w-72 pl-8"
+            aria-label="Busca global"
+          />
+        </div>
+
+        {/* Notificações */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Notificações"
+              className="relative"
+            >
+              <Bell className="size-4.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="text-muted-foreground px-2 py-8 text-center text-sm">
+              Nenhuma notificação por enquanto.
+              <p className="mt-1 text-xs">
+                Vendas, pagamentos e alertas aparecerão aqui.
+              </p>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ThemeToggle />
+
+        {/* Menu do usuário */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Menu do usuário"
+              className="focus-visible:ring-ring ml-1 rounded-full outline-none focus-visible:ring-2"
+            >
+              <Avatar>
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <p className="truncate">{user.name}</p>
+              <p className="text-muted-foreground truncate text-xs font-normal">
+                {user.email}
+              </p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/configuracoes">Configurações</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/loja" target="_blank">
+                Ver loja
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => logoutAction()}
+            >
+              Terminar sessão
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  );
+}
