@@ -11,9 +11,13 @@ const PUBLIC_PREFIXES = [
   "/checkout/",
   "/loja",
   "/api/public",
+  // Webhooks NUNCA podem exigir sessão: são chamados por servidores
+  // externos (Broski, Resend...). A autenticidade é garantida pela
+  // verificação de assinatura HMAC dentro de cada rota.
+  "/api/webhooks/",
 ];
 
-function isPublicPath(pathname: string): boolean {
+export function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return false; // raiz redireciona para o painel
   return PUBLIC_PREFIXES.some(
     (prefix) => pathname === prefix.replace(/\/$/, "") || pathname.startsWith(prefix),
