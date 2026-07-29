@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   Activity,
   CreditCard,
@@ -16,7 +17,14 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { LiveSnapshot } from "@/features/analytics/live-queries";
+import type {
+  LiveSnapshot,
+  LiveSession,
+} from "@/features/analytics/live-queries";
+import {
+  resolveCountry,
+  type LiveGlobePoint,
+} from "@/features/analytics/live-globe-data";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -26,6 +34,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
+/** O globo carrega three.js — só entra no browser e fora do bundle inicial. */
+const LiveGlobe = dynamic(
+  () => import("@/features/analytics/live-globe").then((m) => m.LiveGlobe),
+  {
+    ssr: false,
+    loading: () => (
+      <Skeleton className="h-[440px] w-full rounded-xl sm:h-[520px] lg:h-[560px]" />
+    ),
+  },
+);
 
 const POLL_MS = 5000;
 
@@ -60,7 +79,8 @@ const EVENT_TONE: Record<string, string> = {
 };
 
 function DeviceIcon({ type }: { type: string | null }) {
-  const Icon = type === "mobile" ? Smartphone : type === "tablet" ? Tablet : Laptop;
+  const Icon =
+    type === "mobile" ? Smartphone : type === "tablet" ? Tablet : Laptop;
   return <Icon className="size-3.5 shrink-0" />;
 }
 
@@ -78,6 +98,48 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}min ${s}s`;
+}
+
+/** Hash estável para espalhar cidades do mesmo país à volta do centroide. */
+function hashOffset(seed: string): [number, number] {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return [((hash % 100) / 100) * 6 - 3, (((hash >> 8) % 100) / 100) * 6 - 3];
+}
+
+/**
+ * Agrupa as sessões online por país/cidade e converte em pontos do globo.
+ * Sessões sem geolocalização ficam de fora — sem coordenadas não há ponto.
+ */
+function sessionsToGlobePoints(sessions: LiveSession[]): LiveGlobePoint[] {
+  const grouped = new Map<string, LiveGlobePoint>();
+
+  for (const session of sessions) {
+    const country = resolveCountry(session.countryCode);
+    if (!country || !session.countryCode) continue;
+
+    const key = `${session.countryCode}:${session.city ?? ""}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.users += 1;
+      continue;
+    }
+
+    const [latOffset, lonOffset] = session.city ? hashOffset(key) : [0, 0];
+    grouped.set(key, {
+      id: key,
+      lat: country.lat + latOffset,
+      lon: country.lon + lonOffset,
+      country: country.name,
+      countryCode: session.countryCode.toUpperCase(),
+      city: session.city,
+      users: 1,
+    });
+  }
+
+  return [...grouped.values()];
 }
 
 type ConnState = "connected" | "reconnecting" | "disconnected";
@@ -131,13 +193,27 @@ export function LiveView() {
   }
 
   const cards = [
-    { label: "Online agora", value: data?.onlineNow ?? 0, icon: Users, live: true },
-    { label: "Visitantes hoje", value: data?.visitorsToday ?? 0, icon: Activity },
+    {
+      label: "Online agora",
+      value: data?.onlineNow ?? 0,
+      icon: Users,
+      live: true,
+    },
+    {
+      label: "Visitantes hoje",
+      value: data?.visitorsToday ?? 0,
+      icon: Activity,
+    },
     { label: "Visitantes 24h", value: data?.visitors24h ?? 0, icon: Globe },
-    { label: "Páginas vistas hoje", value: data?.pageViewsToday ?? 0, icon: Eye },
+    {
+      label: "Páginas vistas hoje",
+      value: data?.pageViewsToday ?? 0,
+      icon: Eye,
+    },
   ];
 
   const funnelMax = Math.max(1, ...(data?.funnel.map((f) => f.count) ?? [1]));
+  const globePoints = sessionsToGlobePoints(data?.sessions ?? []);
 
   return (
     <div className="space-y-5">
@@ -163,6 +239,9 @@ export function LiveView() {
         )}
       </div>
 
+      {/* Globo ao vivo */}
+      <LiveGlobe points={globePoints} />
+
       {/* Cartões */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((c) => {
@@ -179,7 +258,8 @@ export function LiveView() {
                 <p
                   className={cn(
                     "text-2xl font-bold tracking-tight",
-                    c.live && (c.value > 0 ? "text-success" : "text-muted-foreground"),
+                    c.live &&
+                      (c.value > 0 ? "text-success" : "text-muted-foreground"),
                   )}
                 >
                   {c.value}
@@ -193,7 +273,9 @@ export function LiveView() {
       {/* Funil */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Funil das últimas 24 horas</CardTitle>
+          <CardTitle className="text-base">
+            Funil das últimas 24 horas
+          </CardTitle>
           <CardDescription>
             Sessões únicas que chegaram a cada etapa
           </CardDescription>
@@ -210,7 +292,15 @@ export function LiveView() {
                   <span className="flex items-center gap-2">
                     <span className="font-bold">{step.count}</span>
                     {rate !== null && (
-                      <Badge variant={rate >= 50 ? "success" : rate >= 20 ? "warning" : "muted"}>
+                      <Badge
+                        variant={
+                          rate >= 50
+                            ? "success"
+                            : rate >= 20
+                              ? "warning"
+                              : "muted"
+                        }
+                      >
                         {rate}%
                       </Badge>
                     )}
@@ -219,7 +309,9 @@ export function LiveView() {
                 <div className="bg-muted h-2 overflow-hidden rounded-full">
                   <div
                     className="bg-primary h-full rounded-full transition-all"
-                    style={{ width: `${Math.max(2, (step.count / funnelMax) * 100)}%` }}
+                    style={{
+                      width: `${Math.max(2, (step.count / funnelMax) * 100)}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -243,7 +335,8 @@ export function LiveView() {
                 Ninguém online neste momento.
                 <br />
                 <span className="text-xs">
-                  Abra a sua landing page noutro separador para ver aparecer aqui.
+                  Abra a sua landing page noutro separador para ver aparecer
+                  aqui.
                 </span>
               </p>
             ) : (
@@ -264,7 +357,10 @@ export function LiveView() {
                           {s.browser}
                         </span>
                         <span>·</span>
-                        <span>{s.countryCode ?? "??"}{s.city ? ` · ${s.city}` : ""}</span>
+                        <span>
+                          {s.countryCode ?? "??"}
+                          {s.city ? ` · ${s.city}` : ""}
+                        </span>
                         <span>·</span>
                         <span>{formatDuration(s.durationSeconds)}</span>
                         {s.utmSource && (
