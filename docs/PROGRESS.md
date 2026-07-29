@@ -76,7 +76,8 @@
 - Pendências da fase: cobrança real (pedido no banco + Broski + webhook, junto da Fase 4), página de sucesso/pendente/erro pós-pagamento, order bump e cupons.
 ### FASE 4 — Pagamentos — 🔌 **INTEGRAÇÃO REAL CONECTADA** (2026-07-28)
 - Fluxo completo validado no navegador: checkout → cliente + pedido + item gravados no Supabase → pagamento criado na API real do Broski → voucher Multibanco (entidade 45648 / ref. 828679172) exibido ao cliente → pedido em `awaiting_payment`.
-- Rota de webhook `/api/webhooks/broski` implementada com verificação HMAC obrigatória, deduplicação por `event_id` e atualização de pedido/pagamento. **Ainda não ativada** — exige URL pública (deploy) + `BROSKI_WEBHOOK_SECRET`.
+- ✅ **Webhook ATIVO em produção (2026-07-28)**: `https://dash-board-psi-one.vercel.app/api/webhooks/broski`, registrado no painel Broski. Verificado respondendo `401 invalid_signature` a requisições sem assinatura — o que confirma que `BROSKI_API_KEY`, `DATABASE_URL` e `BROSKI_WEBHOOK_SECRET` estão presentes no ambiente.
+- 🐛 **Bug crítico corrigido**: o `proxy.ts` redirecionava `/api/webhooks/*` para `/login`, o que impediria o Broski de confirmar pagamentos (pedidos ficariam presos em `awaiting_payment`). Rotas de webhook agora são públicas por design — a autenticidade vem da assinatura HMAC, não de sessão. Coberto por testes (`tests/unit/proxy-public-paths.test.ts`).
 - Pendente: página de sucesso pós-pagamento, e-mail de confirmação, reembolso pelo painel, listagem de pedidos na UI.
 
 #### Notas anteriores da fase
