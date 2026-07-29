@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { orders, payments, paymentWebhooks } from "@/database/schema";
+import { customers, orders, payments, paymentWebhooks } from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
+import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
 
 /**
  * Webhook do Broski (POST https://<dominio>/api/webhooks/broski).
@@ -101,6 +102,44 @@ export async function POST(request: Request) {
         .update(paymentWebhooks)
         .set({ processedAt: now, paymentId })
         .where(eq(paymentWebhooks.id, inserted[0].id));
+
+      // Purchase só é reportado à Meta após confirmação real do gateway.
+      // Nunca pode impedir a resposta 2xx ao Broski (sem 2xx ele faz
+      // retries por ~24h, e o pagamento já foi processado com sucesso).
+      if (event.status === "approved") {
+        try {
+          const [orderRow] = await db
+            .select({
+              workspaceId: orders.workspaceId,
+              totalCents: orders.totalCents,
+              currency: orders.currency,
+              customerId: orders.customerId,
+            })
+            .from(orders)
+            .where(eq(orders.id, orderId))
+            .limit(1);
+
+          if (orderRow?.customerId) {
+            const [customerRow] = await db
+              .select({ email: customers.email, phone: customers.phone })
+              .from(customers)
+              .where(eq(customers.id, orderRow.customerId))
+              .limit(1);
+
+            await sendPurchaseToMetaCapi({
+              workspaceId: orderRow.workspaceId,
+              orderId,
+              eventId: `purchase_${orderId}`,
+              valueCents: orderRow.totalCents,
+              currency: orderRow.currency,
+              email: customerRow?.email,
+              phone: customerRow?.phone,
+            });
+          }
+        } catch (error) {
+          console.error("[webhook/broski] erro ao reportar Purchase à Meta:", error);
+        }
+      }
     }
   }
 

@@ -8,6 +8,13 @@
       "when": 1785226953476,
       "tag": "0000_burly_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785293491465,
+      "tag": "0001_abnormal_chamber",
+      "breakpoints": true
     }
   ]
 }

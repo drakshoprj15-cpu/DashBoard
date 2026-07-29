@@ -78,6 +78,13 @@ export const products = pgTable(
     thankYouPageUrl: text("thank_you_page_url"),
     seo: jsonb("seo").default({}).notNull(),
     isFeatured: boolean("is_featured").default(false).notNull(),
+    /**
+     * Conteúdo rico da landing page (highlights, specs, galeria, avaliações,
+     * frete/prazo). Formato livre — ver `LandingContent` em
+     * `src/features/landing/types.ts`. Evita normalizar em tabelas próprias
+     * enquanto não houver editor visual (Fase 8).
+     */
+    landingContent: jsonb("landing_content"),
     ...timestamps,
     ...softDelete,
   },

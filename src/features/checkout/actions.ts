@@ -1,9 +1,9 @@
 "use server";
 
 import { checkoutSchema } from "@/validations/checkout";
-import { alphaGamerNebula } from "@/features/landing/technebula-data";
+import { getProductBySlug } from "@/features/landing/queries";
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { customers, orderItems, orders, payments } from "@/database/schema";
+import { customers, orderItems, orders, payments, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { getAppUrl } from "@/lib/app-url";
 import { createBroskiProvider, BroskiApiError } from "@/payment-providers/broski";
@@ -65,9 +65,9 @@ export async function submitCheckoutAction(
   }
 
   const data = parsed.data;
-  const product = alphaGamerNebula;
+  const product = await getProductBySlug(data.productSlug);
 
-  if (data.productSlug !== product.slug) {
+  if (!product || product.slug !== data.productSlug) {
     return { status: "validation_error", error: "Produto não encontrado." };
   }
 
@@ -134,6 +134,12 @@ export async function submitCheckoutAction(
 
     const reference = generateOrderReference();
 
+    const [productRow] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.workspaceId, workspaceId), eq(products.slug, product.slug)))
+      .limit(1);
+
     const [order] = await db
       .insert(orders)
       .values({
@@ -154,6 +160,7 @@ export async function submitCheckoutAction(
     await db.insert(orderItems).values({
       workspaceId,
       orderId: order.id,
+      productId: productRow?.id,
       productName: product.name,
       quantity: data.quantity,
       unitPriceCents: product.priceCents,

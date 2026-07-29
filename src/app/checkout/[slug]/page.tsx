@@ -3,11 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Lock } from "lucide-react";
 
-import {
-  alphaGamerNebula,
-  techNebulaStore,
-} from "@/features/landing/technebula-data";
+import { techNebulaStore } from "@/features/landing/technebula-data";
+import { getProductBySlug } from "@/features/landing/queries";
 import { CheckoutForm } from "@/features/checkout/checkout-form";
+import { PixelScripts } from "@/features/pixels/pixel-scripts";
 
 export const metadata: Metadata = {
   title: `Checkout · ${techNebulaStore.name}`,
@@ -15,8 +14,7 @@ export const metadata: Metadata = {
 
 /**
  * Checkout público (/checkout/[slug]) no layout TechNébula.
- * Produtos são resolvidos pelo slug; por enquanto o catálogo estático tem
- * apenas a cadeira Nébula (o catálogo do banco chega na Fase 2/4).
+ * Produtos são resolvidos pelo slug a partir do banco (tabela `products`).
  */
 export default async function CheckoutSlugPage(
   props: PageProps<"/checkout/[slug]">,
@@ -24,7 +22,8 @@ export default async function CheckoutSlugPage(
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  if (slug !== alphaGamerNebula.slug) notFound();
+  const product = await getProductBySlug(slug);
+  if (!product) notFound();
 
   const qtyRaw = Number(
     typeof searchParams.qty === "string" ? searchParams.qty : "1",
@@ -35,11 +34,20 @@ export default async function CheckoutSlugPage(
 
   return (
     <div className="min-h-svh bg-zinc-50 text-zinc-900">
+      <PixelScripts
+        event="InitiateCheckout"
+        content={{
+          id: product.slug,
+          name: product.name,
+          valueCents: product.priceCents * quantity,
+          currency: product.currency,
+        }}
+      />
       {/* Cabeçalho */}
       <header className="bg-zinc-950 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4">
           <Link
-            href={`/p/${alphaGamerNebula.slug}`}
+            href={`/p/${product.slug}`}
             className="text-xl font-black tracking-tight text-white"
           >
             Tech<span className="text-violet-400">Nébula</span>
@@ -51,7 +59,7 @@ export default async function CheckoutSlugPage(
       </header>
 
       <main>
-        <CheckoutForm product={alphaGamerNebula} initialQuantity={quantity} />
+        <CheckoutForm product={product} initialQuantity={quantity} />
       </main>
 
       <footer className="border-t bg-white py-5 text-center text-xs text-zinc-500">
