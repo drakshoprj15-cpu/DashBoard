@@ -10,6 +10,7 @@ import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { CookieBanner } from "@/features/consent/cookie-banner";
 import { listActiveShippingMethods } from "@/features/shipping/queries";
+import { getPublishedCheckoutBySlug } from "@/features/checkouts/queries";
 
 export const metadata: Metadata = {
   title: `Checkout · ${techNebulaStore.name}`,
@@ -17,7 +18,10 @@ export const metadata: Metadata = {
 
 /**
  * Checkout público (/checkout/[slug]) no layout TechNébula.
- * Produtos são resolvidos pelo slug a partir do banco (tabela `products`).
+ *
+ * O slug resolve primeiro para um checkout publicado (criado no painel);
+ * se não existir, cai para o slug do produto — mantendo os links antigos
+ * a funcionar.
  */
 export default async function CheckoutSlugPage(
   props: PageProps<"/checkout/[slug]">,
@@ -25,10 +29,12 @@ export default async function CheckoutSlugPage(
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const [product, shippingMethods] = await Promise.all([
-    getProductBySlug(slug),
+  const [checkout, shippingMethods] = await Promise.all([
+    getPublishedCheckoutBySlug(slug),
     listActiveShippingMethods(),
   ]);
+
+  const product = await getProductBySlug(checkout?.productSlug ?? slug);
   if (!product) notFound();
 
   const qtyRaw = Number(
