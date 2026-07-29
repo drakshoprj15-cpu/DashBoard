@@ -6,7 +6,7 @@ import { expireStaleSessions } from "@/features/analytics/track";
 
 export const dynamic = "force-dynamic";
 
-/** Dados do Painel ao Vivo. Rota do painel — exige sessão autenticada. */
+/** Dados do Live View. Rota do painel — exige sessão autenticada. */
 export async function GET() {
   const session = await getSession();
   if (!session || session.demoMode) {

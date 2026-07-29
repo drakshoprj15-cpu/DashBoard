@@ -58,7 +58,7 @@
 | Webhook Broski | ✅ ativo, assinatura HMAC verificada |
 | Pedidos | ✅ lista real do banco |
 | Pixel (cadastro) | ✅ CRUD funcional, token criptografado |
-| **Painel ao Vivo** | ✅ **funcional** — sessões, funil e feed em tempo real |
+| **Live View** | ✅ **funcional** — sessões, funil e feed em tempo real |
 | Rastreamento público | ✅ `/api/public/track`, IP mascarado, UTMs capturadas |
 
 ### Ainda em placeholder (não implementados)
@@ -148,7 +148,7 @@
 - Interface `PaymentProvider` definida.
 - **Adapter Broski implementado** (2026-07-28) a partir da OpenAPI oficial (https://docs.broski.pt/openapi.yaml): criação de pedido MB WAY/Multibanco, consulta, estorno total/parcial, verificação HMAC de webhooks, teste de conexão. Status: 🖥️ interface pronta sem credenciais — nenhuma chamada real validada ainda. Detalhes em docs/PAYMENTS.md.
 - Catálogo de gateways em `src/payment-providers/catalog.ts` (Broski = principal).
-### FASE 5 — Analytics / Painel ao Vivo — ⏳ não iniciada
+### FASE 5 — Analytics / Live View — ⏳ não iniciada
 ### FASE 6 — Financeiro — ⏳ não iniciada
 ### FASE 7 — Pixels e integrações — ⏳ não iniciada
 ### FASE 8 — Landing pages e editor — ⏳ parcialmente adiantada

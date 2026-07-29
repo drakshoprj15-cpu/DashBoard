@@ -49,7 +49,7 @@ Criar buckets (privados): `product-files`, `product-images` (público), `attachm
 
 ## 6. Realtime e RLS
 
-- Habilitar Realtime nas tabelas `analytics_events`, `visitor_sessions`, `orders`, `payments` (usado pelo Painel ao Vivo — Fase 5).
+- Habilitar Realtime nas tabelas `analytics_events`, `visitor_sessions`, `orders`, `payments` (usado pelo Live View — Fase 5).
 - Aplicar as políticas de RLS (migration própria; ver docs/DATABASE.md).
 
 ## 7. Projeto na Vercel

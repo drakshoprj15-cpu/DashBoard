@@ -40,7 +40,7 @@ export interface NavItem {
  */
 export const navigation: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Painel ao Vivo", href: "/painel-ao-vivo", icon: Eye, phase: 5 },
+  { title: "Live View", href: "/live-view", icon: Eye, phase: 5 },
   {
     title: "Financeiro",
     icon: Wallet,

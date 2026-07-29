@@ -5,10 +5,10 @@ import { isDatabaseConfigured } from "@/database/client";
 import { LiveView } from "@/features/analytics/live-view";
 import { EmptyState } from "@/components/ui/empty-state";
 
-export const metadata: Metadata = { title: "Painel ao Vivo" };
+export const metadata: Metadata = { title: "Live View" };
 export const dynamic = "force-dynamic";
 
-export default function PainelAoVivoPage() {
+export default function LiveViewPage() {
   if (!isDatabaseConfigured()) {
     return (
       <EmptyState
@@ -23,7 +23,7 @@ export default function PainelAoVivoPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-bold tracking-tight">Painel ao Vivo</h2>
+        <h2 className="text-xl font-bold tracking-tight">Live View</h2>
         <p className="text-muted-foreground text-sm">
           Quem está na sua loja agora, o que está a ver e onde está no funil
         </p>

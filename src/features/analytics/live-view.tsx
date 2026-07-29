@@ -155,7 +155,7 @@ export function LiveView() {
 
     async function poll() {
       try {
-        const res = await fetch("/api/painel-ao-vivo", { cache: "no-store" });
+        const res = await fetch("/api/live-view", { cache: "no-store" });
         if (!res.ok) throw new Error(String(res.status));
         const json = (await res.json()) as LiveSnapshot;
         if (!active) return;

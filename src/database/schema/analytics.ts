@@ -15,7 +15,7 @@ import { id, timestamps } from "./_helpers";
 import { workspaces } from "./workspaces";
 
 /**
- * Sessões de visitantes (Painel ao Vivo / dashboard de tráfego).
+ * Sessões de visitantes (Live View / dashboard de tráfego).
  * IP sempre mascarado; sem dados sensíveis.
  */
 export const visitorSessions = pgTable(
@@ -54,7 +54,7 @@ export const visitorSessions = pgTable(
 );
 
 /**
- * Eventos de analytics (feed do Painel ao Vivo, funil, conversões).
+ * Eventos de analytics (feed do Live View, funil, conversões).
  */
 export const analyticsEvents = pgTable(
   "analytics_events",
