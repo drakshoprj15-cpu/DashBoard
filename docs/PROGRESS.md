@@ -83,14 +83,30 @@
 3. **Proxy bloqueava webhooks** — `/api/webhooks/*` era redirecionado para
    `/login`, impedindo a confirmação de pagamentos.
 
-### Bloqueiam a venda (pendentes)
+### Concluído em 2026-07-29 (rodada 2)
 
-- **Nenhum pixel cadastrado** — anúncio sem conversão rastreada
-- **Páginas legais inexistentes** — Termos, Privacidade, Cookies, Livro de
-  Reclamações são obrigatórios por lei em Portugal e exigidos pela Meta
-- **Sem e-mail de confirmação** ao cliente após o pagamento
+| Módulo | Estado |
+|---|---|
+| **Provas sociais** | ✅ CRUD real (`product_reviews` + RLS), aba própria no menu |
+| **Páginas legais** (Termos, Privacidade, Cookies, Devoluções, Envios) | ✅ em `/legal/*`, com aviso visível quando faltam dados da empresa |
+| **Banner de consentimento de cookies** | ✅ pixels só carregam após aceite (`ConsentGate`) |
+| **Emails** | ✅ 5 segmentos reais (pagos/pendentes/recusados/sem pedidos/todos), adapter Resend pronto (falta a chave) |
+| **Fretes** | ✅ CRUD real (`shipping_methods` + RLS), checkout recalcula o frete no servidor — nunca confia no navegador |
+
+### Ainda bloqueiam a venda
+
+- **Nenhum pixel cadastrado** — anúncio sem conversão rastreada (tela pronta em `/pixel`)
+- **`src/lib/company.ts` vazio** — denominação social e NIF pendentes; páginas legais mostram aviso visível até serem preenchidas
+- **`RESEND_API_KEY` ausente** — envio de e-mail desativado (tela pronta, sem simular sucesso)
+- **Sem e-mail de confirmação automático** ao cliente após o pagamento
 - **Estoque fixo** (não diminui com vendas)
-- **Sem banner de consentimento de cookies** (exigido pelo RGPD com pixel ativo)
+
+### Ainda em placeholder (não implementados)
+
+`/checkouts` (CRUD) · `/editor/loja` · `/editor/landing-page` · `/editor/checkout` ·
+`/notificacoes` · `/campanhas` · `/carrinhos` · `/clientes` ·
+`/catalogo/produtos,categorias,estoque,cupons` · `/financeiro/*` ·
+`/integracoes` · `/webhooks` · `/logs`
 
 ## 3. Status por fase
 
