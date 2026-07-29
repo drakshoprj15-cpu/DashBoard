@@ -11,12 +11,17 @@ import {
   Lock,
   MapPin,
   Smartphone,
+  Truck,
   User,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import type { LandingProduct } from "@/features/landing/technebula-data";
+import {
+  calculateShippingCost,
+  type ShippingMethodRow,
+} from "@/features/shipping/types";
 import {
   submitCheckoutAction,
   type CheckoutActionResult,
@@ -30,6 +35,7 @@ import { Label } from "@/components/ui/label";
 interface CheckoutFormProps {
   product: LandingProduct;
   initialQuantity: number;
+  shippingMethods: ShippingMethodRow[];
 }
 
 function Section({
@@ -57,7 +63,11 @@ function Section({
   );
 }
 
-export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
+export function CheckoutForm({
+  product,
+  initialQuantity,
+  shippingMethods,
+}: CheckoutFormProps) {
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
     FormData
@@ -65,12 +75,17 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
 
   const [quantity, setQuantity] = React.useState(initialQuantity);
   const [method, setMethod] = React.useState<"mbway" | "multibanco">("mbway");
+  const [shippingMethodId, setShippingMethodId] = React.useState(
+    shippingMethods[0]?.id ?? "",
+  );
   const [summaryOpen, setSummaryOpen] = React.useState(false);
 
   const fmt = (cents: number) => formatMoney(cents, product.currency, "pt-PT");
   const subtotal = product.priceCents * quantity;
-  const freeShipping = subtotal >= product.freeShippingFromCents;
-  const shipping = freeShipping ? 0 : 499;
+  const selectedShipping = shippingMethods.find((m) => m.id === shippingMethodId);
+  const shipping = selectedShipping
+    ? calculateShippingCost(selectedShipping, subtotal)
+    : 0;
   const total = subtotal + shipping;
 
   // Pagamento criado com sucesso: regista o evento uma única vez.
@@ -199,8 +214,8 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
         </div>
         <div className="flex justify-between">
           <dt className="text-zinc-500">Portes de envio</dt>
-          <dd className={cn("font-medium", freeShipping && "text-emerald-600")}>
-            {freeShipping ? "Grátis" : fmt(shipping)}
+          <dd className={cn("font-medium", shipping === 0 && "text-emerald-600")}>
+            {selectedShipping ? (shipping === 0 ? "Grátis" : fmt(shipping)) : "—"}
           </dd>
         </div>
         <div className="flex justify-between border-t pt-2 text-base font-bold">
@@ -242,6 +257,7 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
         <input type="hidden" name="productSlug" value={product.slug} />
         <input type="hidden" name="quantity" value={quantity} />
         <input type="hidden" name="paymentMethod" value={method} />
+        <input type="hidden" name="shippingMethodId" value={shippingMethodId} />
 
         {state?.status === "validation_error" && (
           <Alert variant="destructive">
@@ -327,12 +343,52 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
               <Input id="city" name="city" autoComplete="address-level2" required />
             </div>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">
-            Entrega em {product.deliveryEstimate} · Portugal continental
-          </p>
         </Section>
 
-        <Section step={3} icon={Smartphone} title="Pagamento">
+        {shippingMethods.length > 0 && (
+          <Section step={3} icon={Truck} title="Envio">
+            <div className="space-y-2">
+              {shippingMethods.map((m) => {
+                const cost = calculateShippingCost(m, subtotal);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setShippingMethodId(m.id)}
+                    aria-pressed={shippingMethodId === m.id}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl border-2 p-3.5 text-left transition-colors",
+                      shippingMethodId === m.id
+                        ? "border-violet-600 bg-violet-50/50"
+                        : "border-zinc-200 hover:border-zinc-300",
+                    )}
+                  >
+                    <span>
+                      <span className="block text-sm font-bold">{m.name}</span>
+                      <span className="block text-xs text-zinc-500">
+                        {m.deliveryEstimate}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm font-bold",
+                        cost === 0 && "text-emerald-600",
+                      )}
+                    >
+                      {cost === 0 ? "Grátis" : fmt(cost)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        <Section
+          step={shippingMethods.length > 0 ? 4 : 3}
+          icon={Smartphone}
+          title="Pagamento"
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             {(
               [
@@ -387,6 +443,7 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
           type="submit"
           size="lg"
           loading={pending}
+          disabled={shippingMethods.length > 0 && !shippingMethodId}
           className="h-12 w-full bg-orange-500 text-base font-bold hover:bg-orange-600"
         >
           {method === "mbway"

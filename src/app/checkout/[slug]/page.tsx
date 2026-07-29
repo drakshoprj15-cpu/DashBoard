@@ -9,6 +9,7 @@ import { CheckoutForm } from "@/features/checkout/checkout-form";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { CookieBanner } from "@/features/consent/cookie-banner";
+import { listActiveShippingMethods } from "@/features/shipping/queries";
 
 export const metadata: Metadata = {
   title: `Checkout · ${techNebulaStore.name}`,
@@ -24,7 +25,10 @@ export default async function CheckoutSlugPage(
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const product = await getProductBySlug(slug);
+  const [product, shippingMethods] = await Promise.all([
+    getProductBySlug(slug),
+    listActiveShippingMethods(),
+  ]);
   if (!product) notFound();
 
   const qtyRaw = Number(
@@ -67,7 +71,11 @@ export default async function CheckoutSlugPage(
       </header>
 
       <main>
-        <CheckoutForm product={product} initialQuantity={quantity} />
+        <CheckoutForm
+          product={product}
+          initialQuantity={quantity}
+          shippingMethods={shippingMethods}
+        />
       </main>
 
       <footer className="border-t bg-white py-5 text-center text-xs text-zinc-500">

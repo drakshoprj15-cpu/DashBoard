@@ -136,6 +136,36 @@ export const productReviews = pgTable(
   ],
 );
 
+/**
+ * Métodos de envio disponíveis no checkout (ex.: Envio Standard, Expresso).
+ * O cliente escolhe um destes durante o checkout — nunca um valor fixo em
+ * código.
+ */
+export const shippingMethods = pgTable(
+  "shipping_methods",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Ex.: "3 a 4 dias úteis" */
+    deliveryEstimate: text("delivery_estimate").notNull(),
+    priceCents: bigint("price_cents", { mode: "number" }).default(0).notNull(),
+    currency: text("currency").default("EUR").notNull(),
+    country: text("country").default("PT").notNull(),
+    /** Grátis quando o subtotal atingir este valor; null = nunca grátis por valor */
+    freeAboveCents: bigint("free_above_cents", { mode: "number" }),
+    isActive: boolean("is_active").default(true).notNull(),
+    position: integer("position").default(0).notNull(),
+    ...timestamps,
+    ...softDelete,
+  },
+  (t) => [
+    index("shipping_methods_workspace_idx").on(t.workspaceId, t.isActive),
+  ],
+);
+
 export const productVariants = pgTable(
   "product_variants",
   {

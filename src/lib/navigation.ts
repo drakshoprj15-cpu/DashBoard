@@ -79,6 +79,7 @@ export const navigation: NavItem[] = [
       { title: "Editor da loja", href: "/editor/loja" },
       { title: "Editor de landing page", href: "/editor/landing-page" },
       { title: "Editor de checkout", href: "/editor/checkout" },
+      { title: "Fretes", href: "/editor/fretes" },
     ],
   },
   { title: "Pixel", href: "/pixel", icon: Radar, phase: 7 },

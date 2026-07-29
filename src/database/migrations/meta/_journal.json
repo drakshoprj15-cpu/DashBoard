@@ -22,6 +22,13 @@
       "when": 1785310526398,
       "tag": "0002_aromatic_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785312136667,
+      "tag": "0003_slow_wild_child",
+      "breakpoints": true
     }
   ]
 }

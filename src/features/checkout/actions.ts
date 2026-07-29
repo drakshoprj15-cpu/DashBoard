@@ -2,6 +2,10 @@
 
 import { checkoutSchema, normalizePtPhone } from "@/validations/checkout";
 import { getProductBySlug } from "@/features/landing/queries";
+import {
+  calculateShippingCost,
+  listActiveShippingMethods,
+} from "@/features/shipping/queries";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, orderItems, orders, payments, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
@@ -58,6 +62,7 @@ export async function submitCheckoutAction(
     paymentMethod: formData.get("paymentMethod"),
     quantity: formData.get("quantity"),
     productSlug: formData.get("productSlug"),
+    shippingMethodId: formData.get("shippingMethodId") ?? "",
   });
 
   if (!parsed.success) {
@@ -82,7 +87,24 @@ export async function submitCheckoutAction(
   }
 
   const subtotal = product.priceCents * data.quantity;
-  const shipping = subtotal >= product.freeShippingFromCents ? 0 : 499;
+
+  // Frete: NUNCA confiar no valor calculado no navegador — recalcula a
+  // partir dos métodos ativos gravados no banco.
+  const activeShippingMethods = await listActiveShippingMethods();
+  const selectedShippingMethod = data.shippingMethodId
+    ? activeShippingMethods.find((m) => m.id === data.shippingMethodId)
+    : activeShippingMethods[0];
+
+  if (activeShippingMethods.length > 0 && !selectedShippingMethod) {
+    return {
+      status: "validation_error",
+      error: "Escolha uma forma de envio válida.",
+    };
+  }
+
+  const shipping = selectedShippingMethod
+    ? calculateShippingCost(selectedShippingMethod, subtotal)
+    : 0;
   const total = subtotal + shipping;
 
   const db = getDb();
@@ -154,6 +176,7 @@ export async function submitCheckoutAction(
         shippingCents: shipping,
         totalCents: total,
         shippingAddress,
+        shippingMethod: selectedShippingMethod?.name,
         origin: "checkout",
         countryCode: "PT",
       })
