@@ -63,6 +63,7 @@ export const navigation: NavItem[] = [
       { title: "Categorias", href: "/catalogo/categorias" },
       { title: "Estoque", href: "/catalogo/estoque" },
       { title: "Cupons", href: "/catalogo/cupons" },
+      { title: "Provas sociais", href: "/provas-sociais" },
     ],
   },
   { title: "Checkouts", href: "/checkouts", icon: CreditCard, phase: 3 },

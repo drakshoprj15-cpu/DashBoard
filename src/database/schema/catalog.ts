@@ -95,6 +95,47 @@ export const products = pgTable(
   ],
 );
 
+/**
+ * Provas sociais (avaliações de clientes) exibidas na landing page.
+ *
+ * `isVerifiedPurchase` só deve ser marcado quando a avaliação vier de um
+ * pedido real (`orderId` preenchido) — o selo "Compra verificada" é uma
+ * afirmação legal perante o consumidor.
+ */
+export const productReviews = pgTable(
+  "product_reviews",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    /** Pedido de origem — obrigatório para marcar compra verificada */
+    orderId: uuid("order_id"),
+    authorName: text("author_name").notNull(),
+    location: text("location"),
+    rating: integer("rating").notNull(),
+    title: text("title"),
+    body: text("body").notNull(),
+    photoUrl: text("photo_url"),
+    helpfulCount: integer("helpful_count").default(0).notNull(),
+    isVerifiedPurchase: boolean("is_verified_purchase").default(false).notNull(),
+    isPublished: boolean("is_published").default(true).notNull(),
+    position: integer("position").default(0).notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    ...timestamps,
+    ...softDelete,
+  },
+  (t) => [
+    index("product_reviews_product_idx").on(t.productId, t.isPublished),
+    index("product_reviews_workspace_idx").on(t.workspaceId),
+  ],
+);
+
 export const productVariants = pgTable(
   "product_variants",
   {

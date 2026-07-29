@@ -6,6 +6,7 @@ import { getProductBySlug } from "@/features/landing/queries";
 import { ProductLanding } from "@/features/landing/product-landing";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
+import { getPublishedReviews } from "@/features/reviews/queries";
 
 export const metadata: Metadata = {
   title: `${alphaGamerNebula.name} · ${techNebulaStore.name}`,
@@ -20,6 +21,10 @@ export const metadata: Metadata = {
 export default async function AlphaGamerNebulaLandingPage() {
   const product = await getProductBySlug(alphaGamerNebula.slug);
   if (!product) notFound();
+
+  // Avaliações vêm da tabela gerida no painel (Provas sociais).
+  const reviews = await getPublishedReviews(product.slug);
+  const withReviews = { ...product, reviews };
 
   return (
     <>
@@ -38,7 +43,7 @@ export default async function AlphaGamerNebulaLandingPage() {
         valueCents={product.priceCents}
         currency={product.currency}
       />
-      <ProductLanding product={product} />
+      <ProductLanding product={withReviews} />
     </>
   );
 }

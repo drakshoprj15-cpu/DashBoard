@@ -15,6 +15,13 @@
       "when": 1785293491465,
       "tag": "0001_abnormal_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785310526398,
+      "tag": "0002_aromatic_war_machine",
+      "breakpoints": true
     }
   ]
 }
