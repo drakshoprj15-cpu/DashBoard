@@ -7,6 +7,7 @@ import { ProductLanding } from "@/features/landing/product-landing";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { getPublishedReviews } from "@/features/reviews/queries";
+import { CookieBanner } from "@/features/consent/cookie-banner";
 
 export const metadata: Metadata = {
   title: `${alphaGamerNebula.name} · ${techNebulaStore.name}`,
@@ -44,6 +45,7 @@ export default async function AlphaGamerNebulaLandingPage() {
         currency={product.currency}
       />
       <ProductLanding product={withReviews} />
+      <CookieBanner />
     </>
   );
 }

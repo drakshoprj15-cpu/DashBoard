@@ -592,15 +592,13 @@ export function ProductLanding({ product }: ProductLandingProps) {
                   </a>
                 </li>
                 {[
-                  "Envios e Entregas",
-                  "Trocas e Devoluções",
-                  "Acompanhar Encomenda",
-                  "Perguntas Frequentes",
+                  { label: "Envios e Entregas", href: "/legal/envios" },
+                  { label: "Trocas e Devoluções", href: "/legal/devolucoes" },
                 ].map((l) => (
-                  <li key={l}>
-                    <a href="#" className="transition-colors hover:text-white">
-                      {l}
-                    </a>
+                  <li key={l.href}>
+                    <Link href={l.href} className="transition-colors hover:text-white">
+                      {l.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -612,18 +610,26 @@ export function ProductLanding({ product }: ProductLandingProps) {
               </p>
               <ul className="mt-3 space-y-2 text-xs">
                 {[
-                  "Termos e Condições",
-                  "Política de Privacidade",
-                  "Política de Cookies",
-                  "Livro de Reclamações",
-                  "Resolução de Litígios (RAL)",
+                  { label: "Termos e Condições", href: "/legal/termos" },
+                  { label: "Política de Privacidade", href: "/legal/privacidade" },
+                  { label: "Política de Cookies", href: "/legal/cookies" },
                 ].map((l) => (
-                  <li key={l}>
-                    <a href="#" className="transition-colors hover:text-white">
-                      {l}
-                    </a>
+                  <li key={l.href}>
+                    <Link href={l.href} className="transition-colors hover:text-white">
+                      {l.label}
+                    </Link>
                   </li>
                 ))}
+                <li>
+                  <a
+                    href="https://www.livroreclamacoes.pt/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="transition-colors hover:text-white"
+                  >
+                    Livro de Reclamações
+                  </a>
+                </li>
               </ul>
             </div>
           </div>

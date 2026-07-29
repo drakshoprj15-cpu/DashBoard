@@ -396,7 +396,7 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
 
         <p className="text-center text-xs text-zinc-500">
           Ao confirmar, aceita os{" "}
-          <Link href="#" className="underline">
+          <Link href="/legal/termos" className="underline" target="_blank">
             Termos e Condições
           </Link>{" "}
           da TechNébula.

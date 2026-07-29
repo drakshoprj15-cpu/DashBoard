@@ -1,6 +1,8 @@
 import Script from "next/script";
 
-import { getActivePixelsForPublic, type PixelType } from "@/features/pixels/queries";
+import { getActivePixelsForPublic } from "@/features/pixels/queries";
+import type { PixelType } from "@/features/pixels/types";
+import { ConsentGate } from "@/features/consent/consent-gate";
 
 interface PixelScriptsProps {
   /** Evento de conteúdo disparado após o PageView */
@@ -37,7 +39,7 @@ export async function PixelScripts({ event, content }: PixelScriptsProps) {
   const value = content ? (content.valueCents / 100).toFixed(2) : undefined;
 
   return (
-    <>
+    <ConsentGate>
       {metaPixels.map((p) => (
         <Script
           key={`meta-${p.pixelId}`}
@@ -104,6 +106,6 @@ ttq.load('${p.pixelId}');ttq.page();
 }(window,document,'ttq');`}
         </Script>
       ))}
-    </>
+    </ConsentGate>
   );
 }
