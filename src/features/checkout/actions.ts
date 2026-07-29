@@ -1,6 +1,6 @@
 "use server";
 
-import { checkoutSchema } from "@/validations/checkout";
+import { checkoutSchema, normalizePtPhone } from "@/validations/checkout";
 import { getProductBySlug } from "@/features/landing/queries";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, orderItems, orders, payments, products } from "@/database/schema";
@@ -65,6 +65,8 @@ export async function submitCheckoutAction(
   }
 
   const data = parsed.data;
+  // Telefone chega ao gateway sempre no formato internacional.
+  const phone = data.phone ? normalizePtPhone(data.phone) : undefined;
   const product = await getProductBySlug(data.productSlug);
 
   if (!product || product.slug !== data.productSlug) {
@@ -105,7 +107,7 @@ export async function submitCheckoutAction(
         .set({
           firstName: data.firstName,
           lastName: data.lastName,
-          phone: data.phone,
+          phone,
           updatedAt: new Date(),
         })
         .where(eq(customers.id, customerId));
@@ -117,7 +119,7 @@ export async function submitCheckoutAction(
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
-          phone: data.phone,
+          phone,
           country: "PT",
         })
         .returning({ id: customers.id });
@@ -185,7 +187,7 @@ export async function submitCheckoutAction(
       customer: {
         name: `${data.firstName} ${data.lastName}`,
         email: data.email,
-        phone: data.phone,
+        phone,
         address: {
           line1: data.addressLine1,
           line2: data.addressLine2 || undefined,
@@ -224,7 +226,7 @@ export async function submitCheckoutAction(
       method: data.paymentMethod,
       orderReference: reference,
       totalCents: total,
-      mbwayPhone: data.paymentMethod === "mbway" ? data.phone : undefined,
+      mbwayPhone: data.paymentMethod === "mbway" ? phone : undefined,
       multibanco:
         data.paymentMethod === "multibanco" &&
         result.displayData?.multibancoEntity &&

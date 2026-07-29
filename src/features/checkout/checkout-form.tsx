@@ -21,6 +21,7 @@ import {
   submitCheckoutAction,
   type CheckoutActionResult,
 } from "@/features/checkout/actions";
+import { sendTrack } from "@/features/analytics/tracker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,18 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
   const freeShipping = subtotal >= product.freeShippingFromCents;
   const shipping = freeShipping ? 0 : 499;
   const total = subtotal + shipping;
+
+  // Pagamento criado com sucesso: regista o evento uma única vez.
+  React.useEffect(() => {
+    if (state?.status === "payment_created") {
+      sendTrack("payment_created", {
+        productSlug: product.slug,
+        valueCents: state.totalCents,
+        currency: product.currency,
+        properties: { method: state.method },
+      });
+    }
+  }, [state, product.slug, product.currency]);
 
   // Pagamento criado: substitui o formulário pelas instruções de pagamento
   if (state?.status === "payment_created") {
@@ -266,8 +279,29 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
               <Input id="email" name="email" type="email" autoComplete="email" placeholder="voce@exemplo.pt" required />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="phone">Telemóvel</Label>
-              <Input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="+351912345678" required />
+              <Label htmlFor="phone">
+                {method === "mbway" ? (
+                  "Telemóvel (MB WAY)"
+                ) : (
+                  <>
+                    Telefone{" "}
+                    <span className="text-zinc-400 font-normal">(opcional)</span>
+                  </>
+                )}
+              </Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder="912 345 678"
+                required={method === "mbway"}
+              />
+              {method === "mbway" && (
+                <p className="text-xs text-zinc-500">
+                  O pedido de pagamento chega na app MB WAY deste número.
+                </p>
+              )}
             </div>
           </div>
         </Section>
@@ -319,7 +353,13 @@ export function CheckoutForm({ product, initialQuantity }: CheckoutFormProps) {
               <button
                 key={opt.key}
                 type="button"
-                onClick={() => setMethod(opt.key)}
+                onClick={() => {
+                  setMethod(opt.key);
+                  sendTrack("checkout_payment_selected", {
+                    productSlug: product.slug,
+                    properties: { method: opt.key },
+                  });
+                }}
                 aria-pressed={method === opt.key}
                 className={cn(
                   "flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors",

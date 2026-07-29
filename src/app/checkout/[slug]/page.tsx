@@ -7,6 +7,7 @@ import { techNebulaStore } from "@/features/landing/technebula-data";
 import { getProductBySlug } from "@/features/landing/queries";
 import { CheckoutForm } from "@/features/checkout/checkout-form";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
+import { Tracker } from "@/features/analytics/tracker";
 
 export const metadata: Metadata = {
   title: `Checkout · ${techNebulaStore.name}`,
@@ -42,6 +43,12 @@ export default async function CheckoutSlugPage(
           valueCents: product.priceCents * quantity,
           currency: product.currency,
         }}
+      />
+      <Tracker
+        event="checkout_opened"
+        productSlug={product.slug}
+        valueCents={product.priceCents * quantity}
+        currency={product.currency}
       />
       {/* Cabeçalho */}
       <header className="bg-zinc-950 py-4">

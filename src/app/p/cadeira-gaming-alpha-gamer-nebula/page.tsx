@@ -5,6 +5,7 @@ import { alphaGamerNebula, techNebulaStore } from "@/features/landing/technebula
 import { getProductBySlug } from "@/features/landing/queries";
 import { ProductLanding } from "@/features/landing/product-landing";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
+import { Tracker } from "@/features/analytics/tracker";
 
 export const metadata: Metadata = {
   title: `${alphaGamerNebula.name} · ${techNebulaStore.name}`,
@@ -30,6 +31,12 @@ export default async function AlphaGamerNebulaLandingPage() {
           valueCents: product.priceCents,
           currency: product.currency,
         }}
+      />
+      <Tracker
+        event="view_content"
+        productSlug={product.slug}
+        valueCents={product.priceCents}
+        currency={product.currency}
       />
       <ProductLanding product={product} />
     </>

@@ -25,6 +25,7 @@ import type {
 import { techNebulaStore } from "@/features/landing/technebula-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { sendTrack } from "@/features/analytics/tracker";
 
 interface ProductLandingProps {
   product: LandingProduct;
@@ -390,6 +391,13 @@ export function ProductLanding({ product }: ProductLandingProps) {
               >
                 <Link
                   href={`/checkout/${product.slug}?qty=${quantity}`}
+                  onClick={() =>
+                    sendTrack("click_buy", {
+                      productSlug: product.slug,
+                      valueCents: product.priceCents * quantity,
+                      currency: product.currency,
+                    })
+                  }
                 >
                   Comprar já
                 </Link>
