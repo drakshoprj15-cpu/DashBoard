@@ -44,6 +44,54 @@
 
 ---
 
+## 2.1 Diagnóstico — 2026-07-29
+
+### Funcionando (verificado em produção)
+
+| Módulo | Estado |
+|---|---|
+| Autenticação (login/cadastro/recuperação) | ✅ real, Supabase Auth, 3 contas criadas |
+| Banco de dados | ✅ 60 tabelas + RLS ativo em todas |
+| Landing page `/p/[slug]` | ✅ lê do banco (`products.landing_content`) |
+| Checkout público | ✅ cria cliente, pedido e pagamento reais |
+| Gateway Broski | 🔌 conectado, pagamento real criado e validado |
+| Webhook Broski | ✅ ativo, assinatura HMAC verificada |
+| Pedidos | ✅ lista real do banco |
+| Pixel (cadastro) | ✅ CRUD funcional, token criptografado |
+| **Painel ao Vivo** | ✅ **funcional** — sessões, funil e feed em tempo real |
+| Rastreamento público | ✅ `/api/public/track`, IP mascarado, UTMs capturadas |
+
+### Ainda em placeholder (não implementados)
+
+`/checkouts` (CRUD) · `/editor/loja` · `/editor/landing-page` · `/editor/checkout` ·
+`/notificacoes` · `/campanhas` · `/carrinhos` · `/clientes` · `/emails` ·
+`/catalogo/*` · `/financeiro/*` · `/integracoes` · `/webhooks` · `/logs`
+
+### Rotas do menu que ainda não existem
+
+`/editor/pagina-produto` · `/editor/pagina-categoria` · `/editor/carrinho` ·
+`/editor/fretes` · `/notificacoes/pushcut`
+
+### Bugs corrigidos nesta rodada
+
+1. **Telefone bloqueava vendas** — validação exigia telemóvel (9…) mesmo para
+   Multibanco. Fixo válido `+351222001079` era recusado. Agora a regra depende
+   do método de pagamento. 8 testes cobrem o caso.
+2. **RLS ausente** — chave pública do Supabase permitia ler e-mails, telefones,
+   moradas, pedidos e pagamentos de todos os clientes. Corrigido (migration
+   `0001_enable_rls.sql`).
+3. **Proxy bloqueava webhooks** — `/api/webhooks/*` era redirecionado para
+   `/login`, impedindo a confirmação de pagamentos.
+
+### Bloqueiam a venda (pendentes)
+
+- **Nenhum pixel cadastrado** — anúncio sem conversão rastreada
+- **Páginas legais inexistentes** — Termos, Privacidade, Cookies, Livro de
+  Reclamações são obrigatórios por lei em Portugal e exigidos pela Meta
+- **Sem e-mail de confirmação** ao cliente após o pagamento
+- **Estoque fixo** (não diminui com vendas)
+- **Sem banner de consentimento de cookies** (exigido pelo RGPD com pixel ativo)
+
 ## 3. Status por fase
 
 ### FASE 1 — Fundação — ✅ CONCLUÍDA (nesta iteração)
