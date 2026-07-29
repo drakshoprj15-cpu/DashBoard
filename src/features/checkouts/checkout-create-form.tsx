@@ -9,7 +9,7 @@ import {
   type CheckoutActionResult,
 } from "@/features/checkouts/actions";
 import { slugify } from "@/validations/checkout-crud";
-import type { ProductOption } from "@/features/reviews/queries";
+import type { ProductOption } from "@/features/products/queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

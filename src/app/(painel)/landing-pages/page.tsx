@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { ExternalLink, Info } from "lucide-react";
+import { Database, ExternalLink, ImageOff, Pencil } from "lucide-react";
 
-import {
-  alphaGamerNebula,
-  techNebulaStore,
-} from "@/features/landing/technebula-data";
+import { isDatabaseConfigured } from "@/database/client";
+import { listProducts } from "@/features/products/queries";
 import { formatMoney } from "@/lib/format";
 import {
   Card,
@@ -17,12 +15,24 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = { title: "Landing pages" };
+export const dynamic = "force-dynamic";
 
-export default function LandingPagesPage() {
-  const lp = alphaGamerNebula;
+export default async function LandingPagesPage() {
+  if (!isDatabaseConfigured()) {
+    return (
+      <EmptyState
+        icon={Database}
+        title="Banco de dados não conectado"
+        description="Configure o Supabase para gerir as landing pages."
+        className="min-h-[420px]"
+      />
+    );
+  }
+
+  const products = await listProducts();
 
   return (
     <div className="space-y-6">
@@ -30,54 +40,69 @@ export default function LandingPagesPage() {
         <div>
           <h2 className="text-xl font-bold tracking-tight">Landing pages</h2>
           <p className="text-muted-foreground text-sm">
-            Páginas publicadas em /p/[slug]
+            Uma página em /p/[slug] por produto ativo · edite fotos e conteúdo
+            em Catálogo → Produtos
           </p>
         </div>
       </div>
 
-      <Alert variant="info">
-        <Info />
-        <AlertDescription>
-          Esta landing page está publicada como página estática (definida em
-          código, editável em src/features/landing/technebula-data.ts). O
-          editor visual por blocos, com criação de novas páginas pelo painel,
-          chega na Fase 8.
-        </AlertDescription>
-      </Alert>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Card className="gap-3 overflow-hidden py-0 pb-5">
-          <div className="bg-muted relative aspect-[16/9] w-full overflow-hidden border-b">
-            <Image
-              src={lp.mainImage}
-              alt={lp.name}
-              fill
-              className="object-contain p-4"
-            />
-          </div>
-          <CardHeader className="px-5">
-            <CardTitle className="text-base">{lp.name}</CardTitle>
-            <CardDescription>
-              Loja: {techNebulaStore.name} ·{" "}
-              {formatMoney(lp.priceCents, lp.currency, "pt-PT")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-2 px-5">
-            <Badge variant="success">Publicada</Badge>
-            <Badge variant="muted">estática (código)</Badge>
-            <code className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
-              /p/{lp.slug}
-            </code>
-            <div className="mt-2 flex w-full gap-2">
-              <Button size="sm" asChild>
-                <Link href={`/p/${lp.slug}`} target="_blank">
-                  <ExternalLink /> Abrir página
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {products.length === 0 ? (
+        <EmptyState
+          icon={ImageOff}
+          title="Nenhum produto cadastrado"
+          description="Crie um produto em Catálogo → Produtos para ele ganhar uma landing page própria."
+          className="min-h-[240px]"
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {products.map((p) => (
+            <Card key={p.id} className="gap-3 overflow-hidden py-0 pb-5">
+              <div className="bg-muted relative aspect-[16/9] w-full overflow-hidden border-b">
+                {p.mainImageUrl ? (
+                  <Image
+                    src={p.mainImageUrl}
+                    alt={p.name}
+                    fill
+                    className="object-contain p-4"
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
+                    Sem imagem
+                  </div>
+                )}
+              </div>
+              <CardHeader className="px-5">
+                <CardTitle className="text-base">{p.name}</CardTitle>
+                <CardDescription>
+                  {formatMoney(p.priceCents, p.currency, "pt-PT")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center gap-2 px-5">
+                <Badge variant={p.status === "active" ? "success" : "warning"}>
+                  {p.status === "active" ? "Publicada" : "Rascunho"}
+                </Badge>
+                <code className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
+                  /p/{p.slug}
+                </code>
+                <div className="mt-2 flex w-full gap-2">
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/catalogo/produtos/${p.id}`}>
+                      <Pencil /> Editar
+                    </Link>
+                  </Button>
+                  {p.status === "active" && (
+                    <Button size="sm" asChild>
+                      <Link href={`/p/${p.slug}`} target="_blank">
+                        <ExternalLink /> Abrir página
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

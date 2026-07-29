@@ -10,7 +10,10 @@ import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { CookieBanner } from "@/features/consent/cookie-banner";
 import { listActiveShippingMethods } from "@/features/shipping/queries";
-import { getPublishedCheckoutBySlug } from "@/features/checkouts/queries";
+import {
+  DEFAULT_CHECKOUT_THEME,
+  getPublishedCheckoutBySlug,
+} from "@/features/checkouts/queries";
 
 export const metadata: Metadata = {
   title: `Checkout · ${techNebulaStore.name}`,
@@ -81,6 +84,7 @@ export default async function CheckoutSlugPage(
           product={product}
           initialQuantity={quantity}
           shippingMethods={shippingMethods}
+          theme={checkout?.theme ?? DEFAULT_CHECKOUT_THEME}
         />
       </main>
 

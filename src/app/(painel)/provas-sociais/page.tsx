@@ -3,7 +3,8 @@ import Image from "next/image";
 import { Database, Eye, EyeOff, MessageSquareQuote, Star, Trash2, TriangleAlert } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
-import { listProductOptions, listReviews } from "@/features/reviews/queries";
+import { listReviews } from "@/features/reviews/queries";
+import { listProductOptions } from "@/features/products/queries";
 import { deleteReviewAction, toggleReviewAction } from "@/features/reviews/actions";
 import { ReviewForm } from "@/features/reviews/review-form";
 import { cn } from "@/lib/utils";

@@ -21,6 +21,24 @@ export const createCheckoutSchema = z.object({
 
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 
+const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+export const updateCheckoutThemeSchema = z.object({
+  id: z.string().uuid("Checkout inválido"),
+  primaryColor: z
+    .string()
+    .trim()
+    .regex(HEX_COLOR_REGEX, "Cor de destaque inválida"),
+  buttonColor: z
+    .string()
+    .trim()
+    .regex(HEX_COLOR_REGEX, "Cor do botão inválida"),
+});
+
+export type UpdateCheckoutThemeInput = z.infer<
+  typeof updateCheckoutThemeSchema
+>;
+
 /** Converte um nome livre num slug seguro para URL. */
 export function slugify(value: string): string {
   return value

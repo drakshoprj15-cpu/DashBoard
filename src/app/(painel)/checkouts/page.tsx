@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Package,
   Trash2,
 } from "lucide-react";
 
@@ -18,7 +19,8 @@ import {
   toggleCheckoutStatusAction,
 } from "@/features/checkouts/actions";
 import { CheckoutCreateForm } from "@/features/checkouts/checkout-create-form";
-import { listProductOptions } from "@/features/reviews/queries";
+import { CheckoutThemeSheet } from "@/features/checkouts/checkout-theme-sheet";
+import { listProductOptions } from "@/features/products/queries";
 import { formatMoney } from "@/lib/format";
 import { getAppUrl } from "@/lib/app-url";
 import { Badge } from "@/components/ui/badge";
@@ -141,6 +143,21 @@ export default async function CheckoutsPage() {
                     </td>
                     <td className="py-3">
                       <div className="flex justify-end gap-1.5">
+                        {c.productId && (
+                          <Button size="sm" variant="ghost" asChild>
+                            <Link
+                              href={`/catalogo/produtos/${c.productId}`}
+                              aria-label="Editar produto e landing page"
+                            >
+                              <Package /> Produto
+                            </Link>
+                          </Button>
+                        )}
+                        <CheckoutThemeSheet
+                          checkoutId={c.id}
+                          checkoutName={c.name}
+                          theme={c.theme}
+                        />
                         {c.status === "published" && (
                           <Button size="sm" variant="outline" asChild>
                             <Link

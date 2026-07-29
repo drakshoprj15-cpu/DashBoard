@@ -4,6 +4,37 @@ import { getDb, isDatabaseConfigured } from "@/database/client";
 import { checkouts, orders, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
+export interface CheckoutTheme {
+  primaryColor: string;
+  buttonColor: string;
+}
+
+export const DEFAULT_CHECKOUT_THEME: CheckoutTheme = {
+  primaryColor: "#7c3aed",
+  buttonColor: "#f97316",
+};
+
+const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+/** Extrai o tema de `checkouts.config`, caindo nos padrões quando ausente ou inválido. */
+function parseCheckoutTheme(config: unknown): CheckoutTheme {
+  if (!config || typeof config !== "object") return DEFAULT_CHECKOUT_THEME;
+  const theme = (config as Record<string, unknown>).theme;
+  if (!theme || typeof theme !== "object") return DEFAULT_CHECKOUT_THEME;
+
+  const t = theme as Record<string, unknown>;
+  const primaryColor =
+    typeof t.primaryColor === "string" && HEX_COLOR_REGEX.test(t.primaryColor)
+      ? t.primaryColor
+      : DEFAULT_CHECKOUT_THEME.primaryColor;
+  const buttonColor =
+    typeof t.buttonColor === "string" && HEX_COLOR_REGEX.test(t.buttonColor)
+      ? t.buttonColor
+      : DEFAULT_CHECKOUT_THEME.buttonColor;
+
+  return { primaryColor, buttonColor };
+}
+
 export interface CheckoutRow {
   id: string;
   name: string;
@@ -16,6 +47,7 @@ export interface CheckoutRow {
   paymentMethods: string[];
   publishedAt: Date | null;
   createdAt: Date;
+  theme: CheckoutTheme;
   /** Métricas reais calculadas a partir dos pedidos */
   orderCount: number;
   paidCount: number;
@@ -42,6 +74,7 @@ export async function listCheckouts(): Promise<CheckoutRow[]> {
       paymentMethods: checkouts.paymentMethods,
       publishedAt: checkouts.publishedAt,
       createdAt: checkouts.createdAt,
+      config: checkouts.config,
       orderCount: sql<number>`count(${orders.id})::int`,
       paidCount: sql<number>`count(${orders.id}) filter (where ${orders.status} in ('paid','shipped','delivered'))::int`,
       revenueCents: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('paid','shipped','delivered')), 0)::int`,
@@ -64,14 +97,16 @@ export async function listCheckouts(): Promise<CheckoutRow[]> {
       checkouts.paymentMethods,
       checkouts.publishedAt,
       checkouts.createdAt,
+      checkouts.config,
     )
     .orderBy(desc(checkouts.createdAt));
 
-  return rows.map((r) => ({
+  return rows.map(({ config, ...r }) => ({
     ...r,
     paymentMethods: Array.isArray(r.paymentMethods)
       ? (r.paymentMethods as string[])
       : [],
+    theme: parseCheckoutTheme(config),
   }));
 }
 
@@ -80,6 +115,7 @@ export interface PublicCheckout {
   slug: string;
   productSlug: string;
   paymentMethods: string[];
+  theme: CheckoutTheme;
 }
 
 /**
@@ -100,6 +136,7 @@ export async function getPublishedCheckoutBySlug(
         slug: checkouts.slug,
         productSlug: products.slug,
         paymentMethods: checkouts.paymentMethods,
+        config: checkouts.config,
       })
       .from(checkouts)
       .innerJoin(products, eq(checkouts.mainProductId, products.id))
@@ -122,6 +159,7 @@ export async function getPublishedCheckoutBySlug(
       paymentMethods: Array.isArray(row.paymentMethods)
         ? (row.paymentMethods as string[])
         : [],
+      theme: parseCheckoutTheme(row.config),
     };
   } catch (error) {
     console.error("[checkouts] erro ao resolver checkout público:", error);

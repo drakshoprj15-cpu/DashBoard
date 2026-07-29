@@ -6,7 +6,11 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { checkouts, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
-import { createCheckoutSchema, slugify } from "@/validations/checkout-crud";
+import {
+  createCheckoutSchema,
+  slugify,
+  updateCheckoutThemeSchema,
+} from "@/validations/checkout-crud";
 
 export interface CheckoutActionResult {
   ok: boolean;
@@ -103,6 +107,64 @@ export async function createCheckoutAction(
   } catch (error) {
     console.error("[checkouts] erro ao criar:", error);
     return { ok: false, error: "Não foi possível criar o checkout." };
+  }
+}
+
+export async function updateCheckoutThemeAction(
+  _prev: CheckoutActionResult | null,
+  formData: FormData,
+): Promise<CheckoutActionResult> {
+  const parsed = updateCheckoutThemeSchema.safeParse({
+    id: formData.get("id"),
+    primaryColor: formData.get("primaryColor"),
+    buttonColor: formData.get("buttonColor"),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Banco de dados não configurado." };
+  }
+
+  try {
+    const db = getDb();
+    const workspaceId = await getOrCreateDefaultWorkspace();
+    const { id, primaryColor, buttonColor } = parsed.data;
+
+    const [current] = await db
+      .select({ config: checkouts.config, slug: checkouts.slug })
+      .from(checkouts)
+      .where(and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)))
+      .limit(1);
+
+    if (!current) {
+      return { ok: false, error: "Checkout não encontrado." };
+    }
+
+    const currentConfig =
+      current.config && typeof current.config === "object"
+        ? (current.config as Record<string, unknown>)
+        : {};
+
+    await db
+      .update(checkouts)
+      .set({
+        config: {
+          ...currentConfig,
+          theme: { primaryColor, buttonColor },
+        },
+        updatedAt: new Date(),
+      })
+      .where(and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)));
+
+    revalidatePath("/checkouts");
+    revalidatePath(`/checkout/${current.slug}`);
+    return { ok: true, message: "Cores atualizadas." };
+  } catch (error) {
+    console.error("[checkouts] erro ao atualizar cores:", error);
+    return { ok: false, error: "Não foi possível atualizar as cores." };
   }
 }
 

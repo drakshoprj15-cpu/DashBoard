@@ -27,6 +27,7 @@ import {
   type CheckoutActionResult,
 } from "@/features/checkout/actions";
 import { sendTrack } from "@/features/analytics/tracker";
+import type { CheckoutTheme } from "@/features/checkouts/queries";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ interface CheckoutFormProps {
   product: LandingProduct;
   initialQuantity: number;
   shippingMethods: ShippingMethodRow[];
+  theme: CheckoutTheme;
 }
 
 function Section({
@@ -52,10 +54,13 @@ function Section({
   return (
     <section className="rounded-2xl border bg-white p-5 md:p-6">
       <h2 className="flex items-center gap-2.5 text-base font-bold">
-        <span className="flex size-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
+        <span
+          className="flex size-7 items-center justify-center rounded-full text-xs font-bold text-white"
+          style={{ backgroundColor: "var(--checkout-primary)" }}
+        >
           {step}
         </span>
-        <Icon className="size-4 text-violet-600" />
+        <Icon className="size-4" style={{ color: "var(--checkout-primary)" }} />
         {title}
       </h2>
       <div className="mt-4">{children}</div>
@@ -67,6 +72,7 @@ export function CheckoutForm({
   product,
   initialQuantity,
   shippingMethods,
+  theme,
 }: CheckoutFormProps) {
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
@@ -228,7 +234,15 @@ export function CheckoutForm({
   );
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:py-10 lg:grid-cols-[1fr_380px]">
+    <div
+      className="mx-auto grid max-w-6xl gap-6 px-4 py-6 md:py-10 lg:grid-cols-[1fr_380px]"
+      style={
+        {
+          "--checkout-primary": theme.primaryColor,
+          "--checkout-accent": theme.buttonColor,
+        } as React.CSSProperties
+      }
+    >
       {/* Resumo recolhível no mobile */}
       <div className="lg:hidden">
         <button
@@ -358,10 +372,18 @@ export function CheckoutForm({
                     aria-pressed={shippingMethodId === m.id}
                     className={cn(
                       "flex w-full items-center justify-between rounded-xl border-2 p-3.5 text-left transition-colors",
-                      shippingMethodId === m.id
-                        ? "border-violet-600 bg-violet-50/50"
-                        : "border-zinc-200 hover:border-zinc-300",
+                      shippingMethodId !== m.id &&
+                        "border-zinc-200 hover:border-zinc-300",
                     )}
+                    style={
+                      shippingMethodId === m.id
+                        ? {
+                            borderColor: "var(--checkout-primary)",
+                            backgroundColor:
+                              "color-mix(in srgb, var(--checkout-primary) 8%, white)",
+                          }
+                        : undefined
+                    }
                   >
                     <span>
                       <span className="block text-sm font-bold">{m.name}</span>
@@ -419,10 +441,18 @@ export function CheckoutForm({
                 aria-pressed={method === opt.key}
                 className={cn(
                   "flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors",
-                  method === opt.key
-                    ? "border-violet-600 bg-violet-50/50"
-                    : "border-zinc-200 hover:border-zinc-300",
+                  method !== opt.key &&
+                    "border-zinc-200 hover:border-zinc-300",
                 )}
+                style={
+                  method === opt.key
+                    ? {
+                        borderColor: "var(--checkout-primary)",
+                        backgroundColor:
+                          "color-mix(in srgb, var(--checkout-primary) 8%, white)",
+                      }
+                    : undefined
+                }
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={opt.img} alt="" className="h-8 rounded border bg-white px-1.5 py-0.5" />
@@ -444,7 +474,8 @@ export function CheckoutForm({
           size="lg"
           loading={pending}
           disabled={shippingMethods.length > 0 && !shippingMethodId}
-          className="h-12 w-full bg-orange-500 text-base font-bold hover:bg-orange-600"
+          className="h-12 w-full text-base font-bold hover:brightness-90 active:brightness-95"
+          style={{ backgroundColor: "var(--checkout-accent)" }}
         >
           {method === "mbway"
             ? `Pagar ${fmt(total)} com MB WAY`

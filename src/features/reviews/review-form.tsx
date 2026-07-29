@@ -9,7 +9,7 @@ import {
   saveReviewAction,
   type ReviewActionResult,
 } from "@/features/reviews/actions";
-import type { ProductOption } from "@/features/reviews/queries";
+import type { ProductOption } from "@/features/products/queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

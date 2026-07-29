@@ -20,12 +20,6 @@ export interface ReviewRow {
   reviewedAt: Date;
 }
 
-export interface ProductOption {
-  id: string;
-  name: string;
-  slug: string;
-}
-
 /** Avaliações do workspace (painel). */
 export async function listReviews(): Promise<ReviewRow[]> {
   if (!isDatabaseConfigured()) return [];
@@ -60,20 +54,6 @@ export async function listReviews(): Promise<ReviewRow[]> {
     .orderBy(desc(productReviews.reviewedAt));
 
   return rows;
-}
-
-/** Produtos disponíveis para associar uma avaliação. */
-export async function listProductOptions(): Promise<ProductOption[]> {
-  if (!isDatabaseConfigured()) return [];
-
-  const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
-
-  return db
-    .select({ id: products.id, name: products.name, slug: products.slug })
-    .from(products)
-    .where(and(eq(products.workspaceId, workspaceId), isNull(products.deletedAt)))
-    .orderBy(asc(products.name));
 }
 
 export interface PublicReview {
