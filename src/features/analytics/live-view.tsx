@@ -1,22 +1,25 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Activity,
   CreditCard,
   Eye,
-  Globe,
   Laptop,
+  MapPin,
   MousePointerClick,
+  Package,
+  ShoppingBag,
   Smartphone,
   Tablet,
-  Users,
   Wifi,
   WifiOff,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/format";
 import type {
   LiveSnapshot,
   LiveSession,
@@ -41,7 +44,7 @@ const LiveGlobe = dynamic(
   {
     ssr: false,
     loading: () => (
-      <Skeleton className="h-[440px] w-full rounded-xl sm:h-[520px] lg:h-[560px]" />
+      <Skeleton className="h-[440px] w-full rounded-xl sm:h-[520px] lg:h-full lg:min-h-[560px]" />
     ),
   },
 );
@@ -142,6 +145,205 @@ function sessionsToGlobePoints(sessions: LiveSession[]): LiveGlobePoint[] {
   return [...grouped.values()];
 }
 
+/* -------------------------------------------------------------------------- */
+/* Mini stat (grade 2×2 do painel esquerdo)                                    */
+/* -------------------------------------------------------------------------- */
+
+function MiniStat({
+  label,
+  value,
+  icon: Icon,
+  live,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ElementType;
+  live?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border bg-card p-3.5">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+        <Icon className="size-3.5" />
+        {label}
+        {live && (
+          <span className="bg-success ml-auto size-1.5 animate-pulse rounded-full" />
+        )}
+      </p>
+      <p className="mt-1.5 text-xl font-bold tracking-tight tabular-nums">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Comportamento dos clientes — 3 círculos ligados                             */
+/* -------------------------------------------------------------------------- */
+
+function BehaviorStage({
+  label,
+  count,
+  tone,
+}: {
+  label: string;
+  count: number;
+  tone: "info" | "warning" | "success";
+}) {
+  const ring = {
+    info: "border-info/40 text-info bg-info/10",
+    warning: "border-warning/40 text-warning-foreground dark:text-warning bg-warning/10",
+    success: "border-success/40 text-success bg-success/10",
+  }[tone];
+
+  return (
+    <div className="flex flex-1 flex-col items-center gap-2">
+      <div
+        className={cn(
+          "flex size-14 items-center justify-center rounded-full border-2 text-lg font-bold tabular-nums",
+          ring,
+        )}
+      >
+        {count}
+      </div>
+      <p className="text-muted-foreground text-center text-xs leading-tight">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function CustomerBehaviorCard({ data }: { data: LiveSnapshot | null }) {
+  return (
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="text-sm">Comportamento agora</CardTitle>
+        <CardDescription className="text-xs">
+          Onde estão as sessões online neste momento
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-4">
+        <div className="flex items-center">
+          <BehaviorStage
+            label="Na loja"
+            count={data?.browsingNow ?? 0}
+            tone="info"
+          />
+          <div className="mb-6 h-px w-4 shrink-0 bg-gradient-to-r from-info/40 to-warning/40" />
+          <BehaviorStage
+            label="No checkout"
+            count={data?.activeCheckouts ?? 0}
+            tone="warning"
+          />
+          <div className="mb-6 h-px w-4 shrink-0 bg-gradient-to-r from-warning/40 to-success/40" />
+          <BehaviorStage
+            label="Compraram hoje"
+            count={data?.paidOrdersToday ?? 0}
+            tone="success"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Localizações e produtos principais                                         */
+/* -------------------------------------------------------------------------- */
+
+function TopLocationsCard({ data }: { data: LiveSnapshot | null }) {
+  const locations = data?.topLocations ?? [];
+  const max = Math.max(1, ...locations.map((l) => l.count));
+
+  return (
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="flex items-center gap-1.5 text-sm">
+          <MapPin className="size-3.5" /> Principais localizações
+        </CardTitle>
+        <CardDescription className="text-xs">Visitantes de hoje</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2.5 px-4">
+        {locations.length === 0 ? (
+          <p className="text-muted-foreground py-3 text-center text-xs">
+            Ainda sem visitantes hoje.
+          </p>
+        ) : (
+          locations.map((loc) => (
+            <div key={loc.label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="truncate font-medium">{loc.label}</span>
+                <span className="text-muted-foreground shrink-0 tabular-nums">
+                  {loc.count}
+                </span>
+              </div>
+              <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full transition-all"
+                  style={{ width: `${Math.max(4, (loc.count / max) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopProductsCard({ data }: { data: LiveSnapshot | null }) {
+  const productList = data?.topProducts ?? [];
+
+  return (
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="flex items-center gap-1.5 text-sm">
+          <Package className="size-3.5" /> Produtos mais vendidos
+        </CardTitle>
+        <CardDescription className="text-xs">Por receita paga</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 px-4">
+        {productList.length === 0 ? (
+          <p className="text-muted-foreground py-3 text-center text-xs">
+            Nenhuma venda confirmada ainda.
+          </p>
+        ) : (
+          productList.map((p) => (
+            <div key={p.name} className="flex items-center gap-2.5">
+              <div className="bg-muted relative size-9 shrink-0 overflow-hidden rounded-lg border">
+                {p.imageUrl ? (
+                  <Image
+                    src={p.imageUrl}
+                    alt=""
+                    fill
+                    className="object-contain p-1"
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex size-full items-center justify-center">
+                    <Package className="size-4" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium">{p.name}</p>
+                <p className="text-muted-foreground text-[11px]">
+                  {p.units} {p.units === 1 ? "unidade" : "unidades"}
+                </p>
+              </div>
+              <p className="shrink-0 text-xs font-bold tabular-nums">
+                {formatMoney(p.revenueCents, data?.currency ?? "EUR", "pt-PT")}
+              </p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Componente principal                                                       */
+/* -------------------------------------------------------------------------- */
+
 type ConnState = "connected" | "reconnecting" | "disconnected";
 
 export function LiveView() {
@@ -182,37 +384,18 @@ export function LiveView() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
+        <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-20" />
+            ))}
+          </div>
+          <Skeleton className="h-[440px] lg:h-full" />
         </div>
-        <Skeleton className="h-64" />
       </div>
     );
   }
 
-  const cards = [
-    {
-      label: "Online agora",
-      value: data?.onlineNow ?? 0,
-      icon: Users,
-      live: true,
-    },
-    {
-      label: "Visitantes hoje",
-      value: data?.visitorsToday ?? 0,
-      icon: Activity,
-    },
-    { label: "Visitantes 24h", value: data?.visitors24h ?? 0, icon: Globe },
-    {
-      label: "Páginas vistas hoje",
-      value: data?.pageViewsToday ?? 0,
-      icon: Eye,
-    },
-  ];
-
-  const funnelMax = Math.max(1, ...(data?.funnel.map((f) => f.count) ?? [1]));
   const globePoints = sessionsToGlobePoints(data?.sessions ?? []);
 
   return (
@@ -239,35 +422,45 @@ export function LiveView() {
         )}
       </div>
 
-      {/* Globo ao vivo */}
-      <LiveGlobe points={globePoints} />
+      {/* Hero: painel esquerdo compacto + globo à direita */}
+      <div className="grid gap-5 lg:grid-cols-[360px_1fr] lg:items-stretch">
+        <div className="space-y-3">
+          {/* Página vs. Checkout, lado a lado */}
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat
+              label="Ver. de página"
+              value={data?.pageViewsToday ?? 0}
+              icon={Eye}
+              live
+            />
+            <MiniStat
+              label="Checkouts agora"
+              value={data?.activeCheckouts ?? 0}
+              icon={CreditCard}
+              live
+            />
+          </div>
+          {/* Pedidos vs. compras, lado a lado */}
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat
+              label="Pedidos hoje"
+              value={data?.ordersToday ?? 0}
+              icon={ShoppingBag}
+            />
+            <MiniStat
+              label="Compras hoje"
+              value={data?.paidOrdersToday ?? 0}
+              icon={Activity}
+            />
+          </div>
 
-      {/* Cartões */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {cards.map((c) => {
-          const Icon = c.icon;
-          return (
-            <Card key={c.label} className="gap-2 py-4">
-              <CardHeader className="px-4">
-                <CardDescription className="flex items-center gap-1.5 text-xs">
-                  <Icon className="size-3.5" />
-                  {c.label}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-4">
-                <p
-                  className={cn(
-                    "text-2xl font-bold tracking-tight",
-                    c.live &&
-                      (c.value > 0 ? "text-success" : "text-muted-foreground"),
-                  )}
-                >
-                  {c.value}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
+          <TopLocationsCard data={data} />
+          <CustomerBehaviorCard data={data} />
+          <TopProductsCard data={data} />
+        </div>
+
+        {/* Globo — mantido tal como estava */}
+        <LiveGlobe points={globePoints} />
       </div>
 
       {/* Funil */}
@@ -310,7 +503,7 @@ export function LiveView() {
                   <div
                     className="bg-primary h-full rounded-full transition-all"
                     style={{
-                      width: `${Math.max(2, (step.count / funnelMax) * 100)}%`,
+                      width: `${Math.max(2, (step.count / Math.max(1, data.funnel[0]?.count ?? 1)) * 100)}%`,
                     }}
                   />
                 </div>

@@ -1,7 +1,13 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, like, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { analyticsEvents, visitorSessions } from "@/database/schema";
+import {
+  analyticsEvents,
+  orderItems,
+  orders,
+  products,
+  visitorSessions,
+} from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
 export interface LiveSession {
@@ -35,11 +41,33 @@ export interface FunnelStep {
   count: number;
 }
 
+export interface TopLocation {
+  label: string;
+  count: number;
+}
+
+export interface TopProduct {
+  name: string;
+  imageUrl: string | null;
+  units: number;
+  revenueCents: number;
+}
+
 export interface LiveSnapshot {
   onlineNow: number;
   visitorsToday: number;
   visitors24h: number;
   pageViewsToday: number;
+  /** Sessões online cuja página atual é um checkout. */
+  activeCheckouts: number;
+  /** Online agora menos quem está no checkout — "a navegar". */
+  browsingNow: number;
+  ordersToday: number;
+  paidOrdersToday: number;
+  revenueTodayCents: number;
+  currency: string;
+  topLocations: TopLocation[];
+  topProducts: TopProduct[];
   sessions: LiveSession[];
   events: LiveEvent[];
   funnel: FunnelStep[];
@@ -48,6 +76,26 @@ export interface LiveSnapshot {
 
 /** Considera "online" quem teve atividade nos últimos 5 minutos. */
 const ONLINE_WINDOW = sql`now() - interval '5 minutes'`;
+const PAID_STATUSES_SQL = sql`${orders.status} in ('paid','shipped','delivered')`;
+
+/** Nomes de países para exibir ao lado da cidade nas localizações. */
+const COUNTRY_NAMES: Record<string, string> = {
+  BR: "Brasil",
+  PT: "Portugal",
+  ES: "Espanha",
+  US: "Estados Unidos",
+  FR: "França",
+  DE: "Alemanha",
+  GB: "Reino Unido",
+  IT: "Itália",
+  AO: "Angola",
+  MZ: "Moçambique",
+};
+
+function countryLabel(code: string | null, city: string | null): string {
+  const name = code ? (COUNTRY_NAMES[code.toUpperCase()] ?? code) : "Desconhecido";
+  return city ? `${city} · ${name}` : name;
+}
 
 export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
   if (!isDatabaseConfigured()) return null;
@@ -55,11 +103,23 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
   const ws = eq(visitorSessions.workspaceId, workspaceId);
+  const wsOrders = eq(orders.workspaceId, workspaceId);
 
   const [online] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(visitorSessions)
     .where(and(ws, gte(visitorSessions.lastSeenAt, ONLINE_WINDOW)));
+
+  const [activeCheckout] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(visitorSessions)
+    .where(
+      and(
+        ws,
+        gte(visitorSessions.lastSeenAt, ONLINE_WINDOW),
+        like(visitorSessions.currentPage, "/checkout/%"),
+      ),
+    );
 
   const [today] = await db
     .select({
@@ -73,6 +133,50 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
     .select({ n: sql<number>`count(*)::int` })
     .from(visitorSessions)
     .where(and(ws, sql`${visitorSessions.createdAt} >= now() - interval '24 hours'`));
+
+  const [ordersToday] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      paid: sql<number>`count(*) filter (where ${PAID_STATUSES_SQL})::int`,
+      revenueCents: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${PAID_STATUSES_SQL}), 0)::int`,
+    })
+    .from(orders)
+    .where(
+      and(wsOrders, sql`${orders.createdAt} >= date_trunc('day', now())`),
+    );
+
+  const locationRows = await db
+    .select({
+      countryCode: visitorSessions.countryCode,
+      city: visitorSessions.city,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(visitorSessions)
+    .where(
+      and(
+        ws,
+        sql`${visitorSessions.createdAt} >= date_trunc('day', now())`,
+        sql`${visitorSessions.countryCode} is not null`,
+      ),
+    )
+    .groupBy(visitorSessions.countryCode, visitorSessions.city)
+    .orderBy(desc(sql`count(*)`))
+    .limit(5);
+
+  const topProductRows = await db
+    .select({
+      name: orderItems.productName,
+      imageUrl: products.mainImageUrl,
+      units: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::int`,
+      revenueCents: sql<number>`coalesce(sum(${orderItems.totalCents}), 0)::int`,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .leftJoin(products, eq(orderItems.productId, products.id))
+    .where(and(wsOrders, PAID_STATUSES_SQL))
+    .groupBy(orderItems.productName, products.mainImageUrl)
+    .orderBy(desc(sql`sum(${orderItems.totalCents})`))
+    .limit(5);
 
   const sessions = await db
     .select({
@@ -136,11 +240,32 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
     { label: "Pagamento criado", event: "payment_created", count: countOf("payment_created") },
   ];
 
+  const onlineNow = online?.n ?? 0;
+  const activeCheckouts = activeCheckout?.n ?? 0;
+
   return {
-    onlineNow: online?.n ?? 0,
+    onlineNow,
     visitorsToday: today?.visitantes ?? 0,
     visitors24h: last24?.n ?? 0,
     pageViewsToday: today?.views ?? 0,
+    activeCheckouts,
+    browsingNow: Math.max(0, onlineNow - activeCheckouts),
+    ordersToday: ordersToday?.total ?? 0,
+    paidOrdersToday: ordersToday?.paid ?? 0,
+    revenueTodayCents: ordersToday?.revenueCents ?? 0,
+    currency: "EUR",
+    topLocations: locationRows.map((r) => ({
+      label: countryLabel(r.countryCode, r.city),
+      count: r.n,
+    })),
+    topProducts: topProductRows
+      .filter((r) => r.name)
+      .map((r) => ({
+        name: r.name as string,
+        imageUrl: r.imageUrl,
+        units: r.units,
+        revenueCents: r.revenueCents,
+      })),
     sessions: sessions.map((s) => ({
       id: s.id,
       anonymousId: s.anonymousId,
