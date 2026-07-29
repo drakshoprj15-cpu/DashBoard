@@ -6,6 +6,7 @@ import { SIDEBAR_COOKIE } from "@/lib/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DemoBanner } from "@/components/layout/demo-banner";
+import { countUnreadNotifications } from "@/features/notifications/queries";
 
 export default async function PainelLayout({
   children,
@@ -15,6 +16,7 @@ export default async function PainelLayout({
 
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "true";
+  const unreadCount = await countUnreadNotifications();
 
   return (
     <div className="flex h-svh w-full overflow-hidden">
@@ -26,7 +28,11 @@ export default async function PainelLayout({
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header user={session.user} demoMode={session.demoMode} />
+        <Header
+          user={session.user}
+          demoMode={session.demoMode}
+          unreadCount={unreadCount}
+        />
         {session.demoMode && <DemoBanner />}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>

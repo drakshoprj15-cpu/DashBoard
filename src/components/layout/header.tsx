@@ -26,6 +26,8 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 interface HeaderProps {
   user: SessionUser;
   demoMode: boolean;
+  /** Notificações por ler, para o contador do sino */
+  unreadCount: number;
 }
 
 function usePageTitle(): string {
@@ -47,7 +49,7 @@ function usePageTitle(): string {
   return "Painel";
 }
 
-export function Header({ user, demoMode }: HeaderProps) {
+export function Header({ user, demoMode, unreadCount }: HeaderProps) {
   const title = usePageTitle();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
@@ -102,28 +104,26 @@ export function Header({ user, demoMode }: HeaderProps) {
         </div>
 
         {/* Notificações */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Notificações"
-              className="relative"
-            >
-              <Bell className="size-4.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <div className="text-muted-foreground px-2 py-8 text-center text-sm">
-              Nenhuma notificação por enquanto.
-              <p className="mt-1 text-xs">
-                Vendas, pagamentos e alertas aparecerão aqui.
-              </p>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={
+            unreadCount > 0
+              ? `Notificações (${unreadCount} por ler)`
+              : "Notificações"
+          }
+          className="relative"
+          asChild
+        >
+          <Link href="/notificacoes">
+            <Bell className="size-4.5" />
+            {unreadCount > 0 && (
+              <span className="bg-primary text-primary-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-bold">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
+        </Button>
 
         <ThemeToggle />
 

@@ -5,6 +5,26 @@ import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, orders, payments, paymentWebhooks } from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
 import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
+import {
+  createNotification,
+  type NotificationEvent,
+} from "@/features/notifications/create";
+import {
+  sendPushcutNotification,
+  shouldPushEvent,
+} from "@/features/notifications/pushcut";
+
+/** Que notificação gerar para cada estado devolvido pelo gateway. */
+const NOTIFICATION_BY_STATUS: Record<
+  string,
+  { eventType: NotificationEvent; title: string }
+> = {
+  approved: { eventType: "payment_approved", title: "Pagamento confirmado" },
+  refused: { eventType: "payment_refused", title: "Pagamento recusado" },
+  expired: { eventType: "payment_refused", title: "Pagamento expirado" },
+  refunded: { eventType: "refund", title: "Reembolso processado" },
+  chargeback: { eventType: "chargeback", title: "Chargeback aberto" },
+};
 
 /**
  * Webhook do Broski (POST https://<dominio>/api/webhooks/broski).
@@ -103,29 +123,33 @@ export async function POST(request: Request) {
         .set({ processedAt: now, paymentId })
         .where(eq(paymentWebhooks.id, inserted[0].id));
 
-      // Purchase só é reportado à Meta após confirmação real do gateway.
-      // Nunca pode impedir a resposta 2xx ao Broski (sem 2xx ele faz
-      // retries por ~24h, e o pagamento já foi processado com sucesso).
-      if (event.status === "approved") {
-        try {
-          const [orderRow] = await db
-            .select({
-              workspaceId: orders.workspaceId,
-              totalCents: orders.totalCents,
-              currency: orders.currency,
-              customerId: orders.customerId,
-            })
-            .from(orders)
-            .where(eq(orders.id, orderId))
-            .limit(1);
+      // Efeitos posteriores (Meta CAPI, notificação in-app) nunca podem
+      // impedir a resposta 2xx ao Broski: sem 2xx ele reenvia por ~24h, e o
+      // pagamento já foi processado com sucesso aqui em cima.
+      try {
+        const [orderRow] = await db
+          .select({
+            workspaceId: orders.workspaceId,
+            reference: orders.reference,
+            totalCents: orders.totalCents,
+            currency: orders.currency,
+            customerId: orders.customerId,
+          })
+          .from(orders)
+          .where(eq(orders.id, orderId))
+          .limit(1);
 
-          if (orderRow?.customerId) {
-            const [customerRow] = await db
-              .select({ email: customers.email, phone: customers.phone })
-              .from(customers)
-              .where(eq(customers.id, orderRow.customerId))
-              .limit(1);
+        if (orderRow) {
+          const [customerRow] = orderRow.customerId
+            ? await db
+                .select({ email: customers.email, phone: customers.phone })
+                .from(customers)
+                .where(eq(customers.id, orderRow.customerId))
+                .limit(1)
+            : [undefined];
 
+          // Purchase só é reportado à Meta após confirmação real do gateway.
+          if (event.status === "approved" && orderRow.customerId) {
             await sendPurchaseToMetaCapi({
               workspaceId: orderRow.workspaceId,
               orderId,
@@ -136,9 +160,38 @@ export async function POST(request: Request) {
               phone: customerRow?.phone,
             });
           }
-        } catch (error) {
-          console.error("[webhook/broski] erro ao reportar Purchase à Meta:", error);
+
+          const notice = NOTIFICATION_BY_STATUS[event.status];
+          if (notice) {
+            const amount = (orderRow.totalCents / 100).toLocaleString("pt-PT", {
+              style: "currency",
+              currency: orderRow.currency,
+            });
+            const detail = `Pedido ${orderRow.reference}${
+              customerRow?.email ? ` · ${customerRow.email}` : ""
+            }`;
+
+            await createNotification({
+              workspaceId: orderRow.workspaceId,
+              eventType: notice.eventType,
+              title: notice.title,
+              body: detail,
+              href: "/pedidos",
+              valueCents: orderRow.totalCents,
+              metadata: { orderId, reference: orderRow.reference },
+            });
+
+            // Push no telemóvel, se o utilizador escolheu este evento.
+            if (await shouldPushEvent(notice.eventType)) {
+              await sendPushcutNotification(
+                `${notice.title} · ${amount}`,
+                detail,
+              );
+            }
+          }
         }
+      } catch (error) {
+        console.error("[webhook/broski] erro nos efeitos pós-pagamento:", error);
       }
     }
   }

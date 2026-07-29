@@ -83,7 +83,15 @@ export const navigation: NavItem[] = [
     ],
   },
   { title: "Pixel", href: "/pixel", icon: Radar, phase: 7 },
-  { title: "Notificações", href: "/notificacoes", icon: Bell, phase: 9 },
+  {
+    title: "Notificações",
+    icon: Bell,
+    phase: 9,
+    items: [
+      { title: "Todas", href: "/notificacoes" },
+      { title: "Pushcut", href: "/notificacoes#pushcut" },
+    ],
+  },
   { title: "Landing pages", href: "/landing-pages", icon: Rocket, phase: 8 },
   { title: "Integrações", href: "/integracoes", icon: Blocks, phase: 7 },
   { title: "Webhooks", href: "/webhooks", icon: Webhook, phase: 4 },
