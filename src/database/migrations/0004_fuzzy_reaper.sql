@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "payouts_external_id_idx" ON "payouts" USING btree ("external_id");

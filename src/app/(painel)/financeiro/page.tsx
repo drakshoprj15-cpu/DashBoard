@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { OverviewView } from "@/features/finance/overview-view";
 
 export const metadata: Metadata = { title: "Financeiro · Visão Geral" };
 
 export default function FinanceiroPage() {
   return (
-    <ModulePlaceholder
-      title="Financeiro — Visão Geral"
-      description="Saldos, receitas, taxas, reembolsos, chargebacks e repasses com gráficos e filtros por gateway, moeda e período."
-      phase={6}
-    />
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold tracking-tight">Financeiro</h2>
+        <p className="text-muted-foreground text-sm">
+          Saldo, movimentação e próximos repasses da operação
+        </p>
+      </div>
+      <OverviewView />
+    </div>
   );
 }

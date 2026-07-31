@@ -29,6 +29,13 @@
       "when": 1785312136667,
       "tag": "0003_slow_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785464490609,
+      "tag": "0004_fuzzy_reaper",
+      "breakpoints": true
     }
   ]
 }

@@ -249,7 +249,11 @@ export const payouts = pgTable(
     failureReason: text("failure_reason"),
     ...timestamps,
   },
-  (t) => [index("payouts_workspace_idx").on(t.workspaceId)],
+  (t) => [
+    index("payouts_workspace_idx").on(t.workspaceId),
+    /** Permite upsert por evento do gateway (payout.paid) sem duplicar. */
+    uniqueIndex("payouts_external_id_idx").on(t.externalId),
+  ],
 );
 
 /**

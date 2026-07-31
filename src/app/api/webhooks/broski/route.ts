@@ -8,9 +8,11 @@ import {
   orders,
   payments,
   paymentWebhooks,
+  payouts,
 } from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
 import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
+import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import {
   createNotification,
   type NotificationEvent,
@@ -226,6 +228,73 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error("[webhook/broski] erro nos efeitos pós-pagamento:", error);
       }
+    }
+  } else if (event.type === "payout.paid") {
+    // Suporte defensivo: a Broski documenta este evento (docs/PAYMENTS.md),
+    // mas o formato exato do objeto "payout" nunca foi confirmado com um
+    // evento real (sem credenciais de produção até agora). Lemos o payload
+    // cru com fallback em vários nomes de campo plausíveis, sem travar o
+    // resto do webhook se algum campo vier diferente do esperado — quando o
+    // primeiro evento real chegar, este parsing deve ser revisado e travado
+    // ao formato confirmado.
+    try {
+      const raw = event.raw as {
+        data?: { object?: Record<string, unknown> };
+      };
+      const payoutObject = raw?.data?.object ?? {};
+
+      const externalId =
+        typeof payoutObject.id === "string" ? payoutObject.id : event.externalEventId;
+      const amountCents =
+        typeof payoutObject.amount === "number" ? payoutObject.amount : event.amountCents;
+      const currency =
+        typeof payoutObject.currency === "string" ? payoutObject.currency.toUpperCase() : "EUR";
+      const arrivedAtRaw =
+        (payoutObject.paid_at as string | undefined) ??
+        (payoutObject.arrived_at as string | undefined);
+      const bankAccountLabel =
+        (payoutObject.bank_account as string | undefined) ??
+        (payoutObject.destination as string | undefined) ??
+        null;
+
+      if (typeof amountCents === "number") {
+        const workspaceId = await getOrCreateDefaultWorkspace();
+
+        await db
+          .insert(payouts)
+          .values({
+            workspaceId,
+            externalId,
+            status: "paid",
+            amountCents,
+            currency,
+            source: "api",
+            bankAccountLabel,
+            arrivedAt: arrivedAtRaw ? new Date(arrivedAtRaw) : new Date(),
+          })
+          .onConflictDoUpdate({
+            target: payouts.externalId,
+            set: {
+              status: "paid",
+              amountCents,
+              currency,
+              arrivedAt: arrivedAtRaw ? new Date(arrivedAtRaw) : new Date(),
+              updatedAt: new Date(),
+            },
+          });
+      } else {
+        console.error(
+          "[webhook/broski] evento payout.paid sem valor reconhecível — payload:",
+          JSON.stringify(payoutObject),
+        );
+      }
+
+      await db
+        .update(paymentWebhooks)
+        .set({ processedAt: new Date() })
+        .where(eq(paymentWebhooks.id, inserted[0].id));
+    } catch (error) {
+      console.error("[webhook/broski] erro ao processar payout.paid:", error);
     }
   }
 
