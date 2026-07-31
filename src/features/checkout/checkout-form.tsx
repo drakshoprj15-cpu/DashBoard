@@ -46,6 +46,7 @@ interface CheckoutFormProps {
     utmContent: string;
     utmTerm: string;
   };
+  storeName: string;
 }
 
 function Section({
@@ -82,6 +83,7 @@ export function CheckoutForm({
   shippingMethods,
   theme,
   utm,
+  storeName,
 }: CheckoutFormProps) {
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
@@ -501,7 +503,7 @@ export function CheckoutForm({
           <Link href="/legal/termos" className="underline" target="_blank">
             Termos e Condições
           </Link>{" "}
-          da TechNébula.
+          da {storeName}.
         </p>
       </form>
 

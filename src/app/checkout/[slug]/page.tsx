@@ -3,24 +3,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Lock } from "lucide-react";
 
-import { techNebulaStore } from "@/features/landing/technebula-data";
 import { getProductBySlug } from "@/features/landing/queries";
 import { CheckoutForm } from "@/features/checkout/checkout-form";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { CookieBanner } from "@/features/consent/cookie-banner";
 import { listActiveShippingMethods } from "@/features/shipping/queries";
+import { getWorkspaceBranding } from "@/features/branding/queries";
 import {
   DEFAULT_CHECKOUT_THEME,
   getPublishedCheckoutBySlug,
 } from "@/features/checkouts/queries";
 
-export const metadata: Metadata = {
-  title: `Checkout · ${techNebulaStore.name}`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getWorkspaceBranding();
+  return { title: `Checkout · ${branding.storeName}` };
+}
 
 /**
- * Checkout público (/checkout/[slug]) no layout TechNébula.
+ * Checkout público (/checkout/[slug]).
  *
  * O slug resolve primeiro para um checkout publicado (criado no painel);
  * se não existir, cai para o slug do produto — mantendo os links antigos
@@ -32,9 +33,10 @@ export default async function CheckoutSlugPage(
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const [checkout, shippingMethods] = await Promise.all([
+  const [checkout, shippingMethods, branding] = await Promise.all([
     getPublishedCheckoutBySlug(slug),
     listActiveShippingMethods(),
+    getWorkspaceBranding(),
   ]);
 
   const product = await getProductBySlug(checkout?.productSlug ?? slug);
@@ -81,7 +83,7 @@ export default async function CheckoutSlugPage(
             href={`/p/${product.slug}`}
             className="text-xl font-black tracking-tight text-white"
           >
-            Tech<span className="text-violet-400">Nébula</span>
+            {branding.storeName}
           </Link>
           <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
             <Lock className="size-3.5" /> Checkout seguro
@@ -96,12 +98,13 @@ export default async function CheckoutSlugPage(
           shippingMethods={shippingMethods}
           theme={checkout?.theme ?? DEFAULT_CHECKOUT_THEME}
           utm={utm}
+          storeName={branding.storeName}
         />
       </main>
 
       <footer className="border-t bg-white py-5 text-center text-xs text-zinc-500">
         <p>
-          © {new Date().getFullYear()} {techNebulaStore.name} · Pagamento seguro
+          © {new Date().getFullYear()} {branding.storeName} · Pagamento seguro
           por MB WAY e Multibanco
         </p>
         <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">

@@ -6,6 +6,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { pixels } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { getWorkspaceBranding } from "@/features/branding/queries";
+import { BrandingForm } from "@/features/branding/branding-form";
 import {
   Card,
   CardContent,
@@ -57,6 +59,7 @@ export default async function ConfiguracoesPage() {
   // "Configurado" ainda não significa "conexão validada" — o teste real de
   // conexão de cada serviço será implementado na fase correspondente.
   const utmifyConfigured = await isUtmifyConfigured();
+  const branding = await getWorkspaceBranding();
 
   const services: ServiceStatus[] = [
     {
@@ -125,6 +128,8 @@ export default async function ConfiguracoesPage() {
           configuração de cada integração serão construídas nas fases 4 e 7.
         </p>
       </div>
+
+      <BrandingForm initial={branding} />
 
       <div className="grid gap-3 md:grid-cols-2">
         {services.map((service) => (

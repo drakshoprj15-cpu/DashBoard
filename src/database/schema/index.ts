@@ -5,6 +5,7 @@
 export * from "./enums";
 export * from "./workspaces";
 export * from "./stores";
+export * from "./branding";
 export * from "./catalog";
 export * from "./pages";
 export * from "./checkouts";

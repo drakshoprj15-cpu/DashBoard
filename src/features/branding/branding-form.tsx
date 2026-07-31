@@ -1,0 +1,83 @@
+"use client";
+
+import { useActionState } from "react";
+import { AlertCircle, CheckCircle2, Save } from "lucide-react";
+
+import {
+  updateBrandingAction,
+  type BrandingActionResult,
+} from "@/features/branding/actions";
+import type { WorkspaceBranding } from "@/features/branding/queries";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
+  const [state, formAction, pending] = useActionState<
+    BrandingActionResult | null,
+    FormData
+  >(updateBrandingAction, null);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Dados da loja</CardTitle>
+        <CardDescription>
+          Nome e contacto exibidos no cabeçalho e rodapé do checkout público.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form action={formAction} className="space-y-4">
+          {state?.error && (
+            <Alert variant="destructive">
+              <AlertCircle />
+              <AlertDescription>{state.error}</AlertDescription>
+            </Alert>
+          )}
+          {state?.ok && state.message && (
+            <Alert variant="success">
+              <CheckCircle2 />
+              <AlertDescription>{state.message}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="storeName">Nome da loja</Label>
+              <Input
+                id="storeName"
+                name="storeName"
+                defaultValue={initial.storeName}
+                placeholder="Ex.: Minha Loja"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="supportEmail">E-mail de suporte</Label>
+              <Input
+                id="supportEmail"
+                name="supportEmail"
+                type="email"
+                defaultValue={initial.supportEmail ?? ""}
+                placeholder="apoio@minhaloja.pt"
+              />
+            </div>
+          </div>
+
+          <Button type="submit" loading={pending}>
+            <Save /> Salvar
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
