@@ -21,6 +21,15 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   "checkout.duplicated": "Checkout duplicado",
 
   "customer.marketing_consent_updated": "Consentimento de marketing atualizado",
+
+  "webhook.created": "Webhook criado",
+  "webhook.updated": "Webhook atualizado",
+  "webhook.activated": "Webhook ativado",
+  "webhook.deactivated": "Webhook desativado",
+  "webhook.duplicated": "Webhook duplicado",
+  "webhook.deleted": "Webhook removido",
+  "webhook.secret_regenerated": "Segredo do webhook regenerado",
+  "webhook.tested": "Teste de webhook enviado",
 };
 
 export const ENTITY_TYPE_LABEL: Record<string, string> = {
@@ -29,6 +38,7 @@ export const ENTITY_TYPE_LABEL: Record<string, string> = {
   ledger_entry: "Lançamento",
   checkout: "Checkout",
   customer: "Cliente",
+  webhook_endpoint: "Webhook",
 };
 
 export function actionLabel(action: string): string {

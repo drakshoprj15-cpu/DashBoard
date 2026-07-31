@@ -13,6 +13,7 @@ import {
 import { createBroskiProvider } from "@/payment-providers/broski";
 import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { dispatchWebhookEvent } from "@/features/webhooks/dispatch";
 import {
   createNotification,
   type NotificationEvent,
@@ -172,6 +173,24 @@ export async function POST(request: Request) {
               orderId,
               paymentId,
               gatewayKey: "broski",
+            });
+          }
+
+          // Webhooks de saída cadastrados pelo utilizador (Fase Webhooks).
+          // Disparo síncrono, sem fila — ver limitações em dispatch.ts.
+          const OUTBOUND_EVENT_BY_STATUS: Partial<Record<string, string>> = {
+            approved: "order.paid",
+            refused: "order.refused",
+            refunded: "order.refunded",
+            chargeback: "order.chargeback",
+          };
+          const outboundEvent = OUTBOUND_EVENT_BY_STATUS[event.status];
+          if (outboundEvent) {
+            await dispatchWebhookEvent(orderRow.workspaceId, outboundEvent, {
+              orderId,
+              reference: orderRow.reference,
+              totalCents: orderRow.totalCents,
+              currency: orderRow.currency,
             });
           }
 

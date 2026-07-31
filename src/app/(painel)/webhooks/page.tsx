@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { WebhooksView } from "@/features/webhooks/webhooks-view";
 
 export const metadata: Metadata = { title: "Webhooks" };
 
 export default function WebhooksPage() {
-  return (
-    <ModulePlaceholder
-      title="Webhooks"
-      description="Webhooks recebidos e enviados com verificação de assinatura, idempotência, novas tentativas com backoff, dead-letter e payloads mascarados."
-      phase={4}
-    />
-  );
+  return <WebhooksView />;
 }
