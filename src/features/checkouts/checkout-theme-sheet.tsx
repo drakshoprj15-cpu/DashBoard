@@ -2,13 +2,14 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { AlertCircle, CheckCircle2, Palette } from "lucide-react";
+import { AlertCircle, CheckCircle2, ImagePlus, Loader2, Palette, X } from "lucide-react";
 
 import {
   updateCheckoutThemeAction,
   type CheckoutActionResult,
 } from "@/features/checkouts/actions";
 import type { CheckoutTheme } from "@/features/checkouts/queries";
+import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+
+const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
 
 function ColorField({
   id,
@@ -58,6 +61,147 @@ function ColorField({
           maxLength={7}
         />
       </div>
+    </div>
+  );
+}
+
+/** Arrastar-e-soltar (ou clicar para escolher) uma imagem, com upload real. */
+function LogoDropzone({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [dragActive, setDragActive] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  async function uploadFile(file: File) {
+    setError(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/checkouts/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Falha ao enviar imagem.");
+      }
+      onChange(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao enviar imagem.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFiles(files: FileList | null) {
+    const file = files?.[0];
+    if (file) void uploadFile(file);
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>
+        Logo do cabeçalho{" "}
+        <span className="text-muted-foreground font-normal">(opcional)</span>
+      </Label>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragActive(false);
+          handleFiles(e.dataTransfer.files);
+        }}
+        className={cn(
+          "relative flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-colors",
+          dragActive
+            ? "border-primary bg-primary/5"
+            : "border-input hover:border-muted-foreground/40",
+        )}
+      >
+        <input
+          ref={inputRef}
+          id={id}
+          type="file"
+          accept={ACCEPTED_TYPES}
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+
+        {uploading ? (
+          <Loader2 className="text-muted-foreground size-6 animate-spin" />
+        ) : value ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="Logo"
+              className="max-h-16 max-w-full object-contain"
+            />
+            <button
+              type="button"
+              aria-label="Remover logo"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+              }}
+              className="bg-background hover:bg-accent absolute top-2 right-2 rounded-full border p-1"
+            >
+              <X className="size-3.5" />
+            </button>
+          </>
+        ) : (
+          <ImagePlus className="text-muted-foreground size-6" />
+        )}
+
+        <p className="text-xs font-medium">
+          {uploading
+            ? "Enviando…"
+            : value
+              ? "Arraste outra imagem para trocar"
+              : "Arraste uma imagem aqui, ou clique para escolher"}
+        </p>
+        <p className="text-muted-foreground text-[11px]">
+          PNG, JPEG, WebP ou SVG · até 3 MB
+        </p>
+      </div>
+
+      {error && <p className="text-destructive text-xs">{error}</p>}
+
+      <details className="text-xs">
+        <summary className="text-muted-foreground cursor-pointer select-none">
+          ou cole uma URL diretamente
+        </summary>
+        <Input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://…/logo.png"
+          className="mt-2"
+        />
+      </details>
     </div>
   );
 }
@@ -104,6 +248,7 @@ export function CheckoutThemeSheet({
 
         <form action={formAction} className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
           <input type="hidden" name="id" value={checkoutId} />
+          <input type="hidden" name="logoUrl" value={logoUrl} />
 
           {state?.error && (
             <Alert variant="destructive">
@@ -118,26 +263,15 @@ export function CheckoutThemeSheet({
             </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor={`logoUrl-${checkoutId}`}>
-              Logo do cabeçalho{" "}
-              <span className="text-muted-foreground font-normal">
-                (opcional)
-              </span>
-            </Label>
-            <Input
-              id={`logoUrl-${checkoutId}`}
-              name="logoUrl"
-              type="url"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://…/logo.png"
-            />
-            <p className="text-muted-foreground text-xs">
-              Aparece sempre centralizada no banner. Sem logo, mostra o nome da
-              loja.
-            </p>
-          </div>
+          <LogoDropzone
+            id={`logoUrl-${checkoutId}`}
+            value={logoUrl}
+            onChange={setLogoUrl}
+          />
+          <p className="text-muted-foreground -mt-2 text-xs">
+            Aparece sempre centralizada no banner. Sem logo, mostra o nome da
+            loja.
+          </p>
 
           <ColorField
             id={`bannerColor-${checkoutId}`}
