@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ArrowDownRight, ArrowUpRight, Database } from "lucide-react";
+import { Suspense } from "react";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 import { getSession } from "@/lib/auth/session";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/lib/demo-data";
 import { cn } from "@/lib/utils";
 import { RevenueChart } from "@/features/dashboard/revenue-chart";
+import { DashboardView } from "@/features/dashboard/dashboard-view";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -18,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -32,16 +34,11 @@ export default async function DashboardPage() {
   const session = await getSession();
   const demoMode = session?.demoMode ?? true;
 
-  // Fase 5 conectará esta página às consultas reais (Supabase/Drizzle).
-  // Sem banco conectado, exibimos apenas dados claramente rotulados como demo.
   if (!demoMode) {
     return (
-      <EmptyState
-        icon={Database}
-        title="Dashboard aguardando dados"
-        description="O banco está conectado, mas as consultas de analytics serão implementadas na Fase 5. Nenhum dado fictício é exibido em ambiente real."
-        className="min-h-[420px]"
-      />
+      <Suspense fallback={<Skeleton className="h-[600px]" />}>
+        <DashboardView />
+      </Suspense>
     );
   }
 

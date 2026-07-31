@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Database, ShoppingBag } from "lucide-react";
 
 import { listOrders, summarizeOrders } from "@/features/orders/queries";
+import { STATUS_LABEL, STATUS_VARIANT } from "@/features/orders/status";
 import { isDatabaseConfigured } from "@/database/client";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -15,38 +16,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = { title: "Pedidos" };
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  created: "Criado",
-  awaiting_payment: "Aguardando pagamento",
-  processing: "Em processamento",
-  paid: "Pago",
-  refused: "Recusado",
-  expired: "Expirado",
-  cancelled: "Cancelado",
-  preparing: "Em preparação",
-  shipped: "Enviado",
-  delivered: "Entregue",
-  refunded: "Reembolsado",
-  chargeback: "Chargeback",
-};
-
-const STATUS_VARIANT: Record<
-  string,
-  "success" | "warning" | "destructive" | "info" | "muted"
-> = {
-  paid: "success",
-  delivered: "success",
-  awaiting_payment: "warning",
-  created: "warning",
-  processing: "info",
-  shipped: "info",
-  refused: "destructive",
-  cancelled: "destructive",
-  chargeback: "destructive",
-  expired: "muted",
-  refunded: "muted",
-};
 
 const METHOD_LABEL: Record<string, string> = {
   mbway: "MB WAY",
