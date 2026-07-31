@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Lock } from "lucide-react";
 
 import { getProductBySlug } from "@/features/landing/queries";
 import { CheckoutForm } from "@/features/checkout/checkout-form";
@@ -76,18 +75,26 @@ export default async function CheckoutSlugPage(
         valueCents={product.priceCents * quantity}
         currency={product.currency}
       />
-      {/* Cabeçalho */}
-      <header className="bg-zinc-950 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4">
-          <Link
-            href={`/p/${product.slug}`}
-            className="text-xl font-black tracking-tight text-white"
-          >
-            {branding.storeName}
+      {/* Cabeçalho — a logo (ou nome da loja) fica sempre centralizada. */}
+      <header
+        className="py-6 md:py-7"
+        style={{ backgroundColor: (checkout?.theme ?? DEFAULT_CHECKOUT_THEME).bannerColor }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-center px-4">
+          <Link href={`/p/${product.slug}`} className="flex items-center">
+            {checkout?.theme.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={checkout.theme.logoUrl}
+                alt={branding.storeName}
+                className="h-10 max-w-[220px] object-contain md:h-12"
+              />
+            ) : (
+              <span className="text-xl font-black tracking-tight text-white">
+                {branding.storeName}
+              </span>
+            )}
           </Link>
-          <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-            <Lock className="size-3.5" /> Checkout seguro
-          </span>
         </div>
       </header>
 

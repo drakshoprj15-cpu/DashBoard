@@ -74,6 +74,8 @@ export function CheckoutThemeSheet({
   const [open, setOpen] = React.useState(false);
   const [primaryColor, setPrimaryColor] = React.useState(theme.primaryColor);
   const [buttonColor, setButtonColor] = React.useState(theme.buttonColor);
+  const [bannerColor, setBannerColor] = React.useState(theme.bannerColor);
+  const [logoUrl, setLogoUrl] = React.useState(theme.logoUrl ?? "");
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
     FormData
@@ -90,17 +92,17 @@ export function CheckoutThemeSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button size="sm" variant="ghost" aria-label="Personalizar cores">
+        <Button size="sm" variant="ghost" aria-label="Personalizar checkout">
           <Palette />
         </Button>
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Personalizar cores</SheetTitle>
+          <SheetTitle>Personalizar checkout</SheetTitle>
           <SheetDescription>{checkoutName}</SheetDescription>
         </SheetHeader>
 
-        <form action={formAction} className="flex flex-1 flex-col gap-4 px-4">
+        <form action={formAction} className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
           <input type="hidden" name="id" value={checkoutId} />
 
           {state?.error && (
@@ -116,6 +118,34 @@ export function CheckoutThemeSheet({
             </Alert>
           )}
 
+          <div className="space-y-2">
+            <Label htmlFor={`logoUrl-${checkoutId}`}>
+              Logo do cabeçalho{" "}
+              <span className="text-muted-foreground font-normal">
+                (opcional)
+              </span>
+            </Label>
+            <Input
+              id={`logoUrl-${checkoutId}`}
+              name="logoUrl"
+              type="url"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://…/logo.png"
+            />
+            <p className="text-muted-foreground text-xs">
+              Aparece sempre centralizada no banner. Sem logo, mostra o nome da
+              loja.
+            </p>
+          </div>
+
+          <ColorField
+            id={`bannerColor-${checkoutId}`}
+            name="bannerColor"
+            label="Cor de fundo do banner"
+            value={bannerColor}
+            onChange={setBannerColor}
+          />
           <ColorField
             id={`primaryColor-${checkoutId}`}
             name="primaryColor"
@@ -131,8 +161,30 @@ export function CheckoutThemeSheet({
             onChange={setButtonColor}
           />
 
-          <div className="rounded-xl border p-4">
-            <p className="text-muted-foreground mb-3 text-xs">Pré-visualização</p>
+          <div className="space-y-3 rounded-xl border p-4">
+            <p className="text-muted-foreground text-xs">Pré-visualização</p>
+
+            <div
+              className="flex h-14 items-center justify-center rounded-lg"
+              style={{ backgroundColor: bannerColor }}
+            >
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className="h-8 max-w-[70%] object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span className="text-sm font-black text-white">
+                  {checkoutName}
+                </span>
+              )}
+            </div>
+
             <div
               className="flex size-7 items-center justify-center rounded-full text-xs font-bold text-white"
               style={{ backgroundColor: primaryColor }}
@@ -141,7 +193,7 @@ export function CheckoutThemeSheet({
             </div>
             <button
               type="button"
-              className="mt-3 h-10 w-full rounded-lg text-sm font-bold text-white"
+              className="h-10 w-full rounded-lg text-sm font-bold text-white"
               style={{ backgroundColor: buttonColor }}
             >
               Pagar agora
@@ -150,7 +202,7 @@ export function CheckoutThemeSheet({
 
           <SheetFooter className="px-0">
             <Button type="submit" loading={pending}>
-              Salvar cores
+              Salvar
             </Button>
             <SheetClose asChild>
               <Button type="button" variant="outline">

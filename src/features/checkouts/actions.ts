@@ -129,6 +129,8 @@ export async function updateCheckoutThemeAction(
     id: formData.get("id"),
     primaryColor: formData.get("primaryColor"),
     buttonColor: formData.get("buttonColor"),
+    bannerColor: formData.get("bannerColor"),
+    logoUrl: formData.get("logoUrl") || "",
   });
 
   if (!parsed.success) {
@@ -142,7 +144,7 @@ export async function updateCheckoutThemeAction(
   try {
     const db = getDb();
     const workspaceId = await getOrCreateDefaultWorkspace();
-    const { id, primaryColor, buttonColor } = parsed.data;
+    const { id, primaryColor, buttonColor, bannerColor, logoUrl } = parsed.data;
 
     const [current] = await db
       .select({ config: checkouts.config, slug: checkouts.slug })
@@ -164,7 +166,12 @@ export async function updateCheckoutThemeAction(
       .set({
         config: {
           ...currentConfig,
-          theme: { primaryColor, buttonColor },
+          theme: {
+            primaryColor,
+            buttonColor,
+            bannerColor,
+            logoUrl: logoUrl || null,
+          },
         },
         updatedAt: new Date(),
       })

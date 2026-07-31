@@ -327,7 +327,7 @@ export function CheckoutForm({
             <div className="space-y-1.5">
               <Label htmlFor="phone">
                 {method === "mbway" ? (
-                  "Telemóvel (MB WAY)"
+                  "Telemóvel"
                 ) : (
                   <>
                     Telefone{" "}
@@ -335,19 +335,20 @@ export function CheckoutForm({
                   </>
                 )}
               </Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                autoComplete="tel"
-                placeholder="912 345 678"
-                required={method === "mbway"}
-              />
-              {method === "mbway" && (
-                <p className="text-xs text-zinc-500">
-                  O pedido de pagamento chega na app MB WAY deste número.
-                </p>
-              )}
+              <div className="flex">
+                <span className="border-input bg-zinc-50 text-zinc-500 flex items-center rounded-l-md border border-r-0 px-3 text-sm">
+                  +351
+                </span>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="912 345 678"
+                  required={method === "mbway"}
+                  className="rounded-l-none"
+                />
+              </div>
             </div>
           </div>
         </Section>

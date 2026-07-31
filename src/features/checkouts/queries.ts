@@ -7,11 +7,17 @@ import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 export interface CheckoutTheme {
   primaryColor: string;
   buttonColor: string;
+  /** Cor de fundo do cabeçalho (banner) do checkout público. */
+  bannerColor: string;
+  /** URL da logo exibida centralizada no cabeçalho. null = usa o nome da loja. */
+  logoUrl: string | null;
 }
 
 export const DEFAULT_CHECKOUT_THEME: CheckoutTheme = {
   primaryColor: "#7c3aed",
   buttonColor: "#f97316",
+  bannerColor: "#09090b",
+  logoUrl: null,
 };
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
@@ -31,8 +37,13 @@ function parseCheckoutTheme(config: unknown): CheckoutTheme {
     typeof t.buttonColor === "string" && HEX_COLOR_REGEX.test(t.buttonColor)
       ? t.buttonColor
       : DEFAULT_CHECKOUT_THEME.buttonColor;
+  const bannerColor =
+    typeof t.bannerColor === "string" && HEX_COLOR_REGEX.test(t.bannerColor)
+      ? t.bannerColor
+      : DEFAULT_CHECKOUT_THEME.bannerColor;
+  const logoUrl = typeof t.logoUrl === "string" && t.logoUrl.trim() ? t.logoUrl : null;
 
-  return { primaryColor, buttonColor };
+  return { primaryColor, buttonColor, bannerColor, logoUrl };
 }
 
 export interface CheckoutRow {

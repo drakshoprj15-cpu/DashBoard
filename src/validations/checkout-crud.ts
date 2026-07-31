@@ -33,6 +33,16 @@ export const updateCheckoutThemeSchema = z.object({
     .string()
     .trim()
     .regex(HEX_COLOR_REGEX, "Cor do botão inválida"),
+  bannerColor: z
+    .string()
+    .trim()
+    .regex(HEX_COLOR_REGEX, "Cor do banner inválida"),
+  logoUrl: z
+    .string()
+    .trim()
+    .url("URL da logo inválida")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type UpdateCheckoutThemeInput = z.infer<
