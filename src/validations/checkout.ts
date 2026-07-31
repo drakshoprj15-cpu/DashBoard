@@ -47,6 +47,11 @@ export const checkoutSchema = z
     productSlug: z.string().trim().min(1),
     couponCode: z.string().trim().optional().or(z.literal("")),
     shippingMethodId: z.string().trim().optional().or(z.literal("")),
+    utmSource: z.string().trim().optional().or(z.literal("")),
+    utmMedium: z.string().trim().optional().or(z.literal("")),
+    utmCampaign: z.string().trim().optional().or(z.literal("")),
+    utmContent: z.string().trim().optional().or(z.literal("")),
+    utmTerm: z.string().trim().optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
     const phone = data.phone ? normalizePtPhone(data.phone) : "";

@@ -47,6 +47,16 @@ export default async function CheckoutSlugPage(
     ? Math.min(10, Math.max(1, Math.trunc(qtyRaw)))
     : 1;
 
+  const asString = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v : "";
+  const utm = {
+    utmSource: asString(searchParams.utm_source),
+    utmMedium: asString(searchParams.utm_medium),
+    utmCampaign: asString(searchParams.utm_campaign),
+    utmContent: asString(searchParams.utm_content),
+    utmTerm: asString(searchParams.utm_term),
+  };
+
   return (
     <div className="min-h-svh bg-zinc-50 text-zinc-900">
       <PixelScripts
@@ -85,6 +95,7 @@ export default async function CheckoutSlugPage(
           initialQuantity={quantity}
           shippingMethods={shippingMethods}
           theme={checkout?.theme ?? DEFAULT_CHECKOUT_THEME}
+          utm={utm}
         />
       </main>
 

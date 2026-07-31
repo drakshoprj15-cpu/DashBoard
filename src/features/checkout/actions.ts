@@ -63,6 +63,11 @@ export async function submitCheckoutAction(
     quantity: formData.get("quantity"),
     productSlug: formData.get("productSlug"),
     shippingMethodId: formData.get("shippingMethodId") ?? "",
+    utmSource: formData.get("utmSource") ?? "",
+    utmMedium: formData.get("utmMedium") ?? "",
+    utmCampaign: formData.get("utmCampaign") ?? "",
+    utmContent: formData.get("utmContent") ?? "",
+    utmTerm: formData.get("utmTerm") ?? "",
   });
 
   if (!parsed.success) {
@@ -106,6 +111,15 @@ export async function submitCheckoutAction(
     ? calculateShippingCost(selectedShippingMethod, subtotal)
     : 0;
   const total = subtotal + shipping;
+
+  // Só guarda as chaves realmente preenchidas — nunca um objeto com strings
+  // vazias, que poluiria a leitura de "pedido sem origem de campanha".
+  const utm: Record<string, string> = {};
+  if (data.utmSource) utm.utm_source = data.utmSource;
+  if (data.utmMedium) utm.utm_medium = data.utmMedium;
+  if (data.utmCampaign) utm.utm_campaign = data.utmCampaign;
+  if (data.utmContent) utm.utm_content = data.utmContent;
+  if (data.utmTerm) utm.utm_term = data.utmTerm;
 
   const db = getDb();
 
@@ -179,6 +193,7 @@ export async function submitCheckoutAction(
         shippingMethod: selectedShippingMethod?.name,
         origin: "checkout",
         countryCode: "PT",
+        utm,
       })
       .returning({ id: orders.id });
 

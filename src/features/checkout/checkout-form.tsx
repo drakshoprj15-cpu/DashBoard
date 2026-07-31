@@ -38,6 +38,14 @@ interface CheckoutFormProps {
   initialQuantity: number;
   shippingMethods: ShippingMethodRow[];
   theme: CheckoutTheme;
+  /** UTMs capturadas da URL de entrada, resolvidas no server component pai. */
+  utm: {
+    utmSource: string;
+    utmMedium: string;
+    utmCampaign: string;
+    utmContent: string;
+    utmTerm: string;
+  };
 }
 
 function Section({
@@ -73,6 +81,7 @@ export function CheckoutForm({
   initialQuantity,
   shippingMethods,
   theme,
+  utm,
 }: CheckoutFormProps) {
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
@@ -272,6 +281,11 @@ export function CheckoutForm({
         <input type="hidden" name="quantity" value={quantity} />
         <input type="hidden" name="paymentMethod" value={method} />
         <input type="hidden" name="shippingMethodId" value={shippingMethodId} />
+        <input type="hidden" name="utmSource" value={utm.utmSource} />
+        <input type="hidden" name="utmMedium" value={utm.utmMedium} />
+        <input type="hidden" name="utmCampaign" value={utm.utmCampaign} />
+        <input type="hidden" name="utmContent" value={utm.utmContent} />
+        <input type="hidden" name="utmTerm" value={utm.utmTerm} />
 
         {state?.status === "validation_error" && (
           <Alert variant="destructive">

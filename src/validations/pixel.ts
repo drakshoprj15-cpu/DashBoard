@@ -7,6 +7,7 @@ export const pixelTypeEnum = z.enum([
   "ga4",
   "google_ads",
   "tiktok_pixel",
+  "utmify",
 ]);
 
 /** Formatos oficiais de cada plataforma — evita salvar ID inválido. */
@@ -59,6 +60,13 @@ export const pixelSchema = z
         code: "custom",
         path: ["token"],
         message: "A Conversions API exige o token de acesso",
+      });
+    }
+    if (data.type === "utmify" && !data.token) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["token"],
+        message: "A UTMify exige o token de API (x-api-token)",
       });
     }
   });

@@ -28,6 +28,7 @@ const SELECTABLE: PixelType[] = [
   "gtm",
   "google_ads",
   "tiktok_pixel",
+  "utmify",
 ];
 
 export function PixelForm() {
@@ -38,7 +39,7 @@ export function PixelForm() {
   const [type, setType] = React.useState<PixelType>("meta_pixel");
 
   const info = PIXEL_TYPE_INFO[type];
-  const needsToken = type === "meta_capi";
+  const needsToken = type === "meta_capi" || type === "utmify";
 
   return (
     <Card>
@@ -105,16 +106,20 @@ export function PixelForm() {
 
             {needsToken && (
               <div className="space-y-2">
-                <Label htmlFor="token">Token de acesso</Label>
+                <Label htmlFor="token">
+                  {type === "utmify" ? "Token de API (x-api-token)" : "Token de acesso"}
+                </Label>
                 <Input
                   id="token"
                   name="token"
                   type="password"
-                  placeholder="EAAG..."
+                  placeholder={type === "utmify" ? "utm_..." : "EAAG..."}
                   required
                 />
                 <p className="text-muted-foreground text-xs">
-                  Guardado criptografado. Nunca é enviado ao navegador.
+                  {type === "utmify"
+                    ? "Gerado no painel da UTMify: Integrações → Webhooks → Credenciais de API → Adicionar credencial."
+                    : "Guardado criptografado. Nunca é enviado ao navegador."}
                 </p>
               </div>
             )}

@@ -5,6 +5,7 @@ import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
   customers,
   ledgerEntries,
+  orderItems,
   orders,
   payments,
   paymentWebhooks,
@@ -12,6 +13,7 @@ import {
 } from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
 import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
+import { sendOrderToUtmify } from "@/features/pixels/utmify";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { dispatchWebhookEvent } from "@/features/webhooks/dispatch";
 import {
@@ -144,6 +146,10 @@ export async function POST(request: Request) {
             totalCents: orders.totalCents,
             currency: orders.currency,
             customerId: orders.customerId,
+            status: orders.status,
+            createdAt: orders.createdAt,
+            paidAt: orders.paidAt,
+            utm: orders.utm,
           })
           .from(orders)
           .where(eq(orders.id, orderId))
@@ -196,11 +202,60 @@ export async function POST(request: Request) {
 
           const [customerRow] = orderRow.customerId
             ? await db
-                .select({ email: customers.email, phone: customers.phone })
+                .select({
+                  email: customers.email,
+                  phone: customers.phone,
+                  firstName: customers.firstName,
+                  lastName: customers.lastName,
+                  document: customers.document,
+                  country: customers.country,
+                })
                 .from(customers)
                 .where(eq(customers.id, orderRow.customerId))
                 .limit(1)
             : [undefined];
+
+          // Reporta o pedido à UTMify (atribuição de vendas a campanhas).
+          // Diferente da Meta CAPI, todo status relevante é reportado, não
+          // só aprovado — a UTMify quer acompanhar o funil completo.
+          const itemRows = await db
+            .select({
+              productId: orderItems.productId,
+              productName: orderItems.productName,
+              quantity: orderItems.quantity,
+              unitPriceCents: orderItems.unitPriceCents,
+            })
+            .from(orderItems)
+            .where(eq(orderItems.orderId, orderId));
+
+          await sendOrderToUtmify({
+            workspaceId: orderRow.workspaceId,
+            orderId,
+            reference: orderRow.reference,
+            orderStatus: orderRow.status,
+            totalCents: orderRow.totalCents,
+            currency: orderRow.currency,
+            createdAt: orderRow.createdAt,
+            paidAt: orderRow.paidAt,
+            customer: customerRow
+              ? {
+                  name: [customerRow.firstName, customerRow.lastName]
+                    .filter(Boolean)
+                    .join(" "),
+                  email: customerRow.email,
+                  phone: customerRow.phone,
+                  document: customerRow.document,
+                  country: customerRow.country,
+                }
+              : undefined,
+            items: itemRows.map((item) => ({
+              id: item.productId,
+              name: item.productName,
+              quantity: item.quantity,
+              unitPriceCents: item.unitPriceCents,
+            })),
+            utm: (orderRow.utm as Record<string, string> | null) ?? null,
+          });
 
           // Purchase só é reportado à Meta após confirmação real do gateway.
           if (event.status === "approved" && orderRow.customerId) {
