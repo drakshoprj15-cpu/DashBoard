@@ -19,6 +19,7 @@ export async function updateBrandingAction(
 ): Promise<BrandingActionResult> {
   const parsed = brandingSchema.safeParse({
     storeName: formData.get("storeName"),
+    logoUrl: formData.get("logoUrl") || "",
     supportEmail: formData.get("supportEmail"),
   });
 
@@ -33,19 +34,21 @@ export async function updateBrandingAction(
   try {
     const db = getDb();
     const workspaceId = await getOrCreateDefaultWorkspace();
-    const { storeName, supportEmail } = parsed.data;
+    const { storeName, logoUrl, supportEmail } = parsed.data;
 
     await db
       .insert(workspaceBranding)
       .values({
         workspaceId,
         storeName,
+        logoUrl: logoUrl || null,
         supportEmail: supportEmail || null,
       })
       .onConflictDoUpdate({
         target: workspaceBranding.workspaceId,
         set: {
           storeName,
+          logoUrl: logoUrl || null,
           supportEmail: supportEmail || null,
           updatedAt: new Date(),
         },
@@ -53,6 +56,7 @@ export async function updateBrandingAction(
 
     revalidatePath("/configuracoes");
     revalidatePath("/checkout/[slug]", "page");
+    revalidatePath("/p/[slug]", "page");
 
     return { ok: true, message: "Dados da loja atualizados." };
   } catch (error) {

@@ -29,6 +29,7 @@ import { sendTrack } from "@/features/analytics/tracker";
 
 interface ProductLandingProps {
   product: LandingProduct;
+  branding: { storeName: string; logoUrl: string | null };
 }
 
 function initialsOf(name: string): string {
@@ -187,7 +188,7 @@ function ReviewsSection({ product }: { product: LandingProduct }) {
   );
 }
 
-export function ProductLanding({ product }: ProductLandingProps) {
+export function ProductLanding({ product, branding }: ProductLandingProps) {
   const [activeImage, setActiveImage] = React.useState(0);
   const [quantity, setQuantity] = React.useState(1);
   const [tab, setTab] = React.useState<"descricao" | "envios">("descricao");
@@ -206,13 +207,22 @@ export function ProductLanding({ product }: ProductLandingProps) {
 
   return (
     <div className="min-h-svh bg-white text-zinc-900">
-      {/* Cabeçalho TechNébula */}
-      <header className="bg-zinc-950 py-4">
+      {/* Cabeçalho — a logo (ou nome da loja) fica sempre centralizada. */}
+      <header className="bg-zinc-950 py-6 md:py-7">
         <div className="mx-auto flex max-w-6xl items-center justify-center px-4">
-          <Link href="#" className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight text-white">
-              Tech<span className="text-violet-400">Nébula</span>
-            </span>
+          <Link href="#" className="flex items-center">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={branding.logoUrl}
+                alt={branding.storeName}
+                className="h-10 max-w-[220px] object-contain md:h-12"
+              />
+            ) : (
+              <span className="text-xl font-black tracking-tight text-white">
+                {branding.storeName}
+              </span>
+            )}
           </Link>
         </div>
       </header>

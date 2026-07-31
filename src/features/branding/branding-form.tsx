@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { AlertCircle, CheckCircle2, Save } from "lucide-react";
 
 import {
@@ -8,6 +8,7 @@ import {
   type BrandingActionResult,
 } from "@/features/branding/actions";
 import type { WorkspaceBranding } from "@/features/branding/queries";
+import { LogoDropzone } from "@/components/logo-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,17 +26,21 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
     BrandingActionResult | null,
     FormData
   >(updateBrandingAction, null);
+  const [logoUrl, setLogoUrl] = useState(initial.logoUrl ?? "");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Dados da loja</CardTitle>
         <CardDescription>
-          Nome e contacto exibidos no cabeçalho e rodapé do checkout público.
+          Nome, logo e contacto exibidos no cabeçalho e rodapé do checkout e
+          das landing pages públicas.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4">
+          <input type="hidden" name="logoUrl" value={logoUrl} />
+
           {state?.error && (
             <Alert variant="destructive">
               <AlertCircle />
@@ -48,6 +53,17 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
           )}
+
+          <LogoDropzone
+            id="branding-logoUrl"
+            label="Logo da loja"
+            value={logoUrl}
+            onChange={setLogoUrl}
+          />
+          <p className="text-muted-foreground -mt-2 text-xs">
+            Aparece centralizada no banner das landing pages e do checkout.
+            Sem logo, mostra o nome da loja.
+          </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

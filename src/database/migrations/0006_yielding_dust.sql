@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_branding" ADD COLUMN "logo_url" text;

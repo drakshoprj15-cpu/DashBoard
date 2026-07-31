@@ -4,7 +4,7 @@ import { isDatabaseConfigured } from "@/database/client";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
-const BUCKET = "checkout-logos";
+const BUCKET = "logos";
 const MAX_SIZE_BYTES = 3 * 1024 * 1024; // 3 MB
 const ALLOWED_TYPES: Record<string, string> = {
   "image/png": "png",
@@ -30,9 +30,9 @@ async function ensureBucket(admin: ReturnType<typeof createAdminClient>) {
 }
 
 /**
- * Upload da logo do checkout para o Storage público do Supabase.
- * Rota protegida pelo proxy (não está em PUBLIC_PREFIXES) — só acessível
- * com sessão válida do painel.
+ * Upload genérico de logo (loja, checkout, etc.) para o Storage público do
+ * Supabase. Rota protegida pelo proxy (não está em PUBLIC_PREFIXES) — só
+ * acessível com sessão válida do painel.
  */
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     const { data } = admin.storage.from(BUCKET).getPublicUrl(path);
     return NextResponse.json({ url: data.publicUrl });
   } catch (error) {
-    console.error("[checkouts] erro ao enviar logo:", error);
+    console.error("[uploads] erro ao enviar logo:", error);
     return NextResponse.json(
       { error: "Não foi possível enviar a imagem. Tente novamente." },
       { status: 500 },

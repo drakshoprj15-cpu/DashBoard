@@ -6,6 +6,7 @@ import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
 export interface WorkspaceBranding {
   storeName: string;
+  logoUrl: string | null;
   supportEmail: string | null;
   country: string;
   currency: string;
@@ -13,6 +14,7 @@ export interface WorkspaceBranding {
 
 export const DEFAULT_BRANDING: WorkspaceBranding = {
   storeName: "Minha Loja",
+  logoUrl: null,
   supportEmail: null,
   country: "PT",
   currency: "EUR",
@@ -28,6 +30,7 @@ export async function getWorkspaceBranding(): Promise<WorkspaceBranding> {
   const [row] = await db
     .select({
       storeName: workspaceBranding.storeName,
+      logoUrl: workspaceBranding.logoUrl,
       supportEmail: workspaceBranding.supportEmail,
       country: workspaceBranding.country,
       currency: workspaceBranding.currency,

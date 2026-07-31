@@ -15,6 +15,7 @@ export const workspaceBranding = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     storeName: text("store_name").default("Minha Loja").notNull(),
+    logoUrl: text("logo_url"),
     supportEmail: text("support_email"),
     country: text("country").default("PT").notNull(),
     currency: text("currency").default("EUR").notNull(),

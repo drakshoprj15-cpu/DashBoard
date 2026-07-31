@@ -43,6 +43,13 @@
       "when": 1785474424754,
       "tag": "0005_broad_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785482445032,
+      "tag": "0006_yielding_dust",
+      "breakpoints": true
     }
   ]
 }

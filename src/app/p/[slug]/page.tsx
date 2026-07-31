@@ -8,6 +8,7 @@ import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { getPublishedReviews } from "@/features/reviews/queries";
 import { CookieBanner } from "@/features/consent/cookie-banner";
+import { getWorkspaceBranding } from "@/features/branding/queries";
 
 export async function generateMetadata(
   props: PageProps<"/p/[slug]">,
@@ -37,7 +38,10 @@ export default async function ProductLandingPage(
   if (!product) notFound();
 
   // Avaliações vêm da tabela gerida no painel (Provas sociais).
-  const reviews = await getPublishedReviews(product.slug);
+  const [reviews, branding] = await Promise.all([
+    getPublishedReviews(product.slug),
+    getWorkspaceBranding(),
+  ]);
   const withReviews = { ...product, reviews };
 
   return (
@@ -57,7 +61,7 @@ export default async function ProductLandingPage(
         valueCents={product.priceCents}
         currency={product.currency}
       />
-      <ProductLanding product={withReviews} />
+      <ProductLanding product={withReviews} branding={branding} />
       <CookieBanner />
     </>
   );
