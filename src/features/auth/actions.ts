@@ -5,11 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getAppUrl } from "@/lib/app-url";
-import {
-  loginSchema,
-  registerSchema,
-  forgotPasswordSchema,
-} from "@/validations/auth";
+import { loginSchema, forgotPasswordSchema } from "@/validations/auth";
 
 export interface AuthActionResult {
   ok: boolean;
@@ -59,48 +55,19 @@ export async function loginAction(
   );
 }
 
+/**
+ * Autocadastro desativado: este painel é de uso privado (um único dono).
+ * Novos acessos são concedidos manualmente pelo Supabase Auth, nunca por
+ * formulário público — evita que qualquer visitante crie conta sozinho.
+ */
 export async function registerAction(
   _prev: AuthActionResult | null,
-  formData: FormData,
+  _formData: FormData,
 ): Promise<AuthActionResult> {
-  const parsed = registerSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
-  });
-
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0].message };
-  }
-
-  if (!isSupabaseConfigured()) {
-    return { ok: false, error: NOT_CONFIGURED_ERROR };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { name: parsed.data.name },
-    },
-  });
-
-  if (error) {
-    return {
-      ok: false,
-      error:
-        error.code === "user_already_exists"
-          ? "Já existe uma conta com este e-mail."
-          : "Não foi possível criar a conta. Tente novamente.",
-    };
-  }
-
   return {
-    ok: true,
-    message:
-      "Conta criada! Verifique seu e-mail para confirmar o cadastro antes de entrar.",
+    ok: false,
+    error:
+      "O cadastro está desativado. Este painel é de uso privado — peça acesso ao administrador.",
   };
 }
 

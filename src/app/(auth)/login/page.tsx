@@ -61,15 +61,6 @@ export default async function LoginPage(props: PageProps<"/login">) {
             />
           </div>
         </AuthForm>
-        <p className="text-muted-foreground mt-4 text-center text-sm">
-          Não tem conta?{" "}
-          <Link
-            href="/cadastro"
-            className="text-primary font-medium underline-offset-4 hover:underline"
-          >
-            Criar conta
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );
