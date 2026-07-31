@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { customers, orders, payments, paymentWebhooks } from "@/database/schema";
+import {
+  customers,
+  ledgerEntries,
+  orders,
+  payments,
+  paymentWebhooks,
+} from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
 import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
 import {
@@ -105,6 +111,7 @@ export async function POST(request: Request) {
         refused: "refused",
         expired: "expired",
         refunded: "refunded",
+        chargeback: "chargeback",
       };
       const newOrderStatus = orderStatusByPayment[event.status];
       if (newOrderStatus) {
@@ -140,6 +147,32 @@ export async function POST(request: Request) {
           .limit(1);
 
         if (orderRow) {
+          // Lançamento automático no livro-caixa (Financeiro → Entradas/Saídas).
+          // Usa o valor bruto do pedido — o Broski não retorna a taxa cobrada
+          // em nenhum ponto do fluxo, então nunca lançamos gateway_fee aqui.
+          const LEDGER_ENTRY_BY_STATUS: Partial<
+            Record<string, { type: "sale" | "refund" | "chargeback"; direction: "in" | "out" }>
+          > = {
+            approved: { type: "sale", direction: "in" },
+            refunded: { type: "refund", direction: "out" },
+            chargeback: { type: "chargeback", direction: "out" },
+          };
+          const ledgerPlan = LEDGER_ENTRY_BY_STATUS[event.status];
+          if (ledgerPlan) {
+            await db.insert(ledgerEntries).values({
+              workspaceId: orderRow.workspaceId,
+              type: ledgerPlan.type,
+              direction: ledgerPlan.direction,
+              description: `Pedido ${orderRow.reference}`,
+              amountCents: orderRow.totalCents,
+              currency: orderRow.currency,
+              status: "confirmed",
+              orderId,
+              paymentId,
+              gatewayKey: "broski",
+            });
+          }
+
           const [customerRow] = orderRow.customerId
             ? await db
                 .select({ email: customers.email, phone: customers.phone })
