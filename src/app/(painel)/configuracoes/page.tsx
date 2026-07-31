@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getDb, isDatabaseConfigured } from "@/database/client";
+import { pixels } from "@/database/schema";
+import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import {
   Card,
   CardContent,
@@ -20,10 +24,40 @@ interface ServiceStatus {
   envVars: string[];
 }
 
-export default function ConfiguracoesPage() {
+/**
+ * A UTMify não usa variável de ambiente — o token fica cifrado por
+ * workspace na tabela `pixels` (mesmo padrão da Meta CAPI), configurado em
+ * /pixel. Checar aqui a fonte real evita mostrar "Desconectado" com a
+ * credencial já cadastrada e ativa.
+ */
+async function isUtmifyConfigured(): Promise<boolean> {
+  if (!isDatabaseConfigured()) return false;
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+
+  const [row] = await db
+    .select({ id: pixels.id })
+    .from(pixels)
+    .where(
+      and(
+        eq(pixels.workspaceId, workspaceId),
+        eq(pixels.type, "utmify"),
+        eq(pixels.isActive, true),
+        isNull(pixels.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(row);
+}
+
+export default async function ConfiguracoesPage() {
   // Verificação honesta: apenas checa a presença das variáveis de ambiente.
   // "Configurado" ainda não significa "conexão validada" — o teste real de
   // conexão de cada serviço será implementado na fase correspondente.
+  const utmifyConfigured = await isUtmifyConfigured();
+
   const services: ServiceStatus[] = [
     {
       name: "Supabase (banco, auth, realtime)",
@@ -69,9 +103,10 @@ export default function ConfiguracoesPage() {
     },
     {
       name: "UTMify",
-      description: "Rastreamento de conversões",
-      configured: Boolean(process.env.UTMIFY_API_TOKEN),
-      envVars: ["UTMIFY_API_TOKEN"],
+      description:
+        "Rastreamento de conversões — token cadastrado em /pixel, não por variável de ambiente.",
+      configured: utmifyConfigured,
+      envVars: [],
     },
     {
       name: "Upstash Redis",
