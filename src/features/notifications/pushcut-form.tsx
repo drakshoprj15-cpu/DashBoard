@@ -7,8 +7,13 @@ import {
   savePushcutAction,
   type PushcutActionResult,
 } from "@/features/notifications/pushcut-actions";
-import type { PushcutStatus } from "@/features/notifications/pushcut";
+import {
+  PUSHCUT_EVENTS,
+  PUSHCUT_SLOTS,
+  type PushcutStatus,
+} from "@/features/notifications/pushcut-types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,14 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-const EVENTS = [
-  { value: "payment_approved", label: "Pagamento confirmado", hint: "a venda que interessa" },
-  { value: "payment_refused", label: "Pagamento recusado ou expirado" },
-  { value: "refund", label: "Reembolso" },
-  { value: "chargeback", label: "Chargeback" },
-  { value: "webhook_error", label: "Erro de webhook" },
-];
 
 export function PushcutForm({ status }: { status: PushcutStatus }) {
   const [state, formAction, pending] = useActionState<
@@ -41,16 +38,20 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
           <Smartphone className="size-4" /> Pushcut — push no telemóvel
         </CardTitle>
         <CardDescription>
-          Receba um alerta no iPhone ou Apple Watch a cada venda confirmada.
+          Dois canais separados: um alerta quando a venda é gerada e outro
+          quando o pagamento é confirmado.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert variant="info">
           <AlertCircle />
           <AlertDescription>
-            Na app Pushcut: crie uma <strong>Notification</strong> (dê-lhe um
-            nome, ex.: <code className="font-mono text-xs">Venda</code>) e copie
-            a chave em <strong>Account → API key</strong>. Cole os dois abaixo.
+            Na app Pushcut, crie <strong>duas Notifications</strong> (ex.:{" "}
+            <code className="font-mono text-xs">Venda gerada</code> e{" "}
+            <code className="font-mono text-xs">Venda aprovada</code>) para cada
+            uma poder ter som e ícone próprios. A chave está em{" "}
+            <strong>Account → API key</strong> — pode ser a mesma nos dois
+            canais.
           </AlertDescription>
         </Alert>
 
@@ -68,67 +69,97 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
             </Alert>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">Chave de API</Label>
-              <Input
-                id="apiKey"
-                name="apiKey"
-                type="password"
-                placeholder={status.configured ? "•••••••• (já guardada)" : "Cole aqui"}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                Guardada cifrada. Nunca chega ao navegador.
-              </p>
-            </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {PUSHCUT_SLOTS.map((slot) => {
+              const current = status.slots[slot.key];
 
-            <div className="space-y-2">
-              <Label htmlFor="notificationName">Nome da notificação</Label>
-              <Input
-                id="notificationName"
-                name="notificationName"
-                placeholder="Venda"
-                defaultValue={status.notificationName}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                Exatamente como está na app Pushcut.
-              </p>
-            </div>
-          </div>
+              return (
+                <div key={slot.key} className="space-y-4 rounded-xl border p-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold">{slot.label}</h3>
+                      <Badge variant={current.configured ? "success" : "muted"}>
+                        {current.configured ? "Chave guardada" : "Sem chave"}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {slot.description}
+                    </p>
+                  </div>
 
-          <div className="space-y-2">
-            <Label>Avisar quando</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {EVENTS.map((e) => (
-                <label key={e.value} className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="events"
-                    value={e.value}
-                    defaultChecked={status.events.includes(e.value)}
-                    className="accent-primary mt-0.5 size-4"
-                  />
-                  <span>
-                    {e.label}
-                    {e.hint && (
-                      <span className="text-muted-foreground block text-xs">
-                        {e.hint}
-                      </span>
-                    )}
-                  </span>
-                </label>
-              ))}
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`${slot.key}_apiKey`}>Chave de API</Label>
+                    <Input
+                      id={`${slot.key}_apiKey`}
+                      name={`${slot.key}_apiKey`}
+                      type="password"
+                      placeholder={
+                        current.configured
+                          ? "•••••••• (deixe vazio para manter)"
+                          : "Cole aqui"
+                      }
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Guardada cifrada. Nunca chega ao navegador.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`${slot.key}_notificationName`}>
+                      Nome da notificação
+                    </Label>
+                    <Input
+                      id={`${slot.key}_notificationName`}
+                      name={`${slot.key}_notificationName`}
+                      placeholder={slot.defaultName}
+                      defaultValue={current.notificationName}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Exatamente como está na app Pushcut.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Avisar quando</Label>
+                    <div className="space-y-1.5">
+                      {PUSHCUT_EVENTS.map((e) => (
+                        <label
+                          key={e.value}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            name={`${slot.key}_events`}
+                            value={e.value}
+                            defaultChecked={current.events.includes(e.value)}
+                            className="accent-primary mt-0.5 size-4"
+                          />
+                          <span>
+                            {e.label}
+                            {e.hint && (
+                              <span className="text-muted-foreground block text-xs">
+                                {e.hint}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      Sem nenhum evento marcado, este canal fica desligado.
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <Button type="submit" loading={pending}>
             {status.configured ? "Atualizar e testar" : "Ligar e enviar teste"}
           </Button>
           <p className="text-muted-foreground text-xs">
-            Ao guardar, enviamos um push real de confirmação — se algo estiver
-            errado, você descobre agora e não numa venda.
+            Ao guardar, enviamos um push real por cada canal ativo — se algo
+            estiver errado, você descobre agora e não numa venda.
           </p>
         </form>
       </CardContent>

@@ -4,6 +4,22 @@ import { getDb, isDatabaseConfigured } from "@/database/client";
 import { integrations } from "@/database/schema";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import {
+  PUSHCUT_SLOTS,
+  type PushcutSlotKey,
+  type PushcutSlotStatus,
+  type PushcutStatus,
+} from "@/features/notifications/pushcut-types";
+
+// Reexportados para não quebrar quem já importa daqui — mas o conteúdo
+// client-safe vive em `./pushcut-types` (sem tocar em `postgres`).
+export {
+  PUSHCUT_EVENTS,
+  PUSHCUT_SLOTS,
+  type PushcutSlotKey,
+  type PushcutSlotStatus,
+  type PushcutStatus,
+} from "@/features/notifications/pushcut-types";
 
 /**
  * Adapter do Pushcut — notificações push no iPhone/Apple Watch.
@@ -15,41 +31,89 @@ import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
  *
  * O "nome" é o da notificação criada dentro da app Pushcut — é ela que
  * define som, ícone e ações.
+ *
+ * Existem dois canais independentes (venda gerada e venda aprovada), cada
+ * um com a sua própria chave de API e nome de notificação, para o alerta
+ * de "pedido criado" poder ter som/ação diferente do de "pagamento
+ * confirmado". Podem partilhar a mesma chave de conta — o que os separa na
+ * app é o nome da notificação.
  */
 const PUSHCUT_BASE = "https://api.pushcut.io/v1";
 const INTEGRATION_KEY = "pushcut";
 
-export interface PushcutConfig {
-  /** Nome da notificação definida na app Pushcut */
-  notificationName: string;
-  /** Eventos que disparam push */
-  events: string[];
-  isActive: boolean;
+interface StoredSlotConfig {
+  notificationName?: string;
+  events?: string[];
 }
 
-export interface PushcutStatus {
-  configured: boolean;
-  isActive: boolean;
-  notificationName: string;
-  events: string[];
-  lastEventAt: Date | null;
-  lastError: string | null;
+interface StoredConfig {
+  slots?: Partial<Record<PushcutSlotKey, StoredSlotConfig>>;
+  /** Formato antigo: um único canal com nome e eventos no topo. */
+  notificationName?: string;
+  events?: string[];
 }
 
-const DEFAULT_EVENTS = ["payment_approved", "chargeback", "webhook_error"];
+/**
+ * As chaves ficam num único campo cifrado, como JSON por canal.
+ * Guardas de compatibilidade: a versão anterior gravava uma chave só, em
+ * texto simples dentro do cifrado — nesse caso ela vale para os dois canais
+ * até o utilizador guardar de novo.
+ */
+function parseStoredKeys(
+  encrypted: string | null,
+): Partial<Record<PushcutSlotKey, string>> {
+  if (!encrypted) return {};
 
-/** Estado atual da integração, para exibir no painel. */
-export async function getPushcutStatus(): Promise<PushcutStatus> {
-  const empty: PushcutStatus = {
+  let plain: string;
+  try {
+    plain = decryptSecret(encrypted);
+  } catch (error) {
+    console.error("[pushcut] credencial ilegível:", error);
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(plain) as Record<string, unknown>;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const keys: Partial<Record<PushcutSlotKey, string>> = {};
+      for (const slot of PUSHCUT_SLOTS) {
+        const value = parsed[slot.key];
+        if (typeof value === "string" && value.trim()) keys[slot.key] = value;
+      }
+      return keys;
+    }
+  } catch {
+    // Não é JSON — formato antigo, uma chave só.
+  }
+
+  return plain.trim()
+    ? { sale_created: plain.trim(), sale_approved: plain.trim() }
+    : {};
+}
+
+function emptyStatus(): PushcutStatus {
+  return {
     configured: false,
     isActive: false,
-    notificationName: "",
-    events: DEFAULT_EVENTS,
+    slots: Object.fromEntries(
+      PUSHCUT_SLOTS.map((s) => [
+        s.key,
+        {
+          key: s.key,
+          configured: false,
+          notificationName: s.defaultName,
+          events: s.defaultEvents,
+        },
+      ]),
+    ) as Record<PushcutSlotKey, PushcutSlotStatus>,
     lastEventAt: null,
     lastError: null,
   };
+}
 
-  if (!isDatabaseConfigured()) return empty;
+/** Estado atual da integração, para exibir no painel. */
+export async function getPushcutStatus(): Promise<PushcutStatus> {
+  if (!isDatabaseConfigured()) return emptyStatus();
 
   try {
     const db = getDb();
@@ -66,31 +130,87 @@ export async function getPushcutStatus(): Promise<PushcutStatus> {
       )
       .limit(1);
 
-    if (!row) return empty;
+    if (!row) return emptyStatus();
 
-    const config = (row.config ?? {}) as Partial<PushcutConfig>;
+    const config = (row.config ?? {}) as StoredConfig;
+    const keys = parseStoredKeys(row.encryptedCredentials);
+
+    const slots = Object.fromEntries(
+      PUSHCUT_SLOTS.map((slot) => {
+        const stored = config.slots?.[slot.key];
+        // Formato antigo: o canal de venda aprovada herda a configuração
+        // única que existia antes de haver dois canais.
+        const legacy =
+          slot.key === "sale_approved" && !config.slots
+            ? { notificationName: config.notificationName, events: config.events }
+            : undefined;
+
+        return [
+          slot.key,
+          {
+            key: slot.key,
+            configured: Boolean(keys[slot.key]),
+            notificationName:
+              stored?.notificationName ??
+              legacy?.notificationName ??
+              slot.defaultName,
+            events: stored?.events ?? legacy?.events ?? slot.defaultEvents,
+          },
+        ];
+      }),
+    ) as Record<PushcutSlotKey, PushcutSlotStatus>;
+
     return {
-      configured: Boolean(row.encryptedCredentials),
+      configured: Object.values(slots).some((s) => s.configured),
       isActive: row.status === "connected",
-      notificationName: config.notificationName ?? "",
-      events: config.events ?? DEFAULT_EVENTS,
+      slots,
       lastEventAt: row.lastEventAt,
       lastError: row.lastError,
     };
   } catch (error) {
     console.error("[pushcut] erro ao ler estado:", error);
-    return empty;
+    return emptyStatus();
   }
 }
 
-/** Guarda o token (cifrado) e a configuração da integração. */
+export interface PushcutSlotInput {
+  key: PushcutSlotKey;
+  /** Vazio mantém a chave já guardada para este canal. */
+  apiKey: string;
+  notificationName: string;
+  events: string[];
+}
+
+/** Guarda as chaves (cifradas) e a configuração de cada canal. */
 export async function savePushcutCredentials(
-  apiKey: string,
-  notificationName: string,
-  events: string[],
+  inputs: PushcutSlotInput[],
 ): Promise<void> {
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
+
+  const [existing] = await db
+    .select()
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.workspaceId, workspaceId),
+        eq(integrations.key, INTEGRATION_KEY),
+      ),
+    )
+    .limit(1);
+
+  // Campo em branco no formulário significa "não mexer na chave guardada",
+  // para o utilizador poder editar o nome sem recolar a chave.
+  const keys = parseStoredKeys(existing?.encryptedCredentials ?? null);
+  const slotsConfig: Partial<Record<PushcutSlotKey, StoredSlotConfig>> = {};
+
+  for (const input of inputs) {
+    if (input.apiKey.trim()) keys[input.key] = input.apiKey.trim();
+    slotsConfig[input.key] = {
+      notificationName: input.notificationName,
+      events: input.events,
+    };
+  }
 
   const values = {
     workspaceId,
@@ -98,8 +218,8 @@ export async function savePushcutCredentials(
     name: "Pushcut",
     category: "automation" as const,
     status: "connected" as const,
-    encryptedCredentials: encryptSecret(apiKey),
-    config: { notificationName, events, isActive: true },
+    encryptedCredentials: encryptSecret(JSON.stringify(keys)),
+    config: { slots: slotsConfig },
     lastError: null,
   };
 
@@ -142,10 +262,12 @@ export interface PushcutSendResult {
 }
 
 /**
- * Envia um push. Nunca lança: é chamado a partir do webhook do gateway,
- * onde uma falha de push não pode afetar o processamento do pagamento.
+ * Envia um push por um canal específico. Nunca lança: é chamado a partir do
+ * webhook do gateway e do checkout, onde uma falha de push não pode afetar
+ * o processamento do pagamento.
  */
 export async function sendPushcutNotification(
+  slotKey: PushcutSlotKey,
   title: string,
   text: string,
   options: { force?: boolean } = {},
@@ -169,21 +291,32 @@ export async function sendPushcutNotification(
       )
       .limit(1);
 
-    if (!row?.encryptedCredentials) {
-      return { ok: false, error: "Pushcut não configurado." };
-    }
+    if (!row) return { ok: false, error: "Pushcut não configurado." };
+
     // `force` permite o botão "Enviar teste" mesmo com a integração pausada.
     if (row.status !== "connected" && !options.force) {
       return { ok: false, error: "Integração desativada." };
     }
 
-    const config = (row.config ?? {}) as Partial<PushcutConfig>;
-    const name = config.notificationName?.trim();
+    const apiKey = parseStoredKeys(row.encryptedCredentials)[slotKey];
+    if (!apiKey) {
+      return { ok: false, error: "Este canal não tem chave de API guardada." };
+    }
+
+    const config = (row.config ?? {}) as StoredConfig;
+    const slotDefaults = PUSHCUT_SLOTS.find((s) => s.key === slotKey);
+    const name = (
+      config.slots?.[slotKey]?.notificationName ??
+      (slotKey === "sale_approved" && !config.slots
+        ? config.notificationName
+        : undefined) ??
+      slotDefaults?.defaultName ??
+      ""
+    ).trim();
+
     if (!name) {
       return { ok: false, error: "Falta o nome da notificação do Pushcut." };
     }
-
-    const apiKey = decryptSecret(row.encryptedCredentials);
 
     const response = await fetch(
       `${PUSHCUT_BASE}/notifications/${encodeURIComponent(name)}`,
@@ -231,8 +364,20 @@ export async function sendPushcutNotification(
   }
 }
 
-/** O evento está na lista escolhida pelo utilizador? */
-export async function shouldPushEvent(eventType: string): Promise<boolean> {
+/**
+ * Envia o push do evento pelo canal que o utilizador atribuiu a ele.
+ * Sem canal configurado para o evento, não faz nada (não é erro).
+ */
+export async function pushEvent(
+  eventType: string,
+  title: string,
+  text: string,
+): Promise<void> {
   const status = await getPushcutStatus();
-  return status.configured && status.isActive && status.events.includes(eventType);
+  if (!status.configured || !status.isActive) return;
+
+  for (const slot of Object.values(status.slots)) {
+    if (!slot.configured || !slot.events.includes(eventType)) continue;
+    await sendPushcutNotification(slot.key, title, text);
+  }
 }

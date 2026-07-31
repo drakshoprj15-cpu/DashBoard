@@ -20,10 +20,7 @@ import {
   createNotification,
   type NotificationEvent,
 } from "@/features/notifications/create";
-import {
-  sendPushcutNotification,
-  shouldPushEvent,
-} from "@/features/notifications/pushcut";
+import { pushEvent } from "@/features/notifications/pushcut";
 
 /** Que notificação gerar para cada estado devolvido pelo gateway. */
 const NOTIFICATION_BY_STATUS: Record<
@@ -290,13 +287,13 @@ export async function POST(request: Request) {
               metadata: { orderId, reference: orderRow.reference },
             });
 
-            // Push no telemóvel, se o utilizador escolheu este evento.
-            if (await shouldPushEvent(notice.eventType)) {
-              await sendPushcutNotification(
-                `${notice.title} · ${amount}`,
-                detail,
-              );
-            }
+            // Push no telemóvel, pelo canal que o utilizador atribuiu a
+            // este evento (venda gerada / venda aprovada).
+            await pushEvent(
+              notice.eventType,
+              `${notice.title} · ${amount}`,
+              detail,
+            );
           }
         }
       } catch (error) {

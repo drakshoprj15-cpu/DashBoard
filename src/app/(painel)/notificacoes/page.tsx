@@ -18,6 +18,7 @@ import {
   markNotificationReadAction,
 } from "@/features/notifications/actions";
 import { getPushcutStatus } from "@/features/notifications/pushcut";
+import { PUSHCUT_SLOTS } from "@/features/notifications/pushcut-types";
 import {
   testPushcutAction,
   togglePushcutAction,
@@ -111,12 +112,17 @@ export default async function NotificacoesPage() {
                 {pushcut.lastError}
               </span>
             )}
-            <div className="ml-auto flex gap-2">
-              <form action={testPushcutAction}>
-                <Button size="sm" variant="outline" type="submit">
-                  Enviar teste
-                </Button>
-              </form>
+            <div className="ml-auto flex flex-wrap gap-2">
+              {PUSHCUT_SLOTS.filter(
+                (slot) => pushcut.slots[slot.key].configured,
+              ).map((slot) => (
+                <form key={slot.key} action={testPushcutAction}>
+                  <input type="hidden" name="slot" value={slot.key} />
+                  <Button size="sm" variant="outline" type="submit">
+                    Testar {slot.label.toLowerCase()}
+                  </Button>
+                </form>
+              ))}
               <form action={togglePushcutAction}>
                 <input
                   type="hidden"

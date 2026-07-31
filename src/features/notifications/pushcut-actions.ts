@@ -5,18 +5,23 @@ import { z } from "zod";
 
 import { isDatabaseConfigured } from "@/database/client";
 import {
+  getPushcutStatus,
+  PUSHCUT_SLOTS,
   savePushcutCredentials,
   sendPushcutNotification,
   setPushcutActive,
+  type PushcutSlotInput,
+  type PushcutSlotKey,
 } from "@/features/notifications/pushcut";
 
-const pushcutSchema = z.object({
-  apiKey: z.string().trim().min(10, "Cole a chave de API do Pushcut"),
-  notificationName: z
-    .string()
-    .trim()
-    .min(1, "Informe o nome da notificação criada na app"),
-  events: z.array(z.string()).min(1, "Escolha pelo menos um evento"),
+const slotKeyEnum = z.enum(["sale_created", "sale_approved"]);
+
+const slotSchema = z.object({
+  key: slotKeyEnum,
+  /** Vazio = manter a chave já guardada. */
+  apiKey: z.string().trim(),
+  notificationName: z.string().trim(),
+  events: z.array(z.string()),
 });
 
 export interface PushcutActionResult {
@@ -29,43 +34,93 @@ export async function savePushcutAction(
   _prev: PushcutActionResult | null,
   formData: FormData,
 ): Promise<PushcutActionResult> {
-  const parsed = pushcutSchema.safeParse({
-    apiKey: formData.get("apiKey"),
-    notificationName: formData.get("notificationName"),
-    events: formData.getAll("events"),
-  });
-
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0].message };
-  }
-
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Banco de dados não configurado." };
   }
 
-  try {
-    const d = parsed.data;
-    await savePushcutCredentials(d.apiKey, d.notificationName, d.events);
+  const parsedSlots: PushcutSlotInput[] = [];
 
-    // Validação real: envia um push de confirmação. Se a chave ou o nome
-    // estiverem errados, o utilizador descobre agora e não numa venda.
-    const test = await sendPushcutNotification(
-      "Infinity ligado ✅",
-      "Se recebeu este alerta, as notificações de venda estão a funcionar.",
-      { force: true },
-    );
+  for (const slot of PUSHCUT_SLOTS) {
+    const parsed = slotSchema.safeParse({
+      key: slot.key,
+      apiKey: formData.get(`${slot.key}_apiKey`) ?? "",
+      notificationName: formData.get(`${slot.key}_notificationName`) ?? "",
+      events: formData.getAll(`${slot.key}_events`),
+    });
 
-    if (!test.ok) {
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0].message };
+    }
+    parsedSlots.push(parsed.data);
+  }
+
+  const current = await getPushcutStatus();
+
+  // Cada canal ativo (com eventos escolhidos) precisa de nome e de chave —
+  // ou já guardada antes, ou colada agora.
+  for (const slot of parsedSlots) {
+    if (slot.events.length === 0) continue;
+
+    const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
+
+    if (!slot.notificationName) {
       return {
         ok: false,
-        error: `Credenciais guardadas, mas o envio de teste falhou: ${test.error}`,
+        error: `Informe o nome da notificação do canal "${label}".`,
       };
+    }
+    if (!slot.apiKey && !current.slots[slot.key].configured) {
+      return {
+        ok: false,
+        error: `Cole a chave de API do canal "${label}".`,
+      };
+    }
+    if (slot.apiKey && slot.apiKey.length < 10) {
+      return {
+        ok: false,
+        error: `A chave de API do canal "${label}" parece incompleta.`,
+      };
+    }
+  }
+
+  if (parsedSlots.every((s) => s.events.length === 0)) {
+    return {
+      ok: false,
+      error: "Escolha pelo menos um evento em algum dos canais.",
+    };
+  }
+
+  try {
+    await savePushcutCredentials(parsedSlots);
+
+    // Validação real: envia um push de confirmação por cada canal ativo. Se
+    // a chave ou o nome estiverem errados, o utilizador descobre agora e não
+    // numa venda.
+    const failures: string[] = [];
+    for (const slot of parsedSlots) {
+      if (slot.events.length === 0) continue;
+      const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
+      const test = await sendPushcutNotification(
+        slot.key,
+        `Infinity · ${label} ✅`,
+        `Se recebeu este alerta, o canal "${label}" está a funcionar.`,
+        { force: true },
+      );
+      if (!test.ok) failures.push(`${label}: ${test.error}`);
     }
 
     revalidatePath("/notificacoes");
+
+    if (failures.length > 0) {
+      return {
+        ok: false,
+        error: `Configuração guardada, mas o envio de teste falhou — ${failures.join(" · ")}`,
+      };
+    }
+
     return {
       ok: true,
-      message: "Ligado! Verifique o push que acabou de receber no telemóvel.",
+      message: "Ligado! Verifique os pushes que acabou de receber no telemóvel.",
     };
   } catch (error) {
     console.error("[pushcut] erro ao guardar:", error);
@@ -81,9 +136,17 @@ export async function togglePushcutAction(formData: FormData): Promise<void> {
   revalidatePath("/notificacoes");
 }
 
-export async function testPushcutAction(): Promise<void> {
+export async function testPushcutAction(formData: FormData): Promise<void> {
+  const raw = String(formData.get("slot") ?? "");
+  const parsed = slotKeyEnum.safeParse(raw);
+  if (!parsed.success) return;
+
+  const slotKey: PushcutSlotKey = parsed.data;
+  const label = PUSHCUT_SLOTS.find((s) => s.key === slotKey)?.label ?? slotKey;
+
   await sendPushcutNotification(
-    "Teste do Infinity 🔔",
+    slotKey,
+    `Teste do Infinity · ${label} 🔔`,
     "Notificação de teste enviada a partir do painel.",
     { force: true },
   );

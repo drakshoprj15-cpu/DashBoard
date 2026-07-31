@@ -11,6 +11,9 @@ import { customers, orderItems, orders, payments, products } from "@/database/sc
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { getAppUrl } from "@/lib/app-url";
 import { createBroskiProvider, BroskiApiError } from "@/payment-providers/broski";
+import { createNotification } from "@/features/notifications/create";
+import { pushEvent } from "@/features/notifications/pushcut";
+import { formatMoney } from "@/lib/format";
 import { and, eq } from "drizzle-orm";
 
 export type CheckoutActionResult =
@@ -258,6 +261,30 @@ export async function submitCheckoutAction(
       .update(orders)
       .set({ status: "awaiting_payment", updatedAt: new Date() })
       .where(eq(orders.id, order.id));
+
+    // "Venda gerada": o pedido existe e o pagamento foi iniciado, mas ainda
+    // não está confirmado. A confirmação vem só pelo webhook. Falha aqui
+    // nunca pode derrubar um pagamento já criado no gateway — daí o try.
+    try {
+      const amount = formatMoney(total, "EUR", "pt-PT");
+      const detail = `Pedido ${reference} · ${data.email} · ${
+        data.paymentMethod === "mbway" ? "MB WAY" : "Multibanco"
+      }`;
+
+      await createNotification({
+        workspaceId,
+        eventType: "order_created",
+        title: "Venda gerada",
+        body: detail,
+        href: "/pedidos",
+        valueCents: total,
+        metadata: { orderId: order.id, reference },
+      });
+
+      await pushEvent("order_created", `Venda gerada · ${amount}`, detail);
+    } catch (error) {
+      console.error("[checkout] falha ao notificar venda gerada:", error);
+    }
 
     return {
       status: "payment_created",
