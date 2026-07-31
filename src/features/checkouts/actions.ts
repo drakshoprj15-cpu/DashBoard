@@ -6,6 +6,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { checkouts, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { recordAuditLog } from "@/features/audit/log";
 import {
   createCheckoutSchema,
   slugify,
@@ -84,17 +85,27 @@ export async function createCheckoutAction(
       return { ok: false, error: "Produto não encontrado." };
     }
 
-    await db.insert(checkouts).values({
-      workspaceId,
-      name: d.name,
-      slug: d.slug,
-      mainProductId: product.id,
-      currency: product.currency,
-      country: "PT",
-      locale: "pt-PT",
-      paymentMethods: d.paymentMethods,
-      status: d.publishNow ? "published" : "draft",
-      publishedAt: d.publishNow ? new Date() : null,
+    const [created] = await db
+      .insert(checkouts)
+      .values({
+        workspaceId,
+        name: d.name,
+        slug: d.slug,
+        mainProductId: product.id,
+        currency: product.currency,
+        country: "PT",
+        locale: "pt-PT",
+        paymentMethods: d.paymentMethods,
+        status: d.publishNow ? "published" : "draft",
+        publishedAt: d.publishNow ? new Date() : null,
+      })
+      .returning({ id: checkouts.id });
+
+    await recordAuditLog({
+      action: "checkout.created",
+      entityType: "checkout",
+      entityId: created.id,
+      changes: { name: d.name, slug: d.slug, published: d.publishNow },
     });
 
     revalidatePath("/checkouts");
@@ -179,7 +190,7 @@ export async function toggleCheckoutStatusAction(
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
 
-  await db
+  const [row] = await db
     .update(checkouts)
     .set({
       status: publish ? "published" : "unpublished",
@@ -188,7 +199,17 @@ export async function toggleCheckoutStatusAction(
     })
     .where(
       and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)),
-    );
+    )
+    .returning({ slug: checkouts.slug });
+
+  if (row) {
+    await recordAuditLog({
+      action: publish ? "checkout.published" : "checkout.unpublished",
+      entityType: "checkout",
+      entityId: id,
+      changes: { slug: row.slug },
+    });
+  }
 
   revalidatePath("/checkouts");
 }
@@ -224,19 +245,29 @@ export async function duplicateCheckoutAction(
     copySlug = `${original.slug}-copia-${i}`;
   }
 
-  await db.insert(checkouts).values({
-    workspaceId,
-    name: `${original.name} (cópia)`,
-    slug: copySlug,
-    mainProductId: original.mainProductId,
-    currency: original.currency,
-    country: original.country,
-    locale: original.locale,
-    layoutType: original.layoutType,
-    config: original.config,
-    paymentMethods: original.paymentMethods,
-    // A cópia nasce como rascunho — publicar é sempre decisão explícita.
-    status: "draft",
+  const [created] = await db
+    .insert(checkouts)
+    .values({
+      workspaceId,
+      name: `${original.name} (cópia)`,
+      slug: copySlug,
+      mainProductId: original.mainProductId,
+      currency: original.currency,
+      country: original.country,
+      locale: original.locale,
+      layoutType: original.layoutType,
+      config: original.config,
+      paymentMethods: original.paymentMethods,
+      // A cópia nasce como rascunho — publicar é sempre decisão explícita.
+      status: "draft",
+    })
+    .returning({ id: checkouts.id });
+
+  await recordAuditLog({
+    action: "checkout.duplicated",
+    entityType: "checkout",
+    entityId: created.id,
+    changes: { fromCheckoutId: id, slug: copySlug },
   });
 
   revalidatePath("/checkouts");
@@ -249,10 +280,20 @@ export async function deleteCheckoutAction(formData: FormData): Promise<void> {
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
 
-  await db
+  const [row] = await db
     .update(checkouts)
     .set({ deletedAt: new Date(), status: "archived" })
-    .where(and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)));
+    .where(and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)))
+    .returning({ slug: checkouts.slug });
+
+  if (row) {
+    await recordAuditLog({
+      action: "checkout.deleted",
+      entityType: "checkout",
+      entityId: id,
+      changes: { slug: row.slug },
+    });
+  }
 
   revalidatePath("/checkouts");
 }

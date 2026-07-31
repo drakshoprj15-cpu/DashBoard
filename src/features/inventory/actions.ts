@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { inventoryMovements, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { recordAuditLog } from "@/features/audit/log";
 import {
   adjustStockSchema,
   updateMinStockSchema,
@@ -86,10 +87,17 @@ export async function adjustStockAction(
         note: note || null,
       });
 
-      return { ok: true as const };
+      return { ok: true as const, newQuantity };
     });
 
     if (!result.ok) return result;
+
+    await recordAuditLog({
+      action: "inventory.adjusted",
+      entityType: "inventory",
+      entityId: productId,
+      changes: { type, delta, newQuantity: result.newQuantity, note: note || undefined },
+    });
 
     revalidatePath("/catalogo/estoque");
     return { ok: true, message: "Estoque atualizado." };
@@ -133,6 +141,13 @@ export async function updateMinStockAction(
       .returning({ id: products.id });
 
     if (!row) return { ok: false, error: "Produto não encontrado." };
+
+    await recordAuditLog({
+      action: "inventory.min_stock_updated",
+      entityType: "inventory",
+      entityId: productId,
+      changes: { minStockAlert: rawMin === "" ? null : (minStockAlert ?? null) },
+    });
 
     revalidatePath("/catalogo/estoque");
     return { ok: true, message: "Alerta de estoque mínimo atualizado." };

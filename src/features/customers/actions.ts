@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, emailSuppressions } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { recordAuditLog } from "@/features/audit/log";
 
 /**
  * Liga/desliga o consentimento de marketing de um cliente.
@@ -57,6 +58,13 @@ export async function toggleMarketingConsentAction(
         ),
       );
   }
+
+  await recordAuditLog({
+    action: "customer.marketing_consent_updated",
+    entityType: "customer",
+    entityId: id,
+    changes: { marketingOptOut: optOut },
+  });
 
   revalidatePath("/clientes");
   revalidatePath("/emails");

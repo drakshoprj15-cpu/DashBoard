@@ -6,6 +6,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { recordAuditLog } from "@/features/audit/log";
 import {
   createProductSchema,
   slugify,
@@ -82,18 +83,28 @@ export async function createProductAction(
       };
     }
 
-    await db.insert(products).values({
-      workspaceId,
-      name: d.name,
-      slug: d.slug,
-      type: d.type,
-      status: "draft",
-      priceCents: d.priceCents,
-      currency: d.currency,
-      shortDescription: d.shortDescription || null,
-      mainImageUrl: d.mainImageUrl || null,
-      trackInventory: d.trackInventory ?? false,
-      stockQuantity: d.stockQuantity ?? 0,
+    const [created] = await db
+      .insert(products)
+      .values({
+        workspaceId,
+        name: d.name,
+        slug: d.slug,
+        type: d.type,
+        status: "draft",
+        priceCents: d.priceCents,
+        currency: d.currency,
+        shortDescription: d.shortDescription || null,
+        mainImageUrl: d.mainImageUrl || null,
+        trackInventory: d.trackInventory ?? false,
+        stockQuantity: d.stockQuantity ?? 0,
+      })
+      .returning({ id: products.id });
+
+    await recordAuditLog({
+      action: "product.created",
+      entityType: "product",
+      entityId: created.id,
+      changes: { name: d.name, slug: d.slug, priceCents: d.priceCents },
     });
 
     revalidatePath("/catalogo/produtos");
@@ -121,6 +132,15 @@ export async function toggleProductStatusAction(
     .where(and(eq(products.id, id), eq(products.workspaceId, workspaceId)))
     .returning({ slug: products.slug });
 
+  if (row) {
+    await recordAuditLog({
+      action: activate ? "product.activated" : "product.deactivated",
+      entityType: "product",
+      entityId: id,
+      changes: { slug: row.slug },
+    });
+  }
+
   revalidatePath("/catalogo/produtos");
   revalidatePath("/landing-pages");
   if (row) revalidatePath(`/p/${row.slug}`);
@@ -138,6 +158,15 @@ export async function archiveProductAction(formData: FormData): Promise<void> {
     .set({ deletedAt: new Date(), status: "archived" })
     .where(and(eq(products.id, id), eq(products.workspaceId, workspaceId)))
     .returning({ slug: products.slug });
+
+  if (row) {
+    await recordAuditLog({
+      action: "product.archived",
+      entityType: "product",
+      entityId: id,
+      changes: { slug: row.slug },
+    });
+  }
 
   revalidatePath("/catalogo/produtos");
   revalidatePath("/landing-pages");
@@ -205,6 +234,13 @@ export async function updateProductCoreAction(
       .returning({ slug: products.slug });
 
     if (!row) return { ok: false, error: "Produto não encontrado." };
+
+    await recordAuditLog({
+      action: "product.updated",
+      entityType: "product",
+      entityId: id,
+      changes: { name: d.name, slug: d.slug, priceCents: d.priceCents },
+    });
 
     revalidatePath("/catalogo/produtos");
     revalidatePath(`/catalogo/produtos/${id}`);

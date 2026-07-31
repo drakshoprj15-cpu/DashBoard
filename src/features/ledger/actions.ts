@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { ledgerEntries } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { recordAuditLog } from "@/features/audit/log";
 import { createManualLedgerEntrySchema } from "@/validations/ledger";
 
 export interface LedgerActionResult {
@@ -44,14 +45,24 @@ export async function createManualLedgerEntryAction(
     const workspaceId = await getOrCreateDefaultWorkspace();
     const { type, description, category, amountCents } = parsed.data;
 
-    await db.insert(ledgerEntries).values({
-      workspaceId,
-      type,
-      direction: type === "manual_in" ? "in" : "out",
-      description,
-      category: category || null,
-      amountCents,
-      status: "confirmed",
+    const [created] = await db
+      .insert(ledgerEntries)
+      .values({
+        workspaceId,
+        type,
+        direction: type === "manual_in" ? "in" : "out",
+        description,
+        category: category || null,
+        amountCents,
+        status: "confirmed",
+      })
+      .returning({ id: ledgerEntries.id });
+
+    await recordAuditLog({
+      action: "ledger.manual_entry_created",
+      entityType: "ledger_entry",
+      entityId: created.id,
+      changes: { type, description, category: category || undefined, amountCents },
     });
 
     revalidatePath("/financeiro/entradas-saidas");
