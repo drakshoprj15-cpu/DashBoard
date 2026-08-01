@@ -5,7 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Menu, Search } from "lucide-react";
 
-import { navigation } from "@/lib/navigation";
+import {
+  findActiveSubItem,
+  isHrefActive,
+  navigation,
+} from "@/lib/navigation";
 import type { SessionUser } from "@/lib/auth/session";
 import { logoutAction } from "@/features/auth/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -34,15 +38,10 @@ function usePageTitle(): string {
   const pathname = usePathname();
   for (const item of navigation) {
     if (item.items) {
-      const sub = item.items.find(
-        (s) => pathname === s.href || pathname.startsWith(s.href + "/"),
-      );
+      const sub = findActiveSubItem(item.items, pathname);
       if (sub) return `${item.title} · ${sub.title}`;
     }
-    if (
-      item.href &&
-      (pathname === item.href || pathname.startsWith(item.href + "/"))
-    ) {
+    if (item.href && isHrefActive(pathname, item.href)) {
       return item.title;
     }
   }

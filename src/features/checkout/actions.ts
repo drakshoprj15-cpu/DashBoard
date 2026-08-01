@@ -9,7 +9,7 @@ import {
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, orderItems, orders, payments, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
-import { getAppUrl } from "@/lib/app-url";
+import { getRequestUrl } from "@/lib/request-url";
 import { createBroskiProvider, BroskiApiError } from "@/payment-providers/broski";
 import { createNotification } from "@/features/notifications/create";
 import { pushEvent } from "@/features/notifications/pushcut";
@@ -217,7 +217,9 @@ export async function submitCheckoutAction(
       webhookSecret: process.env.BROSKI_WEBHOOK_SECRET,
     });
 
-    const appUrl = getAppUrl();
+    // Domínio pelo qual o cliente chegou — com domínio próprio da loja, o
+    // retorno do pagamento não pode cair no endereço do painel.
+    const appUrl = await getRequestUrl();
 
     const result = await provider.createPayment({
       idempotencyKey: order.id,

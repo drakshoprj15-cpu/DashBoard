@@ -13,7 +13,13 @@ import {
 
 import { cn } from "@/lib/utils";
 import { brand } from "@/lib/brand";
-import { navigation, SIDEBAR_COOKIE, type NavItem } from "@/lib/navigation";
+import {
+  findActiveSubItem,
+  isHrefActive,
+  navigation,
+  SIDEBAR_COOKIE,
+  type NavItem,
+} from "@/lib/navigation";
 import { logoutAction } from "@/features/auth/actions";
 import type { SessionUser } from "@/lib/auth/session";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -39,11 +45,9 @@ function isItemActive(item: NavItem, pathname: string): boolean {
   if (item.href) {
     return item.href === "/dashboard" || item.href === "/loja"
       ? pathname === item.href
-      : pathname === item.href || pathname.startsWith(item.href + "/");
+      : isHrefActive(pathname, item.href);
   }
-  return (item.items ?? []).some(
-    (sub) => pathname === sub.href || pathname.startsWith(sub.href + "/"),
-  );
+  return findActiveSubItem(item.items ?? [], pathname) !== undefined;
 }
 
 export function Sidebar({
@@ -167,8 +171,8 @@ export function Sidebar({
                   <div className="border-sidebar-border mt-0.5 ml-[1.35rem] space-y-0.5 border-l pl-3">
                     {item.items.map((sub) => {
                       const subActive =
-                        pathname === sub.href ||
-                        pathname.startsWith(sub.href + "/");
+                        findActiveSubItem(item.items ?? [], pathname)?.href ===
+                        sub.href;
                       return (
                         <Link
                           key={sub.href}

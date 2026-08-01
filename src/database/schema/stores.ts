@@ -4,7 +4,6 @@ import {
   jsonb,
   pgTable,
   text,
-  timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -60,24 +59,5 @@ export const storeSettings = pgTable(
   (t) => [uniqueIndex("store_settings_store_idx").on(t.storeId)],
 );
 
-export const domains = pgTable(
-  "domains",
-  {
-    id: id(),
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    storeId: uuid("store_id").references(() => stores.id, {
-      onDelete: "set null",
-    }),
-    hostname: text("hostname").notNull(),
-    isVerified: boolean("is_verified").default(false).notNull(),
-    verifiedAt: timestamp("verified_at", { withTimezone: true }),
-    isPrimary: boolean("is_primary").default(false).notNull(),
-    ...timestamps,
-  },
-  (t) => [
-    uniqueIndex("domains_hostname_idx").on(t.hostname),
-    index("domains_workspace_idx").on(t.workspaceId),
-  ],
-);
+// A tabela `domains` vive em `./domains.ts` (referencia `products`, que por
+// sua vez importa este arquivo — separar evita o import circular).

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
@@ -12,8 +13,11 @@ import { alphaGamerNebula } from "@/features/landing/technebula-data";
  * Enquanto o produto não estiver cadastrado no banco (ex.: ambiente sem
  * seed rodado), cai para o catálogo estático — a landing nunca fica fora
  * do ar por falta de dado.
+ *
+ * Envolvida em `cache()`: a mesma requisição chama isto no `generateMetadata`
+ * e ao renderizar a página — assim o banco é consultado uma vez só.
  */
-export async function getProductBySlug(
+export const getProductBySlug = cache(async function getProductBySlug(
   slug: string,
 ): Promise<LandingProduct | null> {
   if (isDatabaseConfigured()) {
@@ -56,4 +60,4 @@ export async function getProductBySlug(
   }
 
   return slug === alphaGamerNebula.slug ? alphaGamerNebula : null;
-}
+});

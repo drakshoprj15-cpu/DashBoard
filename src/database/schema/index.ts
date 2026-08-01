@@ -7,6 +7,7 @@ export * from "./workspaces";
 export * from "./stores";
 export * from "./branding";
 export * from "./catalog";
+export * from "./domains";
 export * from "./pages";
 export * from "./checkouts";
 export * from "./customers";

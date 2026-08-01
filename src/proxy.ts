@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { isPanelHost, isStorePath, normalizeHost } from "@/lib/hosts";
+
 const PUBLIC_PREFIXES = [
   "/login",
   "/cadastro",
@@ -25,12 +27,26 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 /**
- * Proxy (Next 16, antigo middleware): renova a sessão Supabase e protege
- * as rotas do painel. Sem Supabase configurado, o painel abre em modo
+ * Proxy (Next 16, antigo middleware): separa os domínios das lojas do
+ * domínio do painel, renova a sessão Supabase e protege as rotas
+ * administrativas. Sem Supabase configurado, o painel abre em modo
  * demonstração (banner explícito na UI) — nada finge estar conectado.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = normalizeHost(request.headers.get("host"));
+
+  // Domínio próprio de uma loja: só rotas públicas, e sem tocar na sessão
+  // (poupa uma chamada ao Supabase em cada visita de cliente).
+  if (!isPanelHost(host)) {
+    if (!isStorePath(pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

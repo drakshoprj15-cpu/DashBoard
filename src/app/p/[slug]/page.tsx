@@ -1,68 +1,52 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { notFound, permanentRedirect } from "next/navigation";
 
-import { techNebulaStore } from "@/features/landing/technebula-data";
-import { getProductBySlug } from "@/features/landing/queries";
-import { ProductLanding } from "@/features/landing/product-landing";
-import { PixelScripts } from "@/features/pixels/pixel-scripts";
-import { Tracker } from "@/features/analytics/tracker";
-import { getPublishedReviews } from "@/features/reviews/queries";
-import { CookieBanner } from "@/features/consent/cookie-banner";
-import { getWorkspaceBranding } from "@/features/branding/queries";
+import {
+  getDomainByHost,
+  getVerifiedDomainForProductSlug,
+} from "@/features/domains/queries";
+import {
+  LandingPageView,
+  landingMetadata,
+} from "@/features/landing/landing-page-view";
+import { isPanelHost, normalizeHost } from "@/lib/hosts";
+
+/** Host da requisição, normalizado (sem porta nem `www.`). */
+async function requestHost(): Promise<string> {
+  const h = await headers();
+  return normalizeHost(h.get("x-forwarded-host") ?? h.get("host"));
+}
 
 export async function generateMetadata(
   props: PageProps<"/p/[slug]">,
 ): Promise<Metadata> {
   const { slug } = await props.params;
-  const product = await getProductBySlug(slug);
-  if (!product) {
-    return { title: `Produto não encontrado · ${techNebulaStore.name}` };
-  }
-  return {
-    title: `${product.name} · ${techNebulaStore.name}`,
-    description: product.shortPitch,
-  };
+  const hostname = await getVerifiedDomainForProductSlug(slug);
+  return landingMetadata(slug, hostname ? `https://${hostname}/` : undefined);
 }
 
 /**
  * Landing page pública (rota /p/[slug]).
- * O produto vem do banco (tabela `products`); enquanto não houver produto
- * cadastrado com esse slug, cai para o catálogo estático em
- * `technebula-data.ts` (mantém o link antigo da cadeira ALPHA GAMER vivo).
+ *
+ * Quando o produto já tem domínio próprio verificado e o acesso chega pelo
+ * domínio do painel, redireciona permanentemente para o domínio da loja —
+ * links antigos de anúncios continuam funcionando sem expor o painel.
  */
 export default async function ProductLandingPage(
   props: PageProps<"/p/[slug]">,
 ) {
   const { slug } = await props.params;
-  const product = await getProductBySlug(slug);
-  if (!product) notFound();
+  const host = await requestHost();
 
-  // Avaliações vêm da tabela gerida no painel (Provas sociais).
-  const [reviews, branding] = await Promise.all([
-    getPublishedReviews(product.slug),
-    getWorkspaceBranding(),
-  ]);
-  const withReviews = { ...product, reviews };
+  if (isPanelHost(host)) {
+    const hostname = await getVerifiedDomainForProductSlug(slug);
+    if (hostname) permanentRedirect(`https://${hostname}/`);
+  } else {
+    // No domínio da loja, /p/[slug] só serve o produto daquele domínio.
+    const domain = await getDomainByHost(host);
+    if (domain?.productSlug && domain.productSlug !== slug) notFound();
+  }
 
-  return (
-    <>
-      <PixelScripts
-        event="ViewContent"
-        content={{
-          id: product.slug,
-          name: product.name,
-          valueCents: product.priceCents,
-          currency: product.currency,
-        }}
-      />
-      <Tracker
-        event="view_content"
-        productSlug={product.slug}
-        valueCents={product.priceCents}
-        currency={product.currency}
-      />
-      <ProductLanding product={withReviews} branding={branding} />
-      <CookieBanner />
-    </>
-  );
+  return <LandingPageView slug={slug} />;
 }

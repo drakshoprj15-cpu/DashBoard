@@ -92,13 +92,41 @@ export const navigation: NavItem[] = [
       { title: "Pushcut", href: "/notificacoes#pushcut" },
     ],
   },
-  { title: "Landing pages", href: "/landing-pages", icon: Rocket, phase: 8 },
+  {
+    title: "Landing pages",
+    icon: Rocket,
+    phase: 8,
+    items: [
+      { title: "Páginas", href: "/landing-pages" },
+      { title: "Domínios", href: "/landing-pages/dominios" },
+    ],
+  },
   { title: "Integrações", href: "/integracoes", icon: Blocks, phase: 7 },
   { title: "Webhooks", href: "/webhooks", icon: Webhook, phase: 4 },
   { title: "Logs", href: "/logs", icon: ScrollText, phase: 7 },
   { title: "Configurações", href: "/configuracoes", icon: Settings, phase: 1 },
   { title: "Ver loja", href: "/loja", icon: Store, phase: 2 },
 ];
+
+/** O caminho atual está dentro desta rota? */
+export function isHrefActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+/**
+ * Sub-item ativo de um grupo: entre os que casam, o de href mais específico.
+ *
+ * Sem isso, `/landing-pages/dominios` também marcaria `/landing-pages` como
+ * ativo — um é prefixo do outro.
+ */
+export function findActiveSubItem(
+  items: NavSubItem[],
+  pathname: string,
+): NavSubItem | undefined {
+  return items
+    .filter((sub) => isHrefActive(pathname, sub.href))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+}
 
 /** Nome do cookie que persiste o estado recolhido da sidebar */
 export const SIDEBAR_COOKIE = "infinity:sidebar-collapsed";

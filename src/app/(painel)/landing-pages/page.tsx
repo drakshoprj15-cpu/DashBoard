@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Database, ExternalLink, ImageOff, Pencil } from "lucide-react";
+import { Database, ExternalLink, Globe, ImageOff, Pencil } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
+import { listDomains } from "@/features/domains/queries";
 import { listProducts } from "@/features/products/queries";
+import { getAppUrl } from "@/lib/app-url";
 import { formatMoney } from "@/lib/format";
 import {
   Card,
@@ -32,7 +34,16 @@ export default async function LandingPagesPage() {
     );
   }
 
-  const products = await listProducts();
+  const [products, domains] = await Promise.all([listProducts(), listDomains()]);
+  const appUrl = getAppUrl();
+
+  // Produto com domínio próprio ativo é anunciado por esse endereço; os
+  // demais continuam no domínio do painel, em /p/[slug].
+  const domainByProduct = new Map(
+    domains
+      .filter((d) => d.isActive && d.productId)
+      .map((d) => [d.productId as string, d.hostname]),
+  );
 
   return (
     <div className="space-y-6">
@@ -40,10 +51,15 @@ export default async function LandingPagesPage() {
         <div>
           <h2 className="text-xl font-bold tracking-tight">Landing pages</h2>
           <p className="text-muted-foreground text-sm">
-            Uma página em /p/[slug] por produto ativo · edite fotos e conteúdo
-            em Catálogo → Produtos
+            Uma página por produto ativo · edite fotos e conteúdo em Catálogo →
+            Produtos, e o endereço em Landing pages → Domínios
           </p>
         </div>
+        <Button variant="outline" asChild>
+          <Link href="/landing-pages/dominios">
+            <Globe /> Domínios
+          </Link>
+        </Button>
       </div>
 
       {products.length === 0 ? (
@@ -55,7 +71,13 @@ export default async function LandingPagesPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {products.map((p) => (
+          {products.map((p) => {
+            const hostname = domainByProduct.get(p.id);
+            const publicUrl = hostname
+              ? `https://${hostname}`
+              : `${appUrl}/p/${p.slug}`;
+
+            return (
             <Card key={p.id} className="gap-3 overflow-hidden py-0 pb-5">
               <div className="bg-muted relative aspect-[16/9] w-full overflow-hidden border-b">
                 {p.mainImageUrl ? (
@@ -81,8 +103,11 @@ export default async function LandingPagesPage() {
                 <Badge variant={p.status === "active" ? "success" : "warning"}>
                   {p.status === "active" ? "Publicada" : "Rascunho"}
                 </Badge>
-                <code className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
-                  /p/{p.slug}
+                {hostname ? (
+                  <Badge variant="secondary">Domínio próprio</Badge>
+                ) : null}
+                <code className="bg-muted text-muted-foreground w-full truncate rounded px-1.5 py-0.5 font-mono text-[11px]">
+                  {publicUrl}
                 </code>
                 <div className="mt-2 flex w-full gap-2">
                   <Button size="sm" variant="outline" asChild>
@@ -92,15 +117,16 @@ export default async function LandingPagesPage() {
                   </Button>
                   {p.status === "active" && (
                     <Button size="sm" asChild>
-                      <Link href={`/p/${p.slug}`} target="_blank">
+                      <a href={publicUrl} target="_blank" rel="noreferrer">
                         <ExternalLink /> Abrir página
-                      </Link>
+                      </a>
                     </Button>
                   )}
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
