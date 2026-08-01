@@ -325,19 +325,6 @@ export function CheckoutForm({
               <Input id="email" name="email" type="email" autoComplete="email" placeholder="voce@exemplo.pt" required />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="document">
-                NIF <span className="text-zinc-400 font-normal">(opcional, para fatura)</span>
-              </Label>
-              <Input
-                id="document"
-                name="document"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="123456789"
-                maxLength={9}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="phone">
                 {method === "mbway" ? (
                   "Telemóvel"

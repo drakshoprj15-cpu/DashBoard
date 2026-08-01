@@ -58,7 +58,6 @@ export async function submitCheckoutAction(
     lastName: formData.get("lastName"),
     email: formData.get("email"),
     phone: formData.get("phone"),
-    document: formData.get("document") ?? "",
     addressLine1: formData.get("addressLine1"),
     addressLine2: formData.get("addressLine2") ?? "",
     postalCode: formData.get("postalCode"),
@@ -148,8 +147,6 @@ export async function submitCheckoutAction(
           firstName: data.firstName,
           lastName: data.lastName,
           phone,
-          // Nunca apaga um NIF já guardado só porque esta compra veio sem o campo preenchido.
-          ...(data.document ? { document: data.document } : {}),
           updatedAt: new Date(),
         })
         .where(eq(customers.id, customerId));
@@ -162,7 +159,6 @@ export async function submitCheckoutAction(
           firstName: data.firstName,
           lastName: data.lastName,
           phone,
-          document: data.document || undefined,
           country: "PT",
         })
         .returning({ id: customers.id });
@@ -235,7 +231,6 @@ export async function submitCheckoutAction(
         name: `${data.firstName} ${data.lastName}`,
         email: data.email,
         phone,
-        document: data.document || undefined,
         address: {
           line1: data.addressLine1,
           line2: data.addressLine2 || undefined,
