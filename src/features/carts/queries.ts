@@ -67,17 +67,24 @@ export function sanitizeSearchTerm(raw: string | undefined | null): string | und
   return trimmed.replace(/[%_\\]/g, (c) => `\\${c}`);
 }
 
-function abandonCutoff(now: Date = new Date()): Date {
-  return new Date(now.getTime() - ABANDON_THRESHOLD_HOURS * 3_600_000);
+/**
+ * Instante a partir do qual um "aguardando pagamento" passa a contar como
+ * abandonado. Devolvido como ISO string porque estes templates `sql` são
+ * crus: um `Date` interpolado direto não passa pelo mapeador de coluna do
+ * Drizzle e o driver `postgres.js` rejeita-o. A comparação usa sempre um
+ * cast explícito para `timestamptz`.
+ */
+function abandonCutoff(now: Date = new Date()): string {
+  return new Date(now.getTime() - ABANDON_THRESHOLD_HOURS * 3_600_000).toISOString();
 }
 
-function tabCondition(tab: CartTab | undefined, cutoff: Date): SQL | undefined {
+function tabCondition(tab: CartTab | undefined, cutoff: string): SQL | undefined {
   if (!tab || tab === "all") return undefined;
   switch (tab) {
     case "awaiting_payment":
-      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}`;
+      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz`;
     case "abandoned":
-      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}`;
+      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz`;
     case "pending":
       return sql`${orders.status} = 'processing'`;
     case "paid":
@@ -495,9 +502,9 @@ export async function getCartsFacets(
 
   const [row] = await db
     .select({
-      awaitingCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff})::int`,
-      awaitingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}), 0)::int`,
-      abandonedCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff})::int`,
+      awaitingCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz)::int`,
+      awaitingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz), 0)::int`,
+      abandonedCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz)::int`,
       pendingCount: sql<number>`count(*) filter (where ${orders.status} = 'processing')::int`,
       pendingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'processing'), 0)::int`,
       paidCount: sql<number>`count(*) filter (where ${orders.status} in ('paid','preparing','shipped','delivered'))::int`,
