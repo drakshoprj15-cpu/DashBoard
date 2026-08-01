@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Database, Info, XCircle, CheckCircle2 } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
-import { getSegmentCounts } from "@/features/emails/segments";
+import { getCustomRecipients, getSegmentCounts } from "@/features/emails/segments";
 import { isResendConfigured } from "@/features/emails/resend-provider";
 import { CampaignForm } from "@/features/emails/campaign-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,7 +12,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 export const metadata: Metadata = { title: "Emails" };
 export const dynamic = "force-dynamic";
 
-export default async function EmailsPage() {
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function EmailsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ recipients?: string }>;
+}) {
   if (!isDatabaseConfigured()) {
     return (
       <EmptyState
@@ -24,7 +30,17 @@ export default async function EmailsPage() {
     );
   }
 
-  const counts = await getSegmentCounts();
+  const { recipients: recipientsParamRaw } = await searchParams;
+  const customerIds = (recipientsParamRaw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => UUID_REGEX.test(s))
+    .slice(0, 500);
+
+  const [counts, customRecipients] = await Promise.all([
+    getSegmentCounts(),
+    customerIds.length > 0 ? getCustomRecipients(customerIds) : Promise.resolve(null),
+  ]);
   const resendReady = isResendConfigured();
 
   return (
@@ -73,7 +89,12 @@ export default async function EmailsPage() {
         </AlertDescription>
       </Alert>
 
-      <CampaignForm counts={counts} resendReady={resendReady} />
+      <CampaignForm
+        counts={counts}
+        resendReady={resendReady}
+        customRecipients={customRecipients}
+        customerIdsParam={customerIds.join(",")}
+      />
     </div>
   );
 }

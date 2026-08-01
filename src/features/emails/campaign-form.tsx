@@ -4,12 +4,15 @@ import * as React from "react";
 import { useActionState } from "react";
 import { AlertCircle, CheckCircle2, Send, TestTube } from "lucide-react";
 
+import { Users } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import {
   sendCampaignAction,
   type EmailActionResult,
 } from "@/features/emails/actions";
 import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
+import type { CustomRecipientsResult } from "@/features/emails/segments";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,18 +35,26 @@ const VARIABLES = [
 export function CampaignForm({
   counts,
   resendReady,
+  customRecipients,
+  customerIdsParam,
 }: {
   counts: Record<string, number>;
   resendReady: boolean;
+  /** Presente quando a página foi aberta com `?recipients=` (seleção vinda de Carrinhos). */
+  customRecipients?: CustomRecipientsResult | null;
+  customerIdsParam?: string;
 }) {
   const [state, formAction, pending] = useActionState<
     EmailActionResult | null,
     FormData
   >(sendCampaignAction, null);
-  const [segment, setSegment] = React.useState<SegmentKey>("pending");
+  const hasCustomRecipients = Boolean(customRecipients && customRecipients.recipients.length > 0);
+  const [segment, setSegment] = React.useState<SegmentKey>(
+    hasCustomRecipients ? "custom" : "pending",
+  );
   const [mode, setMode] = React.useState<"test" | "send">("test");
 
-  const total = counts[segment] ?? 0;
+  const total = segment === "custom" ? (customRecipients?.recipients.length ?? 0) : (counts[segment] ?? 0);
 
   return (
     <Card>
@@ -75,6 +86,56 @@ export function CampaignForm({
           <div className="space-y-2">
             <Label>Destinatários</Label>
             <input type="hidden" name="segment" value={segment} />
+            {hasCustomRecipients && (
+              <input type="hidden" name="customerIds" value={customerIdsParam ?? ""} />
+            )}
+
+            {hasCustomRecipients && customRecipients && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setSegment("custom")}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-lg border-2 p-3 text-left transition-colors",
+                    segment === "custom"
+                      ? "border-primary bg-accent/40"
+                      : "border-border hover:border-muted-foreground/40",
+                  )}
+                >
+                  <span>
+                    <span className="flex items-center gap-1.5 text-sm font-semibold">
+                      <Users className="size-3.5" aria-hidden="true" />
+                      Selecionados em Carrinhos
+                    </span>
+                    <span className="text-muted-foreground mt-0.5 block text-xs">
+                      Contatos escolhidos manualmente na tabela de Carrinhos
+                    </span>
+                  </span>
+                  <span className="text-primary text-sm font-bold">
+                    {customRecipients.recipients.length}
+                  </span>
+                </button>
+                {(customRecipients.excludedNoConsent > 0 ||
+                  customRecipients.excludedSuppressed > 0 ||
+                  customRecipients.notFoundCount > 0) && (
+                  <p className="text-muted-foreground text-xs">
+                    De {customRecipients.totalSelected} selecionados:{" "}
+                    {customRecipients.excludedNoConsent > 0 &&
+                      `${customRecipients.excludedNoConsent} sem consentimento`}
+                    {customRecipients.excludedNoConsent > 0 &&
+                      (customRecipients.excludedSuppressed > 0 || customRecipients.notFoundCount > 0) &&
+                      ", "}
+                    {customRecipients.excludedSuppressed > 0 &&
+                      `${customRecipients.excludedSuppressed} suprimidos/descadastrados`}
+                    {customRecipients.excludedSuppressed > 0 && customRecipients.notFoundCount > 0 && ", "}
+                    {customRecipients.notFoundCount > 0 &&
+                      `${customRecipients.notFoundCount} não encontrados`}{" "}
+                    foram excluídos automaticamente.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {SEGMENTS.map((s) => (
                 <button

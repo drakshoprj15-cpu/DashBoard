@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { getSegmentRecipients } from "@/features/emails/segments";
+import { getCustomRecipients, getSegmentRecipients, type Recipient } from "@/features/emails/segments";
 import type { SegmentKey } from "@/features/emails/types";
 import {
   isResendConfigured,
@@ -13,12 +13,27 @@ import { company } from "@/lib/company";
 import { getAppUrl } from "@/lib/app-url";
 
 const campaignSchema = z.object({
-  segment: z.enum(["paid", "pending", "refused", "no_orders", "all"]),
+  segment: z.enum(["paid", "pending", "refused", "no_orders", "all", "custom"]),
+  /** Ids de cliente separados por vírgula — só usado quando segment="custom". */
+  customerIds: z.string().trim().optional().or(z.literal("")),
   subject: z.string().trim().min(3, "Escreva um assunto"),
   body: z.string().trim().min(10, "Escreva a mensagem"),
   testEmail: z.string().trim().email("E-mail de teste inválido").optional().or(z.literal("")),
   mode: z.enum(["test", "send"]),
 });
+
+/** Resolve a lista final de destinatários — segmento fixo ou seleção manual de Carrinhos. */
+async function resolveRecipients(segment: SegmentKey, customerIdsRaw: string | undefined): Promise<Recipient[]> {
+  if (segment === "custom") {
+    const ids = (customerIdsRaw ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const result = await getCustomRecipients(ids);
+    return result.recipients;
+  }
+  return getSegmentRecipients(segment);
+}
 
 export interface EmailActionResult {
   ok: boolean;
@@ -65,6 +80,7 @@ export async function sendCampaignAction(
 ): Promise<EmailActionResult> {
   const parsed = campaignSchema.safeParse({
     segment: formData.get("segment"),
+    customerIds: formData.get("customerIds") ?? "",
     subject: formData.get("subject"),
     body: formData.get("body"),
     testEmail: formData.get("testEmail") ?? "",
@@ -75,7 +91,7 @@ export async function sendCampaignAction(
     return { ok: false, error: parsed.error.issues[0].message };
   }
 
-  const { segment, subject, body, testEmail, mode } = parsed.data;
+  const { segment, customerIds, subject, body, testEmail, mode } = parsed.data;
 
   if (!isResendConfigured()) {
     return {
@@ -108,9 +124,15 @@ export async function sendCampaignAction(
       : { ok: false, error: result.error };
   }
 
-  const recipients = await getSegmentRecipients(segment as SegmentKey);
+  const recipients = await resolveRecipients(segment as SegmentKey, customerIds);
   if (recipients.length === 0) {
-    return { ok: false, error: "Este segmento não tem destinatários." };
+    return {
+      ok: false,
+      error:
+        segment === "custom"
+          ? "Nenhum dos contatos selecionados pode receber e-mail (sem consentimento, bloqueado ou suprimido)."
+          : "Este segmento não tem destinatários.",
+    };
   }
 
   let sent = 0;

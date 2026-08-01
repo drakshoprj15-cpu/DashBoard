@@ -5,7 +5,12 @@
  * banco (postgres/drizzle), que nunca pode entrar no bundle do cliente.
  */
 
-export type SegmentKey = "paid" | "pending" | "refused" | "no_orders" | "all";
+/**
+ * "custom" não é um segmento fixo: é uma seleção manual de clientes vinda
+ * da aba Carrinhos (`?recipients=id1,id2,...`) — por isso não tem entrada em
+ * `SEGMENTS` (não é um card clicável, é resolvido a partir da URL).
+ */
+export type SegmentKey = "paid" | "pending" | "refused" | "no_orders" | "all" | "custom";
 
 export interface SegmentDefinition {
   key: SegmentKey;

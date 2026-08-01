@@ -6,6 +6,7 @@ import {
   customers,
   ledgerEntries,
   orderItems,
+  orderStatusHistory,
   orders,
   payments,
   paymentWebhooks,
@@ -16,6 +17,10 @@ import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
 import { sendOrderToUtmify } from "@/features/pixels/utmify";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { dispatchWebhookEvent } from "@/features/webhooks/dispatch";
+import {
+  canTransitionOrderStatus,
+  ORDER_STATUS_BY_PAYMENT_STATUS,
+} from "@/features/carts/status";
 import {
   createNotification,
   type NotificationEvent,
@@ -108,23 +113,37 @@ export async function POST(request: Request) {
         })
         .where(eq(payments.id, paymentId));
 
-      const orderStatusByPayment: Record<string, string> = {
-        approved: "paid",
-        refused: "refused",
-        expired: "expired",
-        refunded: "refunded",
-        chargeback: "chargeback",
-      };
-      const newOrderStatus = orderStatusByPayment[event.status];
+      const newOrderStatus = ORDER_STATUS_BY_PAYMENT_STATUS[event.status];
       if (newOrderStatus) {
-        await db
-          .update(orders)
-          .set({
-            status: newOrderStatus as (typeof orders.$inferInsert)["status"],
-            paidAt: event.status === "approved" ? now : undefined,
-            updatedAt: now,
-          })
-          .where(eq(orders.id, orderId));
+        const [currentOrder] = await db
+          .select({ status: orders.status, workspaceId: orders.workspaceId })
+          .from(orders)
+          .where(eq(orders.id, orderId))
+          .limit(1);
+
+        // Entrega at-least-once + eventos fora de ordem: nunca rebaixa um
+        // pedido já confirmado (ex.: "processing" atrasado chegando depois
+        // de "approved" não pode reverter um pedido pago).
+        if (currentOrder && canTransitionOrderStatus(currentOrder.status, newOrderStatus)) {
+          await db
+            .update(orders)
+            .set({
+              status: newOrderStatus as (typeof orders.$inferInsert)["status"],
+              paidAt: event.status === "approved" ? now : undefined,
+              updatedAt: now,
+            })
+            .where(eq(orders.id, orderId));
+
+          await db.insert(orderStatusHistory).values({
+            workspaceId: currentOrder.workspaceId,
+            orderId,
+            fromStatus: currentOrder.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+            toStatus: newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
+            reason: `Webhook Broski: ${event.type}`,
+            changedBy: null,
+            metadata: { source: "webhook", providerKey: "broski", eventType: event.type },
+          });
+        }
       }
 
       await db

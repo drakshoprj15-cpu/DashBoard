@@ -58,6 +58,8 @@ export const orders = pgTable(
     internalNotes: text("internal_notes"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** Último lembrete de pagamento enviado — evita reenviar em intervalo curto */
+    lastReminderSentAt: timestamp("last_reminder_sent_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [

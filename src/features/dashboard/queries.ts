@@ -12,7 +12,7 @@ import {
   visitorSessions,
 } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
-import { getCartsSummary, listAbandonedCarts } from "@/features/carts/queries";
+import { getPendingCartsCount } from "@/features/carts/queries";
 import { PAID_STATUSES, STATUS_LABEL } from "@/features/orders/status";
 import {
   percentChange,
@@ -345,9 +345,8 @@ export async function getDashboardSnapshot(
       ),
     );
 
-  // Carrinhos abandonados reaproveitando a mesma regra já usada em /carrinhos.
-  const abandonedCarts = await listAbandonedCarts();
-  const cartsSummary = await getCartsSummary(abandonedCarts);
+  // Pedidos ainda não resolvidos (nem pagos, nem perdidos) — mesma regra usada em /carrinhos.
+  const pendingCartsCount = await getPendingCartsCount();
 
   // Pedidos recentes.
   const recentRows = await db
@@ -516,11 +515,11 @@ export async function getDashboardSnapshot(
     });
   }
 
-  if (cartsSummary.abandonedCount > 0) {
+  if (pendingCartsCount > 0) {
     alerts.push({
       key: "abandoned_carts",
       title: "Carrinhos abandonados",
-      count: cartsSummary.abandonedCount,
+      count: pendingCartsCount,
       href: "/carrinhos",
     });
   }
@@ -555,7 +554,7 @@ export async function getDashboardSnapshot(
     todayRevenueCents: todayRow?.revenueCents ?? 0,
     todayOrdersCount: todayRow?.ordersCount ?? 0,
     customersCount: customersRow?.n ?? 0,
-    abandonedCartsCount: cartsSummary.abandonedCount,
+    abandonedCartsCount: pendingCartsCount,
 
     recentOrders,
     funnel,

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidDocument } from "@/lib/document";
+
 /**
  * Telemóvel português (obrigatório para MB WAY): +351 9XXXXXXXX.
  * A app MB WAY só existe em telemóveis, por isso o 9 inicial é exigido —
@@ -33,6 +35,8 @@ export const checkoutSchema = z
     lastName: z.string().trim().min(2, "Informe o apelido"),
     email: z.string().trim().email("Informe um e-mail válido"),
     phone: z.string().trim().optional().or(z.literal("")),
+    /** NIF — opcional, só usado para emitir fatura com contribuinte. */
+    document: z.string().trim().optional().or(z.literal("")),
     addressLine1: z.string().trim().min(4, "Informe a morada"),
     addressLine2: z.string().trim().optional().or(z.literal("")),
     postalCode: z
@@ -54,6 +58,14 @@ export const checkoutSchema = z
     utmTerm: z.string().trim().optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
+    if (data.document && !isValidDocument(data.document, "PT")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["document"],
+        message: "NIF inválido. Confirme os 9 dígitos (ou deixe em branco).",
+      });
+    }
+
     const phone = data.phone ? normalizePtPhone(data.phone) : "";
 
     if (data.paymentMethod === "mbway") {
