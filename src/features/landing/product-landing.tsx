@@ -58,7 +58,10 @@ function StarRow({ value, className }: { value: number; className?: string }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={cn("size-4", i < Math.round(value) ? "fill-current" : "opacity-25")}
+          className={cn(
+            "size-4",
+            i < Math.round(value) ? "fill-current" : "opacity-25",
+          )}
         />
       ))}
     </span>
@@ -194,9 +197,7 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
   const [tab, setTab] = React.useState<"descricao" | "envios">("descricao");
 
   const discountPercent = product.compareAtPriceCents
-    ? Math.round(
-        (1 - product.priceCents / product.compareAtPriceCents) * 100,
-      )
+    ? Math.round((1 - product.priceCents / product.compareAtPriceCents) * 100)
     : null;
 
   const savings = product.compareAtPriceCents
@@ -294,7 +295,9 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
                       />
                     ))}
                   </span>
-                  <strong>{product.rating.value.toLocaleString("pt-PT")}</strong>
+                  <strong>
+                    {product.rating.value.toLocaleString("pt-PT")}
+                  </strong>
                   <span className="text-zinc-500">
                     · {product.rating.count} avaliações
                   </span>
@@ -344,9 +347,17 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
               </p>
               <div className="mt-3 flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/landing/mbway.svg" alt="MB WAY" className="h-9 rounded border bg-white px-2 py-1" />
+                <img
+                  src="/landing/mbway.svg"
+                  alt="MB WAY"
+                  className="h-9 rounded border bg-white px-2 py-1"
+                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/landing/multibanco.svg" alt="Multibanco" className="h-9 rounded border bg-white px-2 py-1" />
+                <img
+                  src="/landing/multibanco.svg"
+                  alt="Multibanco"
+                  className="h-9 rounded border bg-white px-2 py-1"
+                />
               </div>
             </div>
 
@@ -384,7 +395,9 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
                 >
                   <Minus className="size-4" />
                 </button>
-                <span className="w-8 text-center font-semibold">{quantity}</span>
+                <span className="w-8 text-center font-semibold">
+                  {quantity}
+                </span>
                 <button
                   type="button"
                   aria-label="Aumentar quantidade"
@@ -488,7 +501,10 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
                 </h3>
                 <dl className="divide-y rounded-xl border text-sm">
                   {product.specs.map(([k, v]) => (
-                    <div key={k} className="flex justify-between gap-4 px-4 py-2.5">
+                    <div
+                      key={k}
+                      className="flex justify-between gap-4 px-4 py-2.5"
+                    >
                       <dt className="text-zinc-500">{k}</dt>
                       <dd className="text-right font-medium">{v}</dd>
                     </div>
@@ -551,7 +567,7 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
           <div className="grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-lg font-black tracking-tight text-white">
-                Tech<span className="text-violet-400">Nébula</span>
+                {branding.storeName}
               </p>
               <p className="mt-3 max-w-xs text-xs leading-relaxed">
                 A sua loja de tecnologia em Portugal — entrega rápida e
@@ -606,7 +622,10 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
                   { label: "Trocas e Devoluções", href: "/legal/devolucoes" },
                 ].map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="transition-colors hover:text-white">
+                    <Link
+                      href={l.href}
+                      className="transition-colors hover:text-white"
+                    >
                       {l.label}
                     </Link>
                   </li>
@@ -621,11 +640,17 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
               <ul className="mt-3 space-y-2 text-xs">
                 {[
                   { label: "Termos e Condições", href: "/legal/termos" },
-                  { label: "Política de Privacidade", href: "/legal/privacidade" },
+                  {
+                    label: "Política de Privacidade",
+                    href: "/legal/privacidade",
+                  },
                   { label: "Política de Cookies", href: "/legal/cookies" },
                 ].map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="transition-colors hover:text-white">
+                    <Link
+                      href={l.href}
+                      className="transition-colors hover:text-white"
+                    >
                       {l.label}
                     </Link>
                   </li>
@@ -646,8 +671,8 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
 
           {/* Linha final */}
           <div className="border-t border-zinc-800 py-5 text-center text-xs text-zinc-500">
-            © {new Date().getFullYear()} {techNebulaStore.name}. Todos os
-            direitos reservados. · Pagamento seguro · Entrega em todo Portugal
+            © {new Date().getFullYear()} {branding.storeName}. Todos os direitos
+            reservados. · Pagamento seguro · Entrega em todo Portugal
           </div>
         </div>
       </footer>
