@@ -10,6 +10,7 @@ import {
 } from "@/features/products/actions";
 import { slugify } from "@/validations/product-crud";
 import type { ProductDetail } from "@/features/products/queries";
+import { ImageDropzone } from "@/components/image-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,9 @@ export function ProductCoreForm({ product }: { product: ProductDetail }) {
   >(updateProductCoreAction, null);
 
   const [slugPreview, setSlugPreview] = React.useState(product.slug);
+  const [mainImageUrl, setMainImageUrl] = React.useState(
+    product.mainImageUrl ?? "",
+  );
   const [trackInventory, setTrackInventory] = React.useState(
     product.trackInventory,
   );
@@ -145,17 +149,14 @@ export function ProductCoreForm({ product }: { product: ProductDetail }) {
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="mainImageUrl">
-                URL da imagem principal{" "}
-                <span className="text-muted-foreground font-normal">
-                  (opcional)
-                </span>
-              </Label>
-              <Input
-                id="mainImageUrl"
-                name="mainImageUrl"
-                type="url"
-                defaultValue={product.mainImageUrl ?? ""}
+              <input type="hidden" name="mainImageUrl" value={mainImageUrl} />
+              <ImageDropzone
+                id="mainImageUrl-dropzone"
+                label="Imagem principal"
+                endpoint="/api/uploads/product-image"
+                hint="PNG, JPEG, WebP ou SVG · até 5 MB"
+                value={mainImageUrl}
+                onChange={setMainImageUrl}
               />
             </div>
           </div>

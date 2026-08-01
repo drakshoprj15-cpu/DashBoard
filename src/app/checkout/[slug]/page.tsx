@@ -41,6 +41,12 @@ export default async function CheckoutSlugPage(
   const product = await getProductBySlug(checkout?.productSlug ?? slug);
   if (!product) notFound();
 
+  // Logo do checkout específico tem prioridade; sem uma configurada, cai na
+  // logo da loja (mesmo padrão já usado na landing pública) — mesmo um
+  // checkout antigo ou sem tema próprio mostra a marca da loja, não um
+  // banner vazio.
+  const logoUrl = checkout?.theme.logoUrl ?? branding.logoUrl;
+
   const qtyRaw = Number(
     typeof searchParams.qty === "string" ? searchParams.qty : "1",
   );
@@ -82,10 +88,10 @@ export default async function CheckoutSlugPage(
       >
         <div className="mx-auto flex max-w-6xl items-center justify-center px-4">
           <Link href={`/p/${product.slug}`} className="flex items-center">
-            {checkout?.theme.logoUrl ? (
+            {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={checkout.theme.logoUrl}
+                src={logoUrl}
                 alt={branding.storeName}
                 className="h-10 max-w-[220px] object-contain md:h-12"
               />

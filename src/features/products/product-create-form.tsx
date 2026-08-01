@@ -9,6 +9,7 @@ import {
   type ProductActionResult,
 } from "@/features/products/actions";
 import { slugify } from "@/validations/product-crud";
+import { ImageDropzone } from "@/components/image-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,18 @@ export function ProductCreateForm() {
 
   const [slugPreview, setSlugPreview] = React.useState("");
   const [trackInventory, setTrackInventory] = React.useState(false);
+  const [mainImageUrl, setMainImageUrl] = React.useState("");
   const formKey = state?.ok ? `saved-${state.message ?? ""}` : "novo";
+
+  // Limpa a imagem escolhida quando o produto é criado — sem isso ela
+  // ficaria presa no formulário e seria reenviada sem querer no próximo
+  // cadastro (o `key` do form já reseta os campos não controlados, mas não
+  // este estado, que vive no componente pai).
+  const [handledState, setHandledState] = React.useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
+    if (state?.ok) setMainImageUrl("");
+  }
 
   return (
     <Card>
@@ -149,17 +161,14 @@ export function ProductCreateForm() {
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="mainImageUrl">
-                URL da imagem principal{" "}
-                <span className="text-muted-foreground font-normal">
-                  (opcional)
-                </span>
-              </Label>
-              <Input
-                id="mainImageUrl"
-                name="mainImageUrl"
-                type="url"
-                placeholder="https://…"
+              <input type="hidden" name="mainImageUrl" value={mainImageUrl} />
+              <ImageDropzone
+                id="mainImageUrl-dropzone"
+                label="Imagem principal"
+                endpoint="/api/uploads/product-image"
+                hint="PNG, JPEG, WebP ou SVG · até 5 MB"
+                value={mainImageUrl}
+                onChange={setMainImageUrl}
               />
             </div>
           </div>
