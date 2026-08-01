@@ -9,6 +9,10 @@ import { Tracker } from "@/features/analytics/tracker";
 import { getPublishedReviews } from "@/features/reviews/queries";
 import { CookieBanner } from "@/features/consent/cookie-banner";
 import { getWorkspaceBranding } from "@/features/branding/queries";
+import {
+  ProductCustomCodeBottom,
+  ProductCustomCodeTop,
+} from "@/features/custom-code/public-injector";
 
 /**
  * Landing page de um produto, com pixel, rastreio e banner de cookies.
@@ -45,7 +49,9 @@ export async function LandingPageView({ slug }: { slug: string }) {
         valueCents={product.priceCents}
         currency={product.currency}
       />
+      <ProductCustomCodeTop productId={product.id} />
       <ProductLanding product={withReviews} branding={branding} />
+      <ProductCustomCodeBottom productId={product.id} />
       <CookieBanner />
     </>
   );

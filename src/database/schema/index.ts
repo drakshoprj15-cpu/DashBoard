@@ -16,6 +16,7 @@ export * from "./orders";
 export * from "./payments";
 export * from "./analytics";
 export * from "./pixels";
+export * from "./custom-code";
 export * from "./integrations";
 export * from "./emails";
 export * from "./notifications";

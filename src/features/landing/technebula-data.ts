@@ -32,6 +32,8 @@ export interface ProductReview {
 }
 
 export interface LandingProduct {
+  /** UUID em `products.id` — vazio no catálogo estático (sem linha no banco) */
+  id: string;
   slug: string;
   name: string;
   brand: string;
@@ -74,6 +76,7 @@ export interface LandingProduct {
 }
 
 export const alphaGamerNebula: LandingProduct = {
+  id: "",
   slug: "cadeira-gaming-alpha-gamer-nebula",
   name: "Cadeira Gaming ALPHA GAMER Nébula",
   brand: "ALPHA GAMER",

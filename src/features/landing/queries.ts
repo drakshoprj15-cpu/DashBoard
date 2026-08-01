@@ -33,6 +33,7 @@ export const getProductBySlug = cache(async function getProductBySlug(
       if (row && row.status === "active") {
         const content = (row.landingContent ?? {}) as Partial<LandingProduct>;
         return {
+          id: row.id,
           slug: row.slug,
           name: row.name,
           brand: content.brand ?? "",
