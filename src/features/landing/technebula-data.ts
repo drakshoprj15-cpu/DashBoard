@@ -52,6 +52,8 @@ export interface LandingProduct {
   deliveryEstimate: string;
   returnDays: number;
   description: string[];
+  /** Parágrafos livres da aba "Envios & Devoluções". Vazio = usa o texto padrão. */
+  shippingReturns: string[];
   highlights: string[];
   specs: [string, string][];
   /**
@@ -105,6 +107,7 @@ export const alphaGamerNebula: LandingProduct = {
     "O enchimento em espuma de 43–45 kg/m³ oferece suporte firme e confortável, e as almofadas amovíveis garantem apoio extra para a cabeça e zona lombar. O encosto reclina até 180° e o assento conta com função de balanço.",
     "Os apoios de braço ajustam-se em altura e rotação horizontal. As cinco rodas duplas com rotação 360° garantem liberdade de movimento. Construção em aço, plástico, camurça e espuma — robusta, durável e com acabamento moderno em cinzento.",
   ],
+  shippingReturns: [],
   highlights: [
     "Peso máximo: 130 kg",
     "Elevador a gás Classe 4",

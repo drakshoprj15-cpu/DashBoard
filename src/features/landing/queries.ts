@@ -50,6 +50,7 @@ export const getProductBySlug = cache(async function getProductBySlug(
           deliveryEstimate: content.deliveryEstimate ?? "2–4 dias úteis",
           returnDays: content.returnDays ?? 14,
           description: content.description ?? [],
+          shippingReturns: content.shippingReturns ?? [],
           highlights: content.highlights ?? [],
           specs: content.specs ?? [],
           reviews: content.reviews ?? [],

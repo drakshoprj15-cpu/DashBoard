@@ -476,55 +476,66 @@ export function ProductLanding({ product, branding }: ProductLandingProps) {
           </div>
 
           {tab === "descricao" ? (
-            <div className="grid gap-8 py-6 lg:grid-cols-3">
-              <div className="space-y-4 text-zinc-700 lg:col-span-2">
-                <h2 className="text-lg font-bold text-zinc-900">
+            <div className="py-6">
+              <div className="mx-auto max-w-3xl rounded-2xl border bg-white p-6 shadow-sm sm:p-10">
+                <h2 className="text-2xl font-bold text-zinc-900">
                   Sobre este produto
                 </h2>
-                {product.description.map((p, i) => (
-                  <p key={i} className="leading-relaxed">
-                    {p}
+                {product.shortPitch && (
+                  <p className="mt-2 font-semibold text-zinc-700">
+                    {product.shortPitch}
                   </p>
-                ))}
-                <ul className="grid gap-2 pt-2 sm:grid-cols-2">
-                  {product.highlights.map((h) => (
-                    <li key={h} className="flex items-center gap-2 text-sm">
-                      <Check className="size-4 shrink-0 text-emerald-600" />
-                      {h}
-                    </li>
+                )}
+                <div className="mt-4 space-y-4 text-zinc-700">
+                  {product.description.map((p, i) => (
+                    <p key={i} className="leading-relaxed">
+                      {p}
+                    </p>
                   ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="mb-3 text-sm font-bold text-zinc-900">
-                  Especificações
-                </h3>
-                <dl className="divide-y rounded-xl border text-sm">
-                  {product.specs.map(([k, v]) => (
-                    <div
-                      key={k}
-                      className="flex justify-between gap-4 px-4 py-2.5"
-                    >
-                      <dt className="text-zinc-500">{k}</dt>
-                      <dd className="text-right font-medium">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
+                </div>
+                {product.highlights.length > 0 && (
+                  <ul className="grid gap-2 pt-6 sm:grid-cols-2">
+                    {product.highlights.map((h) => (
+                      <li key={h} className="flex items-center gap-2 text-sm">
+                        <Check className="size-4 shrink-0 text-emerald-600" />
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {product.specs.length > 0 && (
+                  <dl className="mt-8 grid gap-x-6 gap-y-4 border-t pt-6 sm:grid-cols-2 lg:grid-cols-4">
+                    {product.specs.map(([k, v]) => (
+                      <div key={k}>
+                        <dt className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                          {k}
+                        </dt>
+                        <dd className="mt-0.5 font-bold text-zinc-900">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
               </div>
             </div>
           ) : (
             <div className="max-w-2xl space-y-4 py-6 text-sm leading-relaxed text-zinc-700">
-              <p>
-                <strong>Envios:</strong> encomendas processadas em 24–48 h
-                úteis, com entrega em {product.deliveryEstimate} em todo
-                Portugal continental. Portes grátis em compras acima de{" "}
-                {fmt(product.freeShippingFromCents)}.
-              </p>
-              <p>
-                <strong>Devoluções:</strong> tem {product.returnDays} dias após
-                a receção para devolver o produto sem custos, nos termos da
-                legislação portuguesa de compras à distância.
-              </p>
+              {product.shippingReturns.length > 0 ? (
+                product.shippingReturns.map((p, i) => <p key={i}>{p}</p>)
+              ) : (
+                <>
+                  <p>
+                    <strong>Envios:</strong> encomendas processadas em 24–48 h
+                    úteis, com entrega em {product.deliveryEstimate} em todo
+                    Portugal continental. Portes grátis em compras acima de{" "}
+                    {fmt(product.freeShippingFromCents)}.
+                  </p>
+                  <p>
+                    <strong>Devoluções:</strong> tem {product.returnDays} dias
+                    após a receção para devolver o produto sem custos, nos
+                    termos da legislação portuguesa de compras à distância.
+                  </p>
+                </>
+              )}
               <p>
                 <strong>Apoio ao cliente:</strong>{" "}
                 <a

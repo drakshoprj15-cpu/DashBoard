@@ -272,6 +272,7 @@ export async function updateProductLandingAction(
     deliveryEstimate: formData.get("deliveryEstimate") || undefined,
     returnDays: formData.get("returnDays") || undefined,
     description: formData.get("description") ?? "",
+    shippingReturns: formData.get("shippingReturns") ?? "",
     highlights: formData.get("highlights") ?? "",
     specs: formData.get("specs") ?? "",
   });

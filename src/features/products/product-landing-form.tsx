@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useActionState } from "react";
 import { AlertCircle, CheckCircle2, Save } from "lucide-react";
 
@@ -7,6 +8,7 @@ import {
   updateProductLandingAction,
   type ProductActionResult,
 } from "@/features/products/actions";
+import { ImageDropzone } from "@/components/image-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+const GALLERY_SLOTS = 5;
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -33,6 +37,16 @@ function joinLines(value: unknown): string {
   return Array.isArray(value)
     ? value.filter((v): v is string => typeof v === "string").join("\n")
     : "";
+}
+
+/** Garante um array com exatamente `GALLERY_SLOTS` posições (preenche com ""). */
+function toGallerySlots(value: unknown): string[] {
+  const urls = Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string")
+    : [];
+  const slots = urls.slice(0, GALLERY_SLOTS);
+  while (slots.length < GALLERY_SLOTS) slots.push("");
+  return slots;
 }
 
 function joinParagraphs(value: unknown): string {
@@ -67,6 +81,11 @@ export function ProductLandingForm({
   const content = landingContent ?? {};
   const compareAtPriceCents = num(content.compareAtPriceCents);
   const freeShippingFromCents = num(content.freeShippingFromCents);
+
+  const [gallery, setGallery] = React.useState<string[]>(() =>
+    toGallerySlots(content.gallery),
+  );
+  const galleryValue = gallery.filter(Boolean).join("\n");
 
   return (
     <Card>
@@ -170,34 +189,66 @@ export function ProductLandingForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="gallery">
-              Galeria de fotos{" "}
+            <Label>
+              Imagens do produto{" "}
               <span className="text-muted-foreground font-normal">
-                (uma URL por linha)
+                (até 5 fotos — a primeira é a imagem principal exibida na
+                landing page)
               </span>
             </Label>
-            <textarea
-              id="gallery"
-              name="gallery"
-              rows={4}
-              defaultValue={joinLines(content.gallery)}
-              placeholder={"https://…/foto1.jpg\nhttps://…/foto2.jpg"}
-              className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 font-mono text-xs shadow-xs outline-none focus-visible:ring-[3px]"
-            />
+            <input type="hidden" name="gallery" value={galleryValue} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {gallery.map((url, i) => (
+                <ImageDropzone
+                  key={i}
+                  id={`gallery-image-${i}`}
+                  label={i === 0 ? "Imagem 1 (principal)" : `Imagem ${i + 1}`}
+                  endpoint="/api/uploads/product-image"
+                  hint="PNG, JPEG, WebP ou SVG · até 5 MB"
+                  value={url}
+                  onChange={(newUrl) =>
+                    setGallery((prev) =>
+                      prev.map((u, idx) => (idx === i ? newUrl : u)),
+                    )
+                  }
+                />
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">
               Descrição{" "}
               <span className="text-muted-foreground font-normal">
-                (parágrafos separados por linha em branco)
+                (parágrafos separados por linha em branco — fique à vontade
+                para escrever bastante, é o texto principal da página)
               </span>
             </Label>
             <textarea
               id="description"
               name="description"
-              rows={6}
+              rows={16}
               defaultValue={joinParagraphs(content.description)}
+              className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="shippingReturns">
+              Envios &amp; Devoluções{" "}
+              <span className="text-muted-foreground font-normal">
+                (parágrafos separados por linha em branco — opcional, deixe
+                vazio para usar o texto padrão)
+              </span>
+            </Label>
+            <textarea
+              id="shippingReturns"
+              name="shippingReturns"
+              rows={4}
+              defaultValue={joinParagraphs(content.shippingReturns)}
+              placeholder={
+                "Envio: entregamos em 2 a 4 dias úteis...\n\nDevoluções: tem 14 dias para devolver o artigo..."
+              }
               className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             />
           </div>

@@ -93,11 +93,16 @@ export const updateProductLandingSchema = z.object({
   id: z.string().uuid("Produto inválido"),
   brand: z.string().trim().max(120).optional(),
   compareAtPriceCents: z.coerce.number().int().positive().optional(),
-  gallery: z.string().optional().transform(linesOf),
+  gallery: z
+    .string()
+    .optional()
+    .transform(linesOf)
+    .transform((urls) => urls.slice(0, 5)),
   freeShippingFromCents: z.coerce.number().int().min(0).default(0),
   deliveryEstimate: z.string().trim().max(120).default("2–4 dias úteis"),
   returnDays: z.coerce.number().int().min(0).default(14),
   description: z.string().optional().transform(paragraphsOf),
+  shippingReturns: z.string().optional().transform(paragraphsOf),
   highlights: z.string().optional().transform(linesOf),
   specs: z.string().optional().transform(specsOf),
 });
