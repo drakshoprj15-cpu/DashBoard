@@ -6,6 +6,11 @@ import { workspaces } from "./workspaces";
 /**
  * Identidade da loja usada no checkout público (nome, contacto, país,
  * moeda) — substitui dados fixos no código por algo editável no painel.
+ *
+ * RLS ativo, mesma postura de 0001_enable_rls.sql: sem policies, o acesso
+ * via anon key (embutida no JavaScript do site) é negado por padrão. A
+ * aplicação continua a funcionar porque liga como `postgres`, que ignora
+ * RLS — toda a leitura/escrita passa pelo servidor via Drizzle.
  */
 export const workspaceBranding = pgTable(
   "workspace_branding",
@@ -22,4 +27,4 @@ export const workspaceBranding = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("workspace_branding_workspace_idx").on(t.workspaceId)],
-);
+).enableRLS();

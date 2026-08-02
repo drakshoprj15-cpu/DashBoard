@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_branding" ENABLE ROW LEVEL SECURITY;
