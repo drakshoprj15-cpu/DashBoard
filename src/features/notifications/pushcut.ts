@@ -62,6 +62,8 @@ export interface PushcutWebhookValidation {
   secret?: string;
   notificationName?: string;
   maskedUrl?: string;
+  /** Aviso não bloqueante — a URL é válida e utilizável mesmo assim. */
+  warning?: string;
 }
 
 /**
@@ -146,20 +148,23 @@ export function validatePushcutWebhookUrl(
     return { ok: false, error: "A URL do webhook não contém o nome da notificação." };
   }
 
-  if (notificationName !== notificationName.trim()) {
-    return {
-      ok: false,
-      error:
-        "O nome da notificação possui um espaço no início ou no fim. Remova o espaço no aplicativo Pushcut e copie novamente a URL.",
-    };
-  }
+  // Espaço sobrando no nome não invalida a URL — é o nome real cadastrado no
+  // Pushcut (a própria app deixa criar assim). Bloquear aqui faria uma URL
+  // que funcionaria de verdade parecer quebrada. Só avisamos, sem mexer no
+  // valor: mandar exatamente o que veio da app é o único jeito de garantir
+  // que bate com o nome que o Pushcut tem guardado do lado dele.
+  const warning =
+    notificationName !== notificationName.trim()
+      ? `O nome da notificação tem um espaço no início ou no fim ("${notificationName}"). A URL funciona assim mesmo, mas se quiser deixar mais limpo, renomeie a notificação no app Pushcut (sem espaço nas pontas) e cole a URL de novo.`
+      : undefined;
 
   return {
     ok: true,
     normalizedUrl: parsedUrl.toString(),
     secret,
     notificationName,
-    maskedUrl: `https://${PUSHCUT_HOSTNAME}/••••••••/notifications/${encodeURIComponent(notificationName)}`,
+    maskedUrl: `https://${PUSHCUT_HOSTNAME}/••••••••/notifications/${encodedName}`,
+    warning,
   };
 }
 

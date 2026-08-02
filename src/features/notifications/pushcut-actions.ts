@@ -54,6 +54,7 @@ export async function savePushcutAction(
   }
 
   const current = await getPushcutStatus();
+  const warnings: string[] = [];
 
   // Cada canal ativo (com eventos escolhidos) precisa de um webhook válido —
   // já guardado antes, ou colado agora.
@@ -77,6 +78,7 @@ export async function savePushcutAction(
           error: `Webhook do canal "${label}": ${validation.error}`,
         };
       }
+      if (validation.warning) warnings.push(`${label}: ${validation.warning}`);
     }
   }
 
@@ -142,7 +144,10 @@ export async function savePushcutAction(
 
   return {
     ok: true,
-    message: "Ligado! Verifique os pushes que acabou de receber no telemóvel.",
+    message:
+      warnings.length > 0
+        ? `Ligado! Verifique os pushes que acabou de receber no telemóvel. Aviso: ${warnings.join(" · ")}`
+        : "Ligado! Verifique os pushes que acabou de receber no telemóvel.",
   };
 }
 

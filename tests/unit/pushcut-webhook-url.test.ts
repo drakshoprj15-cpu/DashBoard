@@ -103,19 +103,25 @@ describe("validatePushcutWebhookUrl", () => {
     expect(validatePushcutWebhookUrl("https://api.pushcut.io/secret").ok).toBe(false);
   });
 
-  it("rejeita nome de notificação com espaço extra no fim (bug relatado)", () => {
+  it("aceita (com aviso, não bloqueia) nome de notificação com espaço extra no fim", () => {
+    // Nome real registado assim no Pushcut continua tendo de funcionar —
+    // bloquear aqui derrubaria uma URL que é válida do lado do Pushcut.
     const result = validatePushcutWebhookUrl(
       "https://api.pushcut.io/secret/notifications/Venda%20Aprovada%20",
     );
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/espaço/i);
+    expect(result.ok).toBe(true);
+    expect(result.warning).toMatch(/espaço/i);
+    // A URL enviada de facto tem de preservar o espaço, sem "corrigir" nada.
+    expect(result.normalizedUrl).toBe(
+      "https://api.pushcut.io/secret/notifications/Venda%20Aprovada%20",
+    );
   });
 
-  it("rejeita nome de notificação com espaço extra no início", () => {
+  it("aceita (com aviso, não bloqueia) nome de notificação com espaço extra no início", () => {
     const result = validatePushcutWebhookUrl(
       "https://api.pushcut.io/secret/notifications/%20Venda",
     );
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/espaço/i);
+    expect(result.ok).toBe(true);
+    expect(result.warning).toMatch(/espaço/i);
   });
 });
