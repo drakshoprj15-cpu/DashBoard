@@ -135,7 +135,7 @@
 ### FASE 2 — Catálogo e loja — ⏳ não iniciada
 ### FASE 3 — Checkout — 🔄 em andamento (2026-07-28)
 - **Checkout público TechNébula no ar** em `/checkout/[slug]`, no mesmo layout da landing page: etapas Contacto → Entrega → Pagamento, resumo fixo no desktop e recolhível no mobile, seletor de quantidade, portes grátis calculados, seleção MB WAY/Multibanco (únicos métodos do Broski).
-- Validação Zod no servidor (telemóvel PT +3519…, código postal NNNN-NNN, NIF opcional de 9 dígitos) + proteção contra envio duplicado.
+- Validação Zod no servidor (telemóvel PT +3519…, código postal NNNN-NNN) + proteção contra envio duplicado. O campo de NIF chegou a existir e foi removido a pedido (2026-08-02), para reduzir atrito na compra.
 - **Honestidade**: sem BROSKI_API_KEY/DATABASE_URL o envio valida os dados e informa "Pagamento ainda não ativado — nenhum valor foi cobrado" (testado no navegador). Nenhum sucesso falso é simulado.
 - Pendências da fase: cobrança real (pedido no banco + Broski + webhook, junto da Fase 4), página de sucesso/pendente/erro pós-pagamento, order bump e cupons.
 ### FASE 4 — Pagamentos — 🔌 **INTEGRAÇÃO REAL CONECTADA** (2026-07-28)

@@ -36,13 +36,11 @@ npm run db:generate
 npm run db:migrate
 ```
 
-> Se o registro `drizzle.__drizzle_migrations` do banco estiver atrás dos
-> arquivos (caso deste projeto: só a `0000` está registrada), `db:migrate`
-> tenta reaplicar tudo e aborta. Nesse caso, aplique o arquivo novo sozinho:
->
-> ```bash
-> node scripts/apply-migration.mjs src/database/migrations/0007_tired_sugar_man.sql
-> ```
+> O registro `drizzle.__drizzle_migrations` do banco já está sincronizado com
+> os arquivos em `src/database/migrations/`, então `db:migrate` aplica apenas
+> o que falta. Se algum dia voltar a divergir, `db:migrate` tenta reaplicar
+> migrations antigas e aborta — nesse caso, confira quais estão realmente
+> registradas antes de forçar qualquer coisa.
 
 ## 4. Configurar autenticação (Supabase)
 
