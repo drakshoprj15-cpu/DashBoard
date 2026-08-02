@@ -10,6 +10,7 @@ import {
 import {
   PUSHCUT_EVENTS,
   PUSHCUT_SLOTS,
+  PUSHCUT_WEBHOOK_URL_PLACEHOLDER,
   type PushcutStatus,
 } from "@/features/notifications/pushcut-types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -48,10 +49,12 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
           <AlertDescription>
             Na app Pushcut, crie <strong>duas Notifications</strong> (ex.:{" "}
             <code className="font-mono text-xs">Venda gerada</code> e{" "}
-            <code className="font-mono text-xs">Venda aprovada</code>) para cada
-            uma poder ter som e ícone próprios. A chave está em{" "}
-            <strong>Account → API key</strong> — pode ser a mesma nos dois
-            canais.
+            <code className="font-mono text-xs">Venda aprovada</code>) para
+            cada uma poder ter som e ícone próprios. Em cada Notification,
+            abra <strong>Webhook URL</strong> e copie o endereço completo —
+            <em> não</em> é a &ldquo;Account → API key&rdquo;. Cole aqui a URL
+            copiada diretamente do aplicativo Pushcut; ela será guardada de
+            forma criptografada e nunca mostrada de novo por completo.
           </AlertDescription>
         </Alert>
 
@@ -79,7 +82,7 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold">{slot.label}</h3>
                       <Badge variant={current.configured ? "success" : "muted"}>
-                        {current.configured ? "Chave guardada" : "Sem chave"}
+                        {current.configured ? "Webhook configurado" : "Sem webhook"}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground mt-1 text-xs">
@@ -88,35 +91,32 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor={`${slot.key}_apiKey`}>Chave de API</Label>
+                    <Label htmlFor={`${slot.key}_webhookUrl`}>
+                      URL do webhook Pushcut
+                    </Label>
                     <Input
-                      id={`${slot.key}_apiKey`}
-                      name={`${slot.key}_apiKey`}
+                      id={`${slot.key}_webhookUrl`}
+                      name={`${slot.key}_webhookUrl`}
                       type="password"
+                      autoComplete="new-password"
+                      spellCheck={false}
+                      autoCapitalize="none"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       placeholder={
                         current.configured
-                          ? "•••••••• (deixe vazio para manter)"
-                          : "Cole aqui"
+                          ? `${current.maskedUrl} (deixe vazio para manter)`
+                          : PUSHCUT_WEBHOOK_URL_PLACEHOLDER
                       }
                     />
                     <p className="text-muted-foreground text-xs">
-                      Guardada cifrada. Nunca chega ao navegador.
+                      Cole aqui a URL copiada diretamente do aplicativo
+                      Pushcut. É guardada de forma criptografada — nunca é
+                      devolvida ao navegador depois de salva.
                     </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`${slot.key}_notificationName`}>
-                      Nome da notificação
-                    </Label>
-                    <Input
-                      id={`${slot.key}_notificationName`}
-                      name={`${slot.key}_notificationName`}
-                      placeholder={slot.defaultName}
-                      defaultValue={current.notificationName}
-                    />
-                    <p className="text-muted-foreground text-xs">
-                      Exatamente como está na app Pushcut.
-                    </p>
+                    {current.configured && current.maskedUrl && (
+                      <p className="font-mono text-xs">{current.maskedUrl}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

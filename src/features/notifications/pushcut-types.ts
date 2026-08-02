@@ -57,11 +57,20 @@ export const PUSHCUT_EVENTS: {
 
 export interface PushcutSlotStatus {
   key: PushcutSlotKey;
-  /** Tem chave de API guardada */
+  /** Tem webhook guardado */
   configured: boolean;
   notificationName: string;
   events: string[];
+  /**
+   * Versão mascarada do webhook para exibição (ex.:
+   * "https://api.pushcut.io/••••••••/notifications/Venda%20Aprovada").
+   * O segredo nunca é devolvido ao navegador.
+   */
+  maskedUrl: string | null;
 }
+
+export const PUSHCUT_WEBHOOK_URL_PLACEHOLDER =
+  "https://api.pushcut.io/••••••••/notifications/Nome%20da%20notificação";
 
 export interface PushcutStatus {
   /** Pelo menos um canal com chave guardada */

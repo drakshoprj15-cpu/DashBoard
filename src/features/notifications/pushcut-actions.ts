@@ -10,6 +10,7 @@ import {
   savePushcutCredentials,
   sendPushcutNotification,
   setPushcutActive,
+  validatePushcutWebhookUrl,
   type PushcutSlotInput,
   type PushcutSlotKey,
 } from "@/features/notifications/pushcut";
@@ -18,9 +19,8 @@ const slotKeyEnum = z.enum(["sale_created", "sale_approved"]);
 
 const slotSchema = z.object({
   key: slotKeyEnum,
-  /** Vazio = manter a chave já guardada. */
-  apiKey: z.string().trim(),
-  notificationName: z.string().trim(),
+  /** Vazio = manter a URL já guardada. */
+  webhookUrl: z.string().trim(),
   events: z.array(z.string()),
 });
 
@@ -43,8 +43,7 @@ export async function savePushcutAction(
   for (const slot of PUSHCUT_SLOTS) {
     const parsed = slotSchema.safeParse({
       key: slot.key,
-      apiKey: formData.get(`${slot.key}_apiKey`) ?? "",
-      notificationName: formData.get(`${slot.key}_notificationName`) ?? "",
+      webhookUrl: formData.get(`${slot.key}_webhookUrl`) ?? "",
       events: formData.getAll(`${slot.key}_events`),
     });
 
@@ -56,30 +55,28 @@ export async function savePushcutAction(
 
   const current = await getPushcutStatus();
 
-  // Cada canal ativo (com eventos escolhidos) precisa de nome e de chave —
-  // ou já guardada antes, ou colada agora.
+  // Cada canal ativo (com eventos escolhidos) precisa de um webhook válido —
+  // já guardado antes, ou colado agora.
   for (const slot of parsedSlots) {
     if (slot.events.length === 0) continue;
 
     const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
 
-    if (!slot.notificationName) {
+    if (!slot.webhookUrl && !current.slots[slot.key].configured) {
       return {
         ok: false,
-        error: `Informe o nome da notificação do canal "${label}".`,
+        error: `Cole a URL do webhook Pushcut do canal "${label}".`,
       };
     }
-    if (!slot.apiKey && !current.slots[slot.key].configured) {
-      return {
-        ok: false,
-        error: `Cole a chave de API do canal "${label}".`,
-      };
-    }
-    if (slot.apiKey && slot.apiKey.length < 10) {
-      return {
-        ok: false,
-        error: `A chave de API do canal "${label}" parece incompleta.`,
-      };
+
+    if (slot.webhookUrl) {
+      const validation = validatePushcutWebhookUrl(slot.webhookUrl);
+      if (!validation.ok) {
+        return {
+          ok: false,
+          error: `Webhook do canal "${label}": ${validation.error}`,
+        };
+      }
     }
   }
 
@@ -92,40 +89,61 @@ export async function savePushcutAction(
 
   try {
     await savePushcutCredentials(parsedSlots);
-
-    // Validação real: envia um push de confirmação por cada canal ativo. Se
-    // a chave ou o nome estiverem errados, o utilizador descobre agora e não
-    // numa venda.
-    const failures: string[] = [];
-    for (const slot of parsedSlots) {
-      if (slot.events.length === 0) continue;
-      const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
-      const test = await sendPushcutNotification(
-        slot.key,
-        `Infinity · ${label} ✅`,
-        `Se recebeu este alerta, o canal "${label}" está a funcionar.`,
-        { force: true },
-      );
-      if (!test.ok) failures.push(`${label}: ${test.error}`);
-    }
-
-    revalidatePath("/notificacoes");
-
-    if (failures.length > 0) {
-      return {
-        ok: false,
-        error: `Configuração guardada, mas o envio de teste falhou — ${failures.join(" · ")}`,
-      };
-    }
-
-    return {
-      ok: true,
-      message: "Ligado! Verifique os pushes que acabou de receber no telemóvel.",
-    };
   } catch (error) {
     console.error("[pushcut] erro ao guardar:", error);
-    return { ok: false, error: "Não foi possível guardar a integração." };
+    const message =
+      error instanceof Error &&
+      // Mensagens de validação já são seguras para mostrar; erros de infra
+      // (banco, chave de cifra ausente, etc.) não devem vazar detalhes.
+      /webhook|url/i.test(error.message)
+        ? error.message
+        : "Não foi possível guardar a integração.";
+    return { ok: false, error: message };
   }
+
+  // Validação real: envia um push de confirmação por cada canal ativo. Se a
+  // URL estiver errada, o utilizador descobre agora e não numa venda.
+  const results: { label: string; ok: boolean; error?: string }[] = [];
+  for (const slot of parsedSlots) {
+    if (slot.events.length === 0) continue;
+    const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
+    const test = await sendPushcutNotification(
+      slot.key,
+      `Infinity · ${label} ✅`,
+      `Se recebeu este alerta, o canal "${label}" está a funcionar.`,
+      { force: true },
+    );
+    results.push({ label, ok: test.ok, error: test.error });
+  }
+
+  revalidatePath("/notificacoes");
+
+  const failures = results.filter((r) => !r.ok);
+  const successes = results.filter((r) => r.ok);
+
+  if (failures.length > 0 && successes.length > 0) {
+    // Nunca reportar sucesso total quando só um canal funcionou.
+    return {
+      ok: false,
+      error: `Integração salva. O canal ${successes.map((s) => s.label).join(", ")} funcionou, mas o canal ${failures
+        .map((f) => `${f.label} falhou (${f.error})`)
+        .join(", ")}.`,
+    };
+  }
+
+  if (failures.length > 0) {
+    return {
+      ok: false,
+      error: `Configuração guardada, mas o envio de teste falhou — ${failures
+        .map((f) => `${f.label}: ${f.error}`)
+        .join(" · ")}`,
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Ligado! Verifique os pushes que acabou de receber no telemóvel.",
+  };
 }
 
 export async function togglePushcutAction(formData: FormData): Promise<void> {
