@@ -286,9 +286,16 @@ export function CartDetailSheet({
                   <Field label="Referência">{data.order.reference}</Field>
                   <Field label="Origem">{data.order.origin ?? "—"}</Field>
                   <Field label="Produto(s)">
-                    {data.items.map((i) => (
-                      <span key={i.productName} className="block">
-                        {i.productName} ×{i.quantity} — {formatMoney(i.totalCents, data.order.currency, "pt-PT")}
+                    {data.items.map((i, index) => (
+                      <span key={`${i.productName}-${i.sku ?? index}`} className="block">
+                        {i.productName}
+                        {i.variantName ? ` — ${i.variantName}` : ""} ×{i.quantity} —{" "}
+                        {formatMoney(i.totalCents, data.order.currency, "pt-PT")}
+                        {i.sku ? (
+                          <span className="text-muted-foreground block font-mono text-[11px]">
+                            SKU {i.sku}
+                          </span>
+                        ) : null}
                       </span>
                     ))}
                   </Field>

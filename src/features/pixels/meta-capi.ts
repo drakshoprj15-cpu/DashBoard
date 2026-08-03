@@ -22,6 +22,12 @@ export interface PurchaseEventInput {
   email?: string | null;
   phone?: string | null;
   productName?: string | null;
+  /**
+   * Identificadores do que foi comprado — SKU da variação quando existe.
+   * É o que liga a conversão ao anúncio de catálogo certo (cor comprada,
+   * não o produto genérico).
+   */
+  contentIds?: string[];
 }
 
 /**
@@ -95,6 +101,12 @@ export async function sendPurchaseToMetaCapi(
                   value: (input.valueCents / 100).toFixed(2),
                   ...(input.productName
                     ? { content_name: input.productName }
+                    : {}),
+                  ...(input.contentIds && input.contentIds.length > 0
+                    ? {
+                        content_type: "product",
+                        content_ids: input.contentIds,
+                      }
                     : {}),
                 },
               },

@@ -203,6 +203,18 @@ export const landingEventSchema = z.object({
   source: z.string().trim().max(120).optional(),
   campaign: z.string().trim().max(120).optional(),
   blockId: z.string().trim().max(64).optional(),
+  /**
+   * Variação escolhida no momento do evento. Campos fechados de propósito:
+   * o corpo vem do navegador e nunca deve carregar dado pessoal.
+   */
+  variant: z
+    .object({
+      id: z.string().trim().max(80),
+      name: z.string().trim().max(120).optional(),
+      sku: z.string().trim().max(64).optional(),
+      options: z.record(z.string().max(40), z.string().max(80)).optional(),
+    })
+    .optional(),
 });
 
 export type CreateLandingPageInput = z.infer<typeof createLandingPageSchema>;

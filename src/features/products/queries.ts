@@ -3,6 +3,8 @@ import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { orderItems, orders, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { listVariantSummaries } from "@/features/variants/queries";
+import type { ProductVariantSummary } from "@/features/variants/types";
 
 export interface ProductRow {
   id: string;
@@ -17,6 +19,8 @@ export interface ProductRow {
   /** Métricas reais calculadas a partir dos itens de pedidos pagos */
   orderCount: number;
   revenueCents: number;
+  /** Resumo das variações ativas; null quando o produto não usa variações */
+  variants: ProductVariantSummary | null;
 }
 
 /** Produtos do workspace, com métricas reais de vendas. */
@@ -59,7 +63,12 @@ export async function listProducts(): Promise<ProductRow[]> {
     )
     .orderBy(desc(products.createdAt));
 
-  return rows;
+  const summaries = await listVariantSummaries(rows.map((row) => row.id));
+
+  return rows.map((row) => ({
+    ...row,
+    variants: summaries.get(row.id) ?? null,
+  }));
 }
 
 export interface ProductDetail {

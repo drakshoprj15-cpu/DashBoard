@@ -21,6 +21,7 @@ export const BLOCK_TYPES = [
   "price",
   "offer",
   "variants",
+  "stock",
   "quantity",
   "buy_button",
   "whatsapp",
@@ -146,6 +147,8 @@ export interface LandingProductData {
   mainImageUrl: string | null;
   gallery: string[];
   variants: LandingProductVariant[];
+  /** Nome do atributo principal ("Cor"), usado como título do seletor */
+  variantOptionName: string;
   trackInventory: boolean;
   stockQuantity: number;
   /** Slug do checkout publicado; vazio = usa o slug do produto */
@@ -154,12 +157,28 @@ export interface LandingProductData {
 
 export interface LandingProductVariant {
   id: string;
+  /** Identificador usado em `?variant=` — nunca o UUID interno */
+  publicId: string;
   name: string;
   priceCents: number | null;
+  /** Preço anterior próprio da variação (riscado) */
+  compareAtPriceCents: number | null;
   stockQuantity: number;
+  trackInventory: boolean;
+  allowBackorder: boolean;
+  status: "active" | "sold_out" | "unavailable";
+  sku: string | null;
   /** Ex.: `{ Cor: "Preto", Tamanho: "M" }` */
   attributes: Record<string, string>;
   imageUrl?: string;
+  /** Miniatura real do card da opção */
+  thumbnailUrl?: string;
+  hexColor?: string;
+  /** Galeria própria; vazia = usa a galeria geral do produto */
+  gallery: string[];
+  isDefault: boolean;
+  weightGrams: number | null;
+  purchaseLimit: number | null;
 }
 
 /**

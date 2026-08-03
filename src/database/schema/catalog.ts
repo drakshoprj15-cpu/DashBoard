@@ -79,6 +79,12 @@ export const products = pgTable(
     seo: jsonb("seo").default({}).notNull(),
     isFeatured: boolean("is_featured").default(false).notNull(),
     /**
+     * Produto vendido por variações (cor, tamanho, modelo…). Ligado, o preço
+     * e o estoque que valem são os de `product_variants` — os campos acima
+     * passam a ser apenas o padrão de quem não escolheu nada ainda.
+     */
+    hasVariants: boolean("has_variants").default(false).notNull(),
+    /**
      * Conteúdo rico da landing page (highlights, specs, galeria, avaliações,
      * frete/prazo). Formato livre — ver `LandingContent` em
      * `src/features/landing/types.ts`. Evita normalizar em tabelas próprias
@@ -166,6 +172,72 @@ export const shippingMethods = pgTable(
   ],
 );
 
+/**
+ * Atributo de variação de um produto: "Cor", "Tamanho", "Voltagem"…
+ *
+ * Nada aqui é fixo em código: o administrador cria os atributos que o
+ * produto tiver. Um produto com dois atributos gera a matriz de combinações
+ * em `product_variants`.
+ */
+export const productOptions = pgTable(
+  "product_options",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    /** Rótulo mostrado na página: "Cor", "Tamanho" */
+    name: text("name").notNull(),
+    position: integer("position").default(0).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("product_options_product_name_idx").on(t.productId, t.name),
+    index("product_options_product_idx").on(t.productId),
+  ],
+);
+
+/** Valores possíveis de um atributo: Preto, Azul, Bege, Branco, Rosa… */
+export const productOptionValues = pgTable(
+  "product_option_values",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    optionId: uuid("option_id")
+      .notNull()
+      .references(() => productOptions.id, { onDelete: "cascade" }),
+    /** Valor cru usado na combinação e na URL pública ("preto") */
+    value: text("value").notNull(),
+    /** Rótulo mostrado ao cliente quando difere do valor ("Preto fosco") */
+    label: text("label"),
+    /** Amostra de cor (#RRGGBB) para o seletor em círculos */
+    hexColor: text("hex_color"),
+    /** Miniatura real da opção — nunca um filtro CSS sobre a foto padrão */
+    thumbnailUrl: text("thumbnail_url"),
+    position: integer("position").default(0).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("product_option_values_option_value_idx").on(
+      t.optionId,
+      t.value,
+    ),
+    index("product_option_values_option_idx").on(t.optionId),
+  ],
+);
+
+/**
+ * Variação vendável: a linha que o checkout revalida e o pedido guarda.
+ *
+ * `status` é texto com CHECK no banco (active | sold_out | unavailable) em
+ * vez de enum do Postgres — assim acrescentar um estado no futuro é um
+ * ALTER de constraint, sem reescrever tipo em uso por outras tabelas.
+ */
 export const productVariants = pgTable(
   "product_variants",
   {
@@ -177,14 +249,97 @@ export const productVariants = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Nome mostrado ao cliente quando difere do interno */
+    publicName: text("public_name"),
+    /**
+     * Identificador público usado em `?variant=` — nunca o UUID interno,
+     * para não expor a chave real em anúncios e links partilhados.
+     */
+    publicId: text("public_id"),
+    /** Combinação normalizada ("cor:preto|tamanho:m") — trava duplicadas */
+    optionsKey: text("options_key"),
     sku: text("sku"),
+    barcode: text("barcode"),
     priceCents: bigint("price_cents", { mode: "number" }),
+    compareAtPriceCents: bigint("compare_at_price_cents", { mode: "number" }),
+    costCents: bigint("cost_cents", { mode: "number" }),
+    currency: text("currency"),
     stockQuantity: integer("stock_quantity").default(0).notNull(),
+    trackInventory: boolean("track_inventory").default(true).notNull(),
+    allowBackorder: boolean("allow_backorder").default(false).notNull(),
+    /** Máximo por pedido; null = usa o limite do checkout */
+    purchaseLimit: integer("purchase_limit"),
+    status: text("status").default("active").notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+    position: integer("position").default(0).notNull(),
+    weightGrams: integer("weight_grams"),
+    dimensions: jsonb("dimensions"),
+    mainImageUrl: text("main_image_url"),
+    thumbnailUrl: text("thumbnail_url"),
+    shareImageUrl: text("share_image_url"),
+    hexColor: text("hex_color"),
     attributes: jsonb("attributes").default({}).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
+    /**
+     * Variação retirada de venda. Nunca apagamos uma variação já vendida —
+     * o pedido antigo continua apontando para ela.
+     */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [index("product_variants_product_idx").on(t.productId)],
+  (t) => [
+    index("product_variants_product_idx").on(t.productId),
+    index("product_variants_workspace_idx").on(t.workspaceId),
+    uniqueIndex("product_variants_public_id_idx").on(t.productId, t.publicId),
+  ],
+);
+
+/** Ligação variação ↔ valor escolhido em cada atributo. */
+export const productVariantValues = pgTable(
+  "product_variant_values",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    optionId: uuid("option_id")
+      .notNull()
+      .references(() => productOptions.id, { onDelete: "cascade" }),
+    optionValueId: uuid("option_value_id")
+      .notNull()
+      .references(() => productOptionValues.id, { onDelete: "cascade" }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("product_variant_values_variant_option_idx").on(
+      t.variantId,
+      t.optionId,
+    ),
+    index("product_variant_values_variant_idx").on(t.variantId),
+  ],
+);
+
+/** Galeria própria de cada variação (fotos reais daquela cor). */
+export const productVariantMedia = pgTable(
+  "product_variant_media",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    alt: text("alt"),
+    position: integer("position").default(0).notNull(),
+    isPrimary: boolean("is_primary").default(false).notNull(),
+    ...timestamps,
+  },
+  (t) => [index("product_variant_media_variant_idx").on(t.variantId)],
 );
 
 export const productImages = pgTable(

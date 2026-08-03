@@ -13,6 +13,10 @@ import { getRequestUrl } from "@/lib/request-url";
 import { createBroskiProvider, BroskiApiError } from "@/payment-providers/broski";
 import { createNotification } from "@/features/notifications/create";
 import { pushEvent } from "@/features/notifications/pushcut";
+import {
+  resolveVariantForPurchase,
+  type VariantResolution,
+} from "@/features/variants/resolve";
 import { formatMoney } from "@/lib/format";
 import { and, eq } from "drizzle-orm";
 
@@ -65,6 +69,7 @@ export async function submitCheckoutAction(
     paymentMethod: formData.get("paymentMethod"),
     quantity: formData.get("quantity"),
     productSlug: formData.get("productSlug"),
+    variantId: formData.get("variantId") ?? "",
     shippingMethodId: formData.get("shippingMethodId") ?? "",
     utmSource: formData.get("utmSource") ?? "",
     utmMedium: formData.get("utmMedium") ?? "",
@@ -95,7 +100,52 @@ export async function submitCheckoutAction(
     };
   }
 
-  const subtotal = product.priceCents * data.quantity;
+  // Variação: o navegador manda no máximo o identificador público. Preço,
+  // estoque e estado são relidos do banco — um preço adulterado no formulário
+  // não tem por onde entrar, porque nem sequer é lido.
+  const workspaceIdForProduct = await getOrCreateDefaultWorkspace();
+  const [productRowForVariant] = await getDb()
+    .select({ id: products.id })
+    .from(products)
+    .where(
+      and(
+        eq(products.workspaceId, workspaceIdForProduct),
+        eq(products.slug, product.slug),
+      ),
+    )
+    .limit(1);
+
+  const resolution: VariantResolution = productRowForVariant
+    ? await resolveVariantForPurchase({
+        productId: productRowForVariant.id,
+        productPriceCents: product.priceCents,
+        publicId: data.variantId || null,
+        quantity: data.quantity,
+      })
+    : { kind: "no_variants" };
+
+  if (resolution.kind === "not_found") {
+    return {
+      status: "validation_error",
+      error: "Escolha uma opção disponível do produto antes de continuar.",
+    };
+  }
+  if (resolution.kind === "not_purchasable") {
+    return {
+      status: "validation_error",
+      error: `A opção "${resolution.variant.label}" está indisponível. Escolha outra.`,
+    };
+  }
+  if (resolution.kind === "insufficient_stock") {
+    return {
+      status: "validation_error",
+      error: `Restam apenas ${resolution.variant.stockQuantity} unidade(s) de "${resolution.variant.label}".`,
+    };
+  }
+
+  const chosenVariant = resolution.kind === "ok" ? resolution.variant : null;
+  const unitPriceCents = chosenVariant?.priceCents ?? product.priceCents;
+  const subtotal = unitPriceCents * data.quantity;
 
   // Frete: NUNCA confiar no valor calculado no navegador — recalcula a
   // partir dos métodos ativos gravados no banco.
@@ -204,13 +254,21 @@ export async function submitCheckoutAction(
       })
       .returning({ id: orders.id });
 
+    // Cópia congelada: nome, opções, SKU, imagem e preço como estavam agora.
+    // Editar a variação amanhã não altera o que este cliente comprou.
     await db.insert(orderItems).values({
       workspaceId,
       orderId: order.id,
       productId: productRow?.id,
+      variantId: chosenVariant?.id ?? null,
       productName: product.name,
+      variantName: chosenVariant?.label ?? null,
+      variantOptions: chosenVariant?.options ?? null,
+      sku: chosenVariant?.sku ?? null,
+      imageUrl: chosenVariant?.imageUrl ?? product.mainImage ?? null,
+      currency: "EUR",
       quantity: data.quantity,
-      unitPriceCents: product.priceCents,
+      unitPriceCents,
       totalCents: subtotal,
     });
 
@@ -245,7 +303,10 @@ export async function submitCheckoutAction(
       },
       successUrl: `${appUrl}/checkout/${product.slug}`,
       metadata: {
-        description: product.name.slice(0, 140),
+        description: (chosenVariant
+          ? `${product.name} — ${chosenVariant.label}`
+          : product.name
+        ).slice(0, 140),
         checkoutUrl: `${appUrl}/checkout/${product.slug}`,
         productType: "physical",
       },

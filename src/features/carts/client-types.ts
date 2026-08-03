@@ -100,7 +100,16 @@ export interface CartDetailDTO {
     isBlocked: boolean;
     createdAt: string;
   } | null;
-  items: { productName: string; quantity: number; unitPriceCents: number; totalCents: number }[];
+  items: {
+    productName: string;
+    /** Variação comprada, congelada no momento do pedido */
+    variantName: string | null;
+    sku: string | null;
+    imageUrl: string | null;
+    quantity: number;
+    unitPriceCents: number;
+    totalCents: number;
+  }[];
   payments: {
     id: string;
     externalId: string | null;

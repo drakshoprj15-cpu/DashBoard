@@ -13,6 +13,10 @@ import {
   DEFAULT_CHECKOUT_THEME,
   getPublishedCheckoutBySlug,
 } from "@/features/checkouts/queries";
+import {
+  listCheckoutVariants,
+  pickDefaultVariant,
+} from "@/features/variants/resolve";
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getWorkspaceBranding();
@@ -56,6 +60,19 @@ export default async function CheckoutSlugPage(
 
   const asString = (v: string | string[] | undefined) =>
     typeof v === "string" ? v : "";
+
+  // Variações reais do catálogo. O `?variant=` da URL é só uma sugestão: se
+  // apontar para algo inválido ou esgotado, o checkout abre na padrão — e o
+  // preço cobrado é sempre recalculado no servidor ao enviar o formulário.
+  const variants = await listCheckoutVariants(product.id, product.priceCents);
+  const requestedVariant = asString(searchParams.variant);
+  const selectedVariant =
+    variants.find(
+      (item) => item.publicId === requestedVariant && item.purchasable,
+    ) ?? pickDefaultVariant(variants);
+
+  const unitPriceCents = selectedVariant?.priceCents ?? product.priceCents;
+
   const utm = {
     utmSource: asString(searchParams.utm_source),
     utmMedium: asString(searchParams.utm_medium),
@@ -69,16 +86,20 @@ export default async function CheckoutSlugPage(
       <PixelScripts
         event="InitiateCheckout"
         content={{
-          id: product.slug,
-          name: product.name,
-          valueCents: product.priceCents * quantity,
+          // Identificador de conteúdo com a variação: é o SKU que a campanha
+          // precisa ver, não o produto genérico.
+          id: selectedVariant?.sku ?? selectedVariant?.publicId ?? product.slug,
+          name: selectedVariant
+            ? `${product.name} — ${selectedVariant.label}`
+            : product.name,
+          valueCents: unitPriceCents * quantity,
           currency: product.currency,
         }}
       />
       <Tracker
         event="checkout_opened"
         productSlug={product.slug}
-        valueCents={product.priceCents * quantity}
+        valueCents={unitPriceCents * quantity}
         currency={product.currency}
       />
       {/* Cabeçalho — a logo (ou nome da loja) fica sempre centralizada. */}
@@ -113,6 +134,8 @@ export default async function CheckoutSlugPage(
           utm={utm}
           storeName={branding.storeName}
           landingPageId={asString(searchParams.lp)}
+          variants={variants}
+          initialVariantId={selectedVariant?.publicId ?? ""}
         />
       </main>
 

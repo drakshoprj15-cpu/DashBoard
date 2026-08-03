@@ -115,6 +115,12 @@ export default async function PedidosPage() {
                       {o.quantity && o.quantity > 1 && (
                         <span className="text-muted-foreground"> ×{o.quantity}</span>
                       )}
+                      {o.variantName && (
+                        <span className="text-muted-foreground block text-xs">
+                          {o.variantName}
+                          {o.sku ? ` · ${o.sku}` : ""}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 text-right font-medium">
                       {formatMoney(o.totalCents, o.currency, "pt-PT")}

@@ -15,6 +15,9 @@ export interface OrderRow {
   customerName: string | null;
   customerEmail: string | null;
   productName: string | null;
+  /** Variação comprada (cópia congelada do item do pedido) */
+  variantName: string | null;
+  sku: string | null;
   quantity: number | null;
   paymentMethod: string | null;
   paymentStatus: string | null;
@@ -52,6 +55,8 @@ export async function listOrders(limit = 100): Promise<OrderRow[]> {
       customerLastName: customers.lastName,
       customerEmail: customers.email,
       productName: orderItems.productName,
+      variantName: orderItems.variantName,
+      sku: orderItems.sku,
       quantity: orderItems.quantity,
       paymentMethod: payments.method,
       paymentStatus: payments.status,
@@ -83,6 +88,8 @@ export async function listOrders(limit = 100): Promise<OrderRow[]> {
         .join(" ") || null,
       customerEmail: r.customerEmail,
       productName: r.productName,
+      variantName: r.variantName,
+      sku: r.sku,
       quantity: r.quantity,
       paymentMethod: r.paymentMethod,
       paymentStatus: r.paymentStatus,

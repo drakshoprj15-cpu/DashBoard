@@ -45,6 +45,17 @@ export const checkoutSchema = z
     }),
     quantity: z.coerce.number().int().min(1).max(10),
     productSlug: z.string().trim().min(1),
+    /**
+     * Identificador público da variação escolhida (`?variant=preto`).
+     * É só uma referência: preço, estoque e estado são relidos do banco.
+     */
+    variantId: z
+      .string()
+      .trim()
+      .max(80)
+      .regex(/^[a-z0-9-]*$/, "Variação inválida")
+      .optional()
+      .or(z.literal("")),
     couponCode: z.string().trim().optional().or(z.literal("")),
     shippingMethodId: z.string().trim().optional().or(z.literal("")),
     utmSource: z.string().trim().optional().or(z.literal("")),

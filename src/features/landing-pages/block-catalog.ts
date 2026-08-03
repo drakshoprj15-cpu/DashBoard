@@ -243,7 +243,7 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
         key: "images",
         label: "Imagens",
         type: "lines",
-        help: "Um endereço por linha. Vazio = usa a galeria do produto.",
+        help: "Um endereço por linha. Vazio = usa a galeria da variação escolhida (ou a do produto).",
       },
       {
         key: "layout",
@@ -254,8 +254,9 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
           { value: "grid", label: "Grade" },
         ],
       },
+      { key: "allowZoom", label: "Permitir ampliar ao clicar", type: "boolean" },
     ],
-    defaults: { images: "", layout: "thumbs" },
+    defaults: { images: "", layout: "thumbs", allowZoom: true },
   },
 
   video: {
@@ -325,12 +326,14 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
       { key: "showCompare", label: "Mostrar preço anterior", type: "boolean" },
       { key: "showDiscount", label: "Mostrar % de desconto", type: "boolean" },
       { key: "showSavings", label: "Mostrar quanto poupa", type: "boolean" },
+      { key: "showSku", label: "Mostrar SKU da variação", type: "boolean" },
       { key: "note", label: "Observação", type: "text" },
     ],
     defaults: {
       showCompare: true,
       showDiscount: true,
       showSavings: true,
+      showSku: false,
       note: "Preço com IVA incluído",
     },
   },
@@ -363,7 +366,12 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
     icon: Boxes,
     requiresProduct: true,
     fields: [
-      { key: "label", label: "Rótulo", type: "text" },
+      {
+        key: "label",
+        label: "Rótulo",
+        type: "text",
+        help: "Vazio = usa o nome do atributo do catálogo (ex.: Cor).",
+      },
       {
         key: "required",
         label: "Exigir escolha antes de comprar",
@@ -371,15 +379,74 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
       },
       {
         key: "style",
-        label: "Estilo",
+        label: "Formato",
         type: "select",
         options: [
+          { value: "cards", label: "Cards" },
           { value: "buttons", label: "Botões" },
+          { value: "thumbs", label: "Miniaturas" },
+          { value: "circles", label: "Círculos de cor" },
           { value: "list", label: "Lista" },
         ],
       },
+      { key: "showPrice", label: "Mostrar preço em cada opção", type: "boolean" },
+      { key: "showThumbnail", label: "Mostrar miniatura", type: "boolean" },
+      {
+        key: "hideSoldOut",
+        label: "Ocultar opções esgotadas",
+        type: "boolean",
+        help: "Desligado, a opção aparece desabilitada com o aviso de esgotada.",
+      },
+      {
+        key: "size",
+        label: "Tamanho dos cards",
+        type: "select",
+        options: [
+          { value: "small", label: "Pequeno" },
+          { value: "medium", label: "Médio" },
+          { value: "large", label: "Grande" },
+        ],
+      },
+      { key: "columns", label: "Colunas (máx.)", type: "number", min: 1, max: 6 },
     ],
-    defaults: { label: "Escolha a variação", required: true, style: "buttons" },
+    defaults: {
+      label: "",
+      required: true,
+      style: "cards",
+      showPrice: true,
+      showThumbnail: true,
+      hideSoldOut: false,
+      size: "medium",
+      columns: 3,
+    },
+  },
+
+  stock: {
+    type: "stock",
+    label: "Disponibilidade",
+    description: "Estoque real da opção escolhida, com barra opcional.",
+    group: "produto",
+    icon: Boxes,
+    requiresProduct: true,
+    fields: [
+      { key: "label", label: "Rótulo", type: "text" },
+      { key: "soldOutLabel", label: "Texto quando esgotado", type: "text" },
+      { key: "showBar", label: "Mostrar barra", type: "boolean" },
+      {
+        key: "barBase",
+        label: "Base da barra",
+        type: "number",
+        min: 1,
+        max: 999,
+        help: "Quantidade que representa a barra cheia. A contagem exibida é sempre a real do catálogo.",
+      },
+    ],
+    defaults: {
+      label: "Em estoque",
+      soldOutLabel: "Esgotado",
+      showBar: true,
+      barBase: 20,
+    },
   },
 
   quantity: {
@@ -426,6 +493,12 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
       { key: "fullWidth", label: "Ocupar toda a largura", type: "boolean" },
       { key: "sticky", label: "Fixar no rodapé no telemóvel", type: "boolean" },
       { key: "helperText", label: "Texto de apoio", type: "text" },
+      {
+        key: "soldOutLabel",
+        label: "Texto quando a opção está indisponível",
+        type: "text",
+        help: "Substitui o rótulo e desativa o botão enquanto a variação escolhida não puder ser comprada.",
+      },
     ],
     defaults: {
       label: "Comprar agora",
@@ -434,6 +507,7 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
       fullWidth: true,
       sticky: false,
       helperText: "",
+      soldOutLabel: "Opção indisponível",
     },
   },
 

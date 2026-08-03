@@ -13,23 +13,61 @@ PostgreSQL (Supabase) + Drizzle ORM. Schema em `src/database/schema/`, dividido 
 
 ## Domínios e tabelas
 
-| Arquivo | Tabelas |
-|---|---|
-| workspaces.ts | profiles, workspaces, workspace_members |
-| stores.ts | stores, store_settings, domains |
-| catalog.ts | products, product_variants, product_images, product_files, categories, product_categories, inventory_movements, coupons, coupon_uses |
-| pages.ts | landing_pages, landing_page_versions, landing_page_events |
-| checkouts.ts | checkouts, checkout_versions, checkout_products, order_bumps, payment_links |
-| customers.ts | customers, customer_addresses, customer_consents |
-| carts.ts | carts, cart_items, checkout_sessions |
-| orders.ts | orders, order_items, order_status_history |
-| payments.ts | payment_providers, payment_provider_accounts, payments, payment_attempts, refunds, chargebacks, payment_webhooks, payouts, ledger_entries |
-| analytics.ts | visitor_sessions, analytics_events, campaigns, campaign_links |
-| pixels.ts | pixels, pixel_bindings, pixel_events |
-| integrations.ts | integrations, integration_logs, webhook_endpoints, webhook_deliveries |
-| emails.ts | email_campaigns, email_recipients, email_events, email_suppressions, email_frequency_caps |
-| notifications.ts | notification_preferences, notifications |
-| system.ts | audit_logs, files |
+| Arquivo          | Tabelas                                                                                                                                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| workspaces.ts    | profiles, workspaces, workspace_members                                                                                                                                                                                     |
+| stores.ts        | stores, store_settings, domains                                                                                                                                                                                             |
+| catalog.ts       | products, product_options, product_option_values, product_variants, product_variant_values, product_variant_media, product_images, product_files, categories, product_categories, inventory_movements, coupons, coupon_uses |
+| pages.ts         | landing_pages, landing_page_versions, landing_page_events                                                                                                                                                                   |
+| checkouts.ts     | checkouts, checkout_versions, checkout_products, order_bumps, payment_links                                                                                                                                                 |
+| customers.ts     | customers, customer_addresses, customer_consents                                                                                                                                                                            |
+| carts.ts         | carts, cart_items, checkout_sessions                                                                                                                                                                                        |
+| orders.ts        | orders, order_items, order_status_history                                                                                                                                                                                   |
+| payments.ts      | payment_providers, payment_provider_accounts, payments, payment_attempts, refunds, chargebacks, payment_webhooks, payouts, ledger_entries                                                                                   |
+| analytics.ts     | visitor_sessions, analytics_events, campaigns, campaign_links                                                                                                                                                               |
+| pixels.ts        | pixels, pixel_bindings, pixel_events                                                                                                                                                                                        |
+| integrations.ts  | integrations, integration_logs, webhook_endpoints, webhook_deliveries                                                                                                                                                       |
+| emails.ts        | email_campaigns, email_recipients, email_events, email_suppressions, email_frequency_caps                                                                                                                                   |
+| notifications.ts | notification_preferences, notifications                                                                                                                                                                                     |
+| system.ts        | audit_logs, files                                                                                                                                                                                                           |
+
+## Variações de produto (cor, tamanho, modelo…)
+
+Um produto com `products.has_variants = true` vende por variação: o preço e o
+estoque que valem na página e no checkout são os de `product_variants`, não os
+do produto.
+
+- `product_options` — atributos do produto ("Cor", "Tamanho"). Nada é fixo em
+  código; o administrador cria os que precisar (limite de 3 por produto).
+- `product_option_values` — valores de cada atributo (Preto, Azul…), com
+  amostra de cor (`hex_color`) e miniatura real (`thumbnail_url`).
+- `product_variants` — a linha vendável: SKU, `price_cents`,
+  `compare_at_price_cents`, estoque, peso/dimensões, estado
+  (`active | sold_out | unavailable`) e `public_id` (o que aparece em
+  `?variant=preto`, nunca o UUID interno).
+- `product_variant_values` — que valor a variação tem em cada atributo.
+- `product_variant_media` — galeria própria da variação (fotos reais daquela
+  cor). Vazia, a página cai na galeria geral do produto.
+
+Garantias no banco, não só na aplicação:
+
+| Regra                                 | Como é garantida                                        |
+| ------------------------------------- | ------------------------------------------------------- |
+| Uma única variação padrão por produto | índice único parcial `product_variants_default_idx`     |
+| Combinação de opções sem duplicadas   | `options_key` normalizada + índice único parcial        |
+| SKU único dentro da loja              | índice único parcial por `workspace_id`                 |
+| Preço e estoque nunca negativos       | constraints `CHECK`                                     |
+| Estado sempre conhecido               | `CHECK (status in ('active','sold_out','unavailable'))` |
+
+Variação já vendida **nunca é apagada**: recebe `archived_at` e sai da loja,
+para os pedidos antigos continuarem corretos. O pedido guarda a sua própria
+cópia congelada em `order_items` (`variant_name`, `variant_options`, `sku`,
+`image_url`, `unit_price_cents`), então editar preço ou fotos depois não
+reescreve o histórico.
+
+O estoque só é debitado na **confirmação do pagamento** (webhook do gateway),
+em transação, com registro em `inventory_movements`; reembolso e chargeback
+devolvem as unidades.
 
 ## Landing pages: rascunho versus versão publicada
 

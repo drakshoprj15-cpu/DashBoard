@@ -102,9 +102,60 @@ export default async function ProdutosPage() {
                         /p/{p.slug}
                       </code>
                     </td>
-                    <td className="py-3">{TYPE_LABEL[p.type] ?? p.type}</td>
+                    <td className="py-3">
+                      {TYPE_LABEL[p.type] ?? p.type}
+                      {p.variants ? (
+                        <span className="mt-1 flex items-center gap-1.5">
+                          <Badge variant="muted">
+                            {p.variants.variantCount} variaç
+                            {p.variants.variantCount === 1 ? "ão" : "ões"}
+                          </Badge>
+                          {p.variants.colors
+                            .filter((color) => color.hexColor)
+                            .slice(0, 5)
+                            .map((color, index) => (
+                              <span
+                                key={`${color.label}-${index}`}
+                                title={color.label}
+                                aria-label={color.label}
+                                className="size-3 rounded-full border"
+                                style={{
+                                  backgroundColor: color.hexColor ?? undefined,
+                                }}
+                              />
+                            ))}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="py-3 text-right">
-                      {formatMoney(p.priceCents, p.currency, "pt-PT")}
+                      {p.variants &&
+                      p.variants.minPriceCents !== null &&
+                      p.variants.maxPriceCents !== null &&
+                      p.variants.minPriceCents !== p.variants.maxPriceCents ? (
+                        <span>
+                          {formatMoney(
+                            p.variants.minPriceCents,
+                            p.currency,
+                            "pt-PT",
+                          )}
+                          {" – "}
+                          {formatMoney(
+                            p.variants.maxPriceCents,
+                            p.currency,
+                            "pt-PT",
+                          )}
+                        </span>
+                      ) : (
+                        formatMoney(p.priceCents, p.currency, "pt-PT")
+                      )}
+                      {p.variants ? (
+                        <span className="text-muted-foreground block text-[11px]">
+                          {p.variants.totalStock} em estoque
+                          {p.variants.soldOutCount > 0
+                            ? ` · ${p.variants.soldOutCount} esgotada(s)`
+                            : ""}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="py-3 text-right">{p.orderCount}</td>
                     <td className="py-3 text-right font-medium">

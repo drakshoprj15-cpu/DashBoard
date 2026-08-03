@@ -81,7 +81,10 @@ export async function recordLandingEvent(
     deviceType,
     source: input.source?.slice(0, 120) ?? null,
     campaign: input.campaign?.slice(0, 120) ?? null,
-    properties: input.blockId ? { blockId: input.blockId } : {},
+    properties: {
+      ...(input.blockId ? { blockId: input.blockId } : {}),
+      ...(input.variant ? { variant: input.variant } : {}),
+    },
   });
 
   return true;

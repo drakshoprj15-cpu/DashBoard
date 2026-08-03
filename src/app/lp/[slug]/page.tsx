@@ -197,6 +197,7 @@ export default async function PublicLandingPageRoute(
         snapshot={effectiveSnapshot}
         reviews={reviews}
         pageId={page.id}
+        initialVariantPublicId={asString(searchParams.variant)}
       />
 
       <LandingCustomCodeBottom code={snapshot.customCode} />

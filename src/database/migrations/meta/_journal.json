@@ -85,6 +85,13 @@
       "when": 1785700000000,
       "tag": "0011_landing_page_builder",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786100000000,
+      "tag": "0012_product_variations",
+      "breakpoints": true
     }
   ]
 }

@@ -3,20 +3,20 @@
 > Central de vendas online: checkout, loja, landing pages, pagamentos, analytics em tempo real.
 > Nome: **Infinity** (definido pelo usuário em 2026-07-28; configurável em `src/lib/brand.ts`).
 
-Última atualização: 2026-07-28
+Última atualização: 2026-08-03
 
 ---
 
 ## 1. Diagnóstico do repositório (2026-07-28)
 
-| Item | Situação encontrada |
-|---|---|
-| Base | Projeto recém-criado com `create-next-app` (Next.js **16.2.12**, React 19.2.4, TypeScript 5, Tailwind CSS 4, ESLint 9 flat config) |
-| Estrutura | Apenas `src/app` padrão (layout, page, globals.css). Nenhum código de negócio. |
-| Git | Repositório **não inicializado** (sem `.git`) |
+| Item                 | Situação encontrada                                                                                                                                                                                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base                 | Projeto recém-criado com `create-next-app` (Next.js **16.2.12**, React 19.2.4, TypeScript 5, Tailwind CSS 4, ESLint 9 flat config)                                                                                                                                                                                          |
+| Estrutura            | Apenas `src/app` padrão (layout, page, globals.css). Nenhum código de negócio.                                                                                                                                                                                                                                              |
+| Git                  | Repositório **não inicializado** (sem `.git`)                                                                                                                                                                                                                                                                               |
 | `/docs/referencias/` | **Pasta não existe** — nenhuma imagem de referência foi encontrada no repositório. Decisão: seguir fielmente a direção visual descrita no briefing (sidebar escura, conteúdo off-white, acento magenta/rosa neon, verde/amarelo/vermelho/azul semânticos). Quando as imagens forem adicionadas, a identidade será refinada. |
-| Banco | Nenhum. |
-| Credenciais | Nenhuma (`.env` inexistente). |
+| Banco                | Nenhum.                                                                                                                                                                                                                                                                                                                     |
+| Credenciais          | Nenhuma (`.env` inexistente).                                                                                                                                                                                                                                                                                               |
 
 ### Particularidades do Next.js 16 (breaking changes respeitadas no código)
 
@@ -30,17 +30,17 @@
 
 ## 2. Decisões técnicas
 
-| Decisão | Escolha | Justificativa |
-|---|---|---|
-| ORM | **Drizzle ORM** (não Prisma) | Melhor para serverless/Vercel (sem binário), SQL transparente, migrations versionadas via `drizzle-kit`, ótima integração com Supabase/Postgres. |
-| Auth | Supabase Auth via `@supabase/ssr` | Sessão em cookies, compatível com Server Components/Actions. |
-| Multi-tenancy | `workspace_id` em todas as entidades de negócio + RLS | Exigência do briefing. |
-| IDs | UUID v4 (`gen_random_uuid()`) | Seguros, não sequenciais. |
-| Valores monetários | `bigint` em **centavos** + coluna `currency` | Evita erro de ponto flutuante. |
-| Pagamentos | Arquitetura de adapters (`PaymentProvider`) | Checkout independente de gateway. |
-| Componentes | shadcn/ui (estilo new-york, adicionados manualmente) | Tailwind v4 + Radix. |
-| Modo demo | Quando Supabase não está configurado, o painel abre em **modo demonstração** com banner permanente e dados claramente rotulados como fictícios | Permite desenvolver/avaliar a UI sem credenciais, sem fingir integração real. |
-| Idioma da UI | Português (pt-BR) | Público-alvo do usuário. |
+| Decisão            | Escolha                                                                                                                                        | Justificativa                                                                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ORM                | **Drizzle ORM** (não Prisma)                                                                                                                   | Melhor para serverless/Vercel (sem binário), SQL transparente, migrations versionadas via `drizzle-kit`, ótima integração com Supabase/Postgres. |
+| Auth               | Supabase Auth via `@supabase/ssr`                                                                                                              | Sessão em cookies, compatível com Server Components/Actions.                                                                                     |
+| Multi-tenancy      | `workspace_id` em todas as entidades de negócio + RLS                                                                                          | Exigência do briefing.                                                                                                                           |
+| IDs                | UUID v4 (`gen_random_uuid()`)                                                                                                                  | Seguros, não sequenciais.                                                                                                                        |
+| Valores monetários | `bigint` em **centavos** + coluna `currency`                                                                                                   | Evita erro de ponto flutuante.                                                                                                                   |
+| Pagamentos         | Arquitetura de adapters (`PaymentProvider`)                                                                                                    | Checkout independente de gateway.                                                                                                                |
+| Componentes        | shadcn/ui (estilo new-york, adicionados manualmente)                                                                                           | Tailwind v4 + Radix.                                                                                                                             |
+| Modo demo          | Quando Supabase não está configurado, o painel abre em **modo demonstração** com banner permanente e dados claramente rotulados como fictícios | Permite desenvolver/avaliar a UI sem credenciais, sem fingir integração real.                                                                    |
+| Idioma da UI       | Português (pt-BR)                                                                                                                              | Público-alvo do usuário.                                                                                                                         |
 
 ---
 
@@ -48,18 +48,18 @@
 
 ### Funcionando (verificado em produção)
 
-| Módulo | Estado |
-|---|---|
-| Autenticação (login/cadastro/recuperação) | ✅ real, Supabase Auth, 3 contas criadas |
-| Banco de dados | ✅ 60 tabelas + RLS ativo em todas |
-| Landing page `/p/[slug]` | ✅ lê do banco (`products.landing_content`) |
-| Checkout público | ✅ cria cliente, pedido e pagamento reais |
-| Gateway Broski | 🔌 conectado, pagamento real criado e validado |
-| Webhook Broski | ✅ ativo, assinatura HMAC verificada |
-| Pedidos | ✅ lista real do banco |
-| Pixel (cadastro) | ✅ CRUD funcional, token criptografado |
-| **Live View** | ✅ **funcional** — sessões, funil e feed em tempo real |
-| Rastreamento público | ✅ `/api/public/track`, IP mascarado, UTMs capturadas |
+| Módulo                                    | Estado                                                 |
+| ----------------------------------------- | ------------------------------------------------------ |
+| Autenticação (login/cadastro/recuperação) | ✅ real, Supabase Auth, 3 contas criadas               |
+| Banco de dados                            | ✅ 60 tabelas + RLS ativo em todas                     |
+| Landing page `/p/[slug]`                  | ✅ lê do banco (`products.landing_content`)            |
+| Checkout público                          | ✅ cria cliente, pedido e pagamento reais              |
+| Gateway Broski                            | 🔌 conectado, pagamento real criado e validado         |
+| Webhook Broski                            | ✅ ativo, assinatura HMAC verificada                   |
+| Pedidos                                   | ✅ lista real do banco                                 |
+| Pixel (cadastro)                          | ✅ CRUD funcional, token criptografado                 |
+| **Live View**                             | ✅ **funcional** — sessões, funil e feed em tempo real |
+| Rastreamento público                      | ✅ `/api/public/track`, IP mascarado, UTMs capturadas  |
 
 ### Ainda em placeholder (não implementados)
 
@@ -85,13 +85,13 @@
 
 ### Concluído em 2026-07-29 (rodada 2)
 
-| Módulo | Estado |
-|---|---|
-| **Provas sociais** | ✅ CRUD real (`product_reviews` + RLS), aba própria no menu |
-| **Páginas legais** (Termos, Privacidade, Cookies, Devoluções, Envios) | ✅ em `/legal/*`, com aviso visível quando faltam dados da empresa |
-| **Banner de consentimento de cookies** | ✅ pixels só carregam após aceite (`ConsentGate`) |
-| **Emails** | ✅ 5 segmentos reais (pagos/pendentes/recusados/sem pedidos/todos), adapter Resend pronto (falta a chave) |
-| **Fretes** | ✅ CRUD real (`shipping_methods` + RLS), checkout recalcula o frete no servidor — nunca confia no navegador |
+| Módulo                                                                | Estado                                                                                                      |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Provas sociais**                                                    | ✅ CRUD real (`product_reviews` + RLS), aba própria no menu                                                 |
+| **Páginas legais** (Termos, Privacidade, Cookies, Devoluções, Envios) | ✅ em `/legal/*`, com aviso visível quando faltam dados da empresa                                          |
+| **Banner de consentimento de cookies**                                | ✅ pixels só carregam após aceite (`ConsentGate`)                                                           |
+| **Emails**                                                            | ✅ 5 segmentos reais (pagos/pendentes/recusados/sem pedidos/todos), adapter Resend pronto (falta a chave)   |
+| **Fretes**                                                            | ✅ CRUD real (`shipping_methods` + RLS), checkout recalcula o frete no servidor — nunca confia no navegador |
 
 ### Ainda bloqueiam a venda
 
@@ -132,25 +132,75 @@
 - [x] Documentação inicial (`docs/`)
 - [x] TypeScript check + build de produção passando
 
-### FASE 2 — Catálogo e loja — ⏳ não iniciada
+### FASE 2 — Catálogo e loja — 🔄 em andamento
+
+#### Variações de produto (2026-08-03) — ✅ implementado
+
+Sistema completo de variações (cor, tamanho, modelo, voltagem ou combinações),
+integrado a catálogo, landing page, checkout, pedidos, estoque e pixels.
+
+- **Banco** (`0012_product_variations.sql`, aplicada no Supabase em 2026-08-03):
+  `product_options`, `product_option_values`, `product_variant_values`,
+  `product_variant_media`; `product_variants` ganhou preço anterior, custo,
+  SKU/código de barras, estado, padrão, posição, peso/dimensões, imagens e
+  `public_id`; `order_items` guarda a cópia congelada da variação comprada.
+  Regras no banco: uma padrão por produto, combinação única, SKU único na loja,
+  preço/estoque não negativos, RLS ativo nas tabelas novas.
+- **Painel** — aba **Variações** em Catálogo → Produto: interruptor "Este
+  produto possui variações", editor de atributos e valores (com amostra de cor
+  e miniatura real), geração da matriz de combinações, tabela com preço, preço
+  anterior, desconto, estoque, SKU e estado, ações em massa, duplicar,
+  arquivar/excluir com confirmação, definir padrão e **prévia interativa** do
+  seletor. A lista de produtos mostra contagem de variações, faixa de preço,
+  estoque somado e as cores.
+- **Landing page** — bloco de variações em cards, botões, miniaturas, círculos
+  de cor ou lista; ao escolher uma opção trocam imagem principal, galeria,
+  miniaturas, preço, preço riscado, desconto, economia, SKU, estoque (bloco
+  novo _Disponibilidade_), quantidade máxima e o link do checkout — sem
+  recarregar a página. Seletor acessível (`radiogroup`, `aria-checked`, setas
+  do teclado saltando as esgotadas) e `?variant=preto` partilhável, resolvido
+  no servidor.
+- **Checkout e pedidos** — o navegador manda no máximo o identificador público;
+  preço, estoque e estado são relidos do banco antes de cobrar. Variação
+  esgotada, inativa ou com estoque insuficiente é recusada com mensagem clara.
+  O pedido guarda nome, opções, SKU, imagem e preço da variação.
+- **Estoque** — deixou de ser fixo: baixa transacional na confirmação do
+  pagamento, com registro em `inventory_movements`; reembolso e chargeback
+  devolvem as unidades (idempotente contra reentrega de webhook).
+- **Pixels** — `select_variant` registra variação, preço e SKU;
+  InitiateCheckout e Purchase levam o SKU em `content_ids`; a UTMify recebe o
+  nome com a variação. Nenhum disparo duplicado.
+- Validação: lint ✅ · typecheck ✅ · 163 testes ✅ (45 novos) · build ✅.
+- **Pendência real**: as fotos por cor precisam ser enviadas pelo administrador
+  no painel — nenhuma imagem é inventada nem tingida por filtro CSS. A pasta
+  `docs/referencias/` continua inexistente no repositório.
+
 ### FASE 3 — Checkout — 🔄 em andamento (2026-07-28)
+
 - **Checkout público TechNébula no ar** em `/checkout/[slug]`, no mesmo layout da landing page: etapas Contacto → Entrega → Pagamento, resumo fixo no desktop e recolhível no mobile, seletor de quantidade, portes grátis calculados, seleção MB WAY/Multibanco (únicos métodos do Broski).
 - Validação Zod no servidor (telemóvel PT +3519…, código postal NNNN-NNN) + proteção contra envio duplicado. O campo de NIF chegou a existir e foi removido a pedido (2026-08-02), para reduzir atrito na compra.
 - **Honestidade**: sem BROSKI_API_KEY/DATABASE_URL o envio valida os dados e informa "Pagamento ainda não ativado — nenhum valor foi cobrado" (testado no navegador). Nenhum sucesso falso é simulado.
 - Pendências da fase: cobrança real (pedido no banco + Broski + webhook, junto da Fase 4), página de sucesso/pendente/erro pós-pagamento, order bump e cupons.
+
 ### FASE 4 — Pagamentos — 🔌 **INTEGRAÇÃO REAL CONECTADA** (2026-07-28)
+
 - Fluxo completo validado no navegador: checkout → cliente + pedido + item gravados no Supabase → pagamento criado na API real do Broski → voucher Multibanco (entidade 45648 / ref. 828679172) exibido ao cliente → pedido em `awaiting_payment`.
 - ✅ **Webhook ATIVO em produção (2026-07-28)**: `https://dash-board-psi-one.vercel.app/api/webhooks/broski`, registrado no painel Broski. Verificado respondendo `401 invalid_signature` a requisições sem assinatura — o que confirma que `BROSKI_API_KEY`, `DATABASE_URL` e `BROSKI_WEBHOOK_SECRET` estão presentes no ambiente.
 - 🐛 **Bug crítico corrigido**: o `proxy.ts` redirecionava `/api/webhooks/*` para `/login`, o que impediria o Broski de confirmar pagamentos (pedidos ficariam presos em `awaiting_payment`). Rotas de webhook agora são públicas por design — a autenticidade vem da assinatura HMAC, não de sessão. Coberto por testes (`tests/unit/proxy-public-paths.test.ts`).
 - Pendente: página de sucesso pós-pagamento, e-mail de confirmação, reembolso pelo painel, listagem de pedidos na UI.
 
 #### Notas anteriores da fase
+
 - Interface `PaymentProvider` definida.
 - **Adapter Broski implementado** (2026-07-28) a partir da OpenAPI oficial (https://docs.broski.pt/openapi.yaml): criação de pedido MB WAY/Multibanco, consulta, estorno total/parcial, verificação HMAC de webhooks, teste de conexão. Status: 🖥️ interface pronta sem credenciais — nenhuma chamada real validada ainda. Detalhes em docs/PAYMENTS.md.
 - Catálogo de gateways em `src/payment-providers/catalog.ts` (Broski = principal).
+
 ### FASE 5 — Analytics / Live View — ⏳ não iniciada
+
 ### FASE 6 — Financeiro — ⏳ não iniciada
+
 ### FASE 7 — Pixels e integrações — ⏳ não iniciada
+
 ### FASE 8 — Landing pages e editor — ✅ construtor implementado
 
 - ✅ **Construtor de landing pages (2026-08-03)** — `/landing-pages` deixou de
@@ -174,12 +224,16 @@
   teste de fumo do fluxo público (publicar → abrir → evento → pausar) ✅.
 
 #### Notas anteriores da fase
+
 - **Landing page TechNébula publicada** (2026-07-28) em `/p/cadeira-gaming-alpha-gamer-nebula` — página estática em código (produto: cadeira ALPHA GAMER Nébula), listada na aba Landing pages do painel. Conteúdo editável em `src/features/landing/technebula-data.ts`.
 - Decisão registrada: o usuário enviou um zip/URL de uma página que imitava a loja real PCDIGA (domínio pcdiga.vip); a importação foi **recusada** por se tratar de imitação de marca de terceiros. A página foi recriada do zero com marca própria "TechNébula", escolhida pelo usuário. Avaliações fictícias ("996 avaliações") NÃO foram reproduzidas — o campo `rating` fica nulo até haver avaliações reais.
 - Botão "Comprar já" leva a `/checkout/[slug]`, que exibe honestamente "checkout em construção" até as Fases 3/4.
 - Editor por blocos e criação de páginas pelo painel continuam planejados para a Fase 8.
+
 ### FASE 9 — Clientes e comunicação — ⏳ não iniciada
+
 ### FASE 10 — Produção — 🔄 em andamento
+
 - ✅ **Deploy na Vercel realizado (2026-07-28)** — projeto `dash-board`, time `paineldk-20206`, ligado ao GitHub `drakshoprj15-cpu/DashBoard` (auto-deploy a cada push).
 - URL de produção: **https://dash-board-psi-one.vercel.app** — verificada publicamente acessível (sem Deployment Protection, requisito para o webhook do Broski funcionar).
 - Variáveis de ambiente configuradas na Vercel (Supabase + Broski). `BROSKI_WEBHOOK_SECRET` e `UTMIFY_API_TOKEN` ainda pendentes.
@@ -192,19 +246,19 @@
 
 Nada abaixo impede o desenvolvimento — as interfaces são construídas e ficam **claramente desconectadas** até haver credenciais.
 
-| Serviço | Variáveis | Necessário para |
-|---|---|---|
-| Supabase | ✅ **CONECTADO em 2026-07-28** — projeto `bptlhagfzldokgoeaabx` (eu-west-1), 60 tabelas migradas via pooler (conexão direta é IPv6-only), login real ativo, modo demo desativado. RLS ainda pendente. | — |
-| Resend | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Envio real de e-mails |
-| **Broski** ⭐ gateway principal | ✅ **CONECTADO em 2026-07-28** — `BROSKI_API_KEY` validada com chamada real (HTTP 200). Pagamento Multibanco real criado no teste (`ord_k2t8byfbq8trnv`, pedido `IN-MS4ER5YF71S`). Falta `BROSKI_WEBHOOK_SECRET` (só após o deploy, quando houver URL pública). | — |
-| Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Pagamentos (sandbox e produção) |
-| Mercado Pago | `MERCADO_PAGO_ACCESS_TOKEN` | Pagamentos |
-| Pagar.me | `PAGARME_API_KEY` | Pagamentos |
-| Asaas | `ASAAS_API_KEY` | Pagamentos |
-| UTMify | `UTMIFY_API_TOKEN` | Envio de conversões |
-| Meta | `META_PIXEL_ID`, `META_CAPI_TOKEN` | Conversions API |
-| Upstash | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limiting, filas |
-| Sentry | `SENTRY_DSN` | Monitoramento |
+| Serviço                         | Variáveis                                                                                                                                                                                                                                                       | Necessário para                 |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Supabase                        | ✅ **CONECTADO em 2026-07-28** — projeto `bptlhagfzldokgoeaabx` (eu-west-1), 60 tabelas migradas via pooler (conexão direta é IPv6-only), login real ativo, modo demo desativado. RLS ainda pendente.                                                           | —                               |
+| Resend                          | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`                                                                                                                                                                                                                           | Envio real de e-mails           |
+| **Broski** ⭐ gateway principal | ✅ **CONECTADO em 2026-07-28** — `BROSKI_API_KEY` validada com chamada real (HTTP 200). Pagamento Multibanco real criado no teste (`ord_k2t8byfbq8trnv`, pedido `IN-MS4ER5YF71S`). Falta `BROSKI_WEBHOOK_SECRET` (só após o deploy, quando houver URL pública). | —                               |
+| Stripe                          | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                                                                                                                                    | Pagamentos (sandbox e produção) |
+| Mercado Pago                    | `MERCADO_PAGO_ACCESS_TOKEN`                                                                                                                                                                                                                                     | Pagamentos                      |
+| Pagar.me                        | `PAGARME_API_KEY`                                                                                                                                                                                                                                               | Pagamentos                      |
+| Asaas                           | `ASAAS_API_KEY`                                                                                                                                                                                                                                                 | Pagamentos                      |
+| UTMify                          | `UTMIFY_API_TOKEN`                                                                                                                                                                                                                                              | Envio de conversões             |
+| Meta                            | `META_PIXEL_ID`, `META_CAPI_TOKEN`                                                                                                                                                                                                                              | Conversions API                 |
+| Upstash                         | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                                                                                                                                                                                            | Rate limiting, filas            |
+| Sentry                          | `SENTRY_DSN`                                                                                                                                                                                                                                                    | Monitoramento                   |
 
 ---
 
@@ -223,6 +277,7 @@ Nunca se afirma que algo está pronto quando está apenas desenhado.
 ## 6. Log de alterações
 
 ### 2026-07-28 — Fase 1 (Fundação)
+
 - Projeto base criado (create-next-app, Next 16.2.12).
 - Stack instalada, design system, layout do painel, autenticação, schema Drizzle completo, rotas do menu com empty states, documentação inicial.
 - Validação executada: `tsc --noEmit` ✅ · `eslint src` ✅ · `vitest` (5 testes) ✅ · `next build` ✅ (33 rotas + proxy) · verificação visual no navegador (dashboard, login, submódulos) sem erros de console ✅.

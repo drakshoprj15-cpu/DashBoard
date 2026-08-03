@@ -89,6 +89,16 @@ export const orderItems = pgTable(
     }),
     /** Snapshot do nome no momento da compra */
     productName: text("product_name").notNull(),
+    /**
+     * Cópia congelada da variação comprada. Editar preço, nome ou imagem no
+     * catálogo depois não pode mudar o que o cliente viu e pagou.
+     */
+    variantName: text("variant_name"),
+    /** Ex.: `{ "Cor": "Preto", "Tamanho": "M" }` */
+    variantOptions: jsonb("variant_options"),
+    sku: text("sku"),
+    imageUrl: text("image_url"),
+    currency: text("currency"),
     quantity: integer("quantity").default(1).notNull(),
     unitPriceCents: bigint("unit_price_cents", { mode: "number" }).notNull(),
     totalCents: bigint("total_cents", { mode: "number" }).notNull(),

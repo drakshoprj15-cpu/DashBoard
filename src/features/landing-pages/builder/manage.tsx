@@ -246,6 +246,56 @@ export function ProductPanel({
                   value={`/checkout/${page.product.checkoutSlug}`}
                 />
               </dl>
+
+              {page.product.variants.length > 0 ? (
+                <div className="mt-4 border-t pt-3">
+                  <p className="text-sm font-semibold">
+                    {page.product.variantOptionName} importada(s)
+                  </p>
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    Preço, estoque e fotos de cada opção vêm do catálogo. Para
+                    alterar, edite o produto em Catálogo → Variações.
+                  </p>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {page.product.variants.map((variant) => (
+                      <li
+                        key={variant.id}
+                        className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs"
+                      >
+                        {variant.thumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={variant.thumbnailUrl}
+                            alt=""
+                            className="size-6 rounded object-cover"
+                          />
+                        ) : variant.hexColor ? (
+                          <span
+                            aria-hidden
+                            className="size-3.5 rounded-full border"
+                            style={{ backgroundColor: variant.hexColor }}
+                          />
+                        ) : null}
+                        <span className="font-medium">{variant.name}</span>
+                        <span className="text-muted-foreground">
+                          {(
+                            (variant.priceCents ?? page.product!.priceCents) / 100
+                          ).toFixed(2)}{" "}
+                          {page.product!.currency}
+                        </span>
+                        {variant.isDefault ? (
+                          <span className="text-primary font-semibold">padrão</span>
+                        ) : null}
+                        {variant.trackInventory && variant.stockQuantity <= 0 ? (
+                          <span className="text-destructive font-semibold">
+                            esgotada
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : (
             <Alert>

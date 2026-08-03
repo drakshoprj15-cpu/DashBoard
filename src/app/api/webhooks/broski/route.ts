@@ -18,6 +18,10 @@ import { sendOrderToUtmify } from "@/features/pixels/utmify";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { dispatchWebhookEvent } from "@/features/webhooks/dispatch";
 import {
+  applyPaidOrderStock,
+  restoreOrderStock,
+} from "@/features/variants/inventory";
+import {
   canTransitionOrderStatus,
   ORDER_STATUS_BY_PAYMENT_STATUS,
 } from "@/features/carts/status";
@@ -172,6 +176,18 @@ export async function POST(request: Request) {
           .limit(1);
 
         if (orderRow) {
+          // Estoque: a baixa acontece aqui, na confirmação do pagamento —
+          // nunca no clique do cliente. Reembolso e chargeback devolvem as
+          // unidades. As duas operações são idempotentes (o histórico em
+          // inventory_movements evita baixa dupla numa reentrega).
+          if (event.status === "approved") {
+            await applyPaidOrderStock(orderId);
+          } else if (event.status === "refunded") {
+            await restoreOrderStock(orderId, "refund");
+          } else if (event.status === "chargeback") {
+            await restoreOrderStock(orderId, "chargeback");
+          }
+
           // Lançamento automático no livro-caixa (Financeiro → Entradas/Saídas).
           // Usa o valor bruto do pedido — o Broski não retorna a taxa cobrada
           // em nenhum ponto do fluxo, então nunca lançamos gateway_fee aqui.
@@ -238,6 +254,8 @@ export async function POST(request: Request) {
             .select({
               productId: orderItems.productId,
               productName: orderItems.productName,
+              variantName: orderItems.variantName,
+              sku: orderItems.sku,
               quantity: orderItems.quantity,
               unitPriceCents: orderItems.unitPriceCents,
             })
@@ -266,7 +284,12 @@ export async function POST(request: Request) {
               : undefined,
             items: itemRows.map((item) => ({
               id: item.productId,
-              name: item.productName,
+              // A variação comprada aparece no nome do produto reportado —
+              // relatório de campanha mostrando "Cadeira — Rosa", não só
+              // "Cadeira".
+              name: item.variantName
+                ? `${item.productName} — ${item.variantName}`
+                : item.productName,
               quantity: item.quantity,
               unitPriceCents: item.unitPriceCents,
             })),
@@ -283,6 +306,14 @@ export async function POST(request: Request) {
               currency: orderRow.currency,
               email: customerRow?.email,
               phone: customerRow?.phone,
+              productName: itemRows[0]
+                ? itemRows[0].variantName
+                  ? `${itemRows[0].productName} — ${itemRows[0].variantName}`
+                  : itemRows[0].productName
+                : undefined,
+              contentIds: itemRows
+                .map((item) => item.sku)
+                .filter((sku): sku is string => Boolean(sku)),
             });
           }
 

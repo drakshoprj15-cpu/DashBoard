@@ -1,12 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Code2, Database, LayoutTemplate, Package } from "lucide-react";
+import {
+  ArrowLeft,
+  Code2,
+  Database,
+  LayoutTemplate,
+  Package,
+  Palette,
+} from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
 import { getProductById } from "@/features/products/queries";
 import { ProductCoreForm } from "@/features/products/product-core-form";
 import { ProductLandingForm } from "@/features/products/product-landing-form";
+import { getProductVariantsData } from "@/features/variants/queries";
+import { VariantsTab } from "@/features/variants/variants-tab";
 import { getCustomCodeByProductId } from "@/features/custom-code/queries";
 import { CodeTab } from "@/features/custom-code/code-tab";
 import { getVerifiedDomainForProductSlug } from "@/features/domains/queries";
@@ -36,9 +45,10 @@ export default async function ProdutoEditPage(
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const [customCode, hostname] = await Promise.all([
+  const [customCode, hostname, variantsData] = await Promise.all([
     getCustomCodeByProductId(product.id),
     getVerifiedDomainForProductSlug(product.slug),
+    getProductVariantsData(product.id),
   ]);
   const publicUrl = hostname
     ? `https://${hostname}`
@@ -63,6 +73,9 @@ export default async function ProdutoEditPage(
           <TabsTrigger value="dados">
             <Package /> Dados
           </TabsTrigger>
+          <TabsTrigger value="variacoes">
+            <Palette /> Variações
+          </TabsTrigger>
           <TabsTrigger value="landing">
             <LayoutTemplate /> Landing page
           </TabsTrigger>
@@ -73,6 +86,19 @@ export default async function ProdutoEditPage(
 
         <TabsContent value="dados" className="mt-4">
           <ProductCoreForm product={product} />
+        </TabsContent>
+
+        <TabsContent value="variacoes" className="mt-4">
+          {variantsData ? (
+            <VariantsTab data={variantsData} />
+          ) : (
+            <EmptyState
+              icon={Palette}
+              title="Variações indisponíveis"
+              description="Não foi possível carregar as variações deste produto."
+              className="min-h-[240px]"
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="landing" className="mt-4">

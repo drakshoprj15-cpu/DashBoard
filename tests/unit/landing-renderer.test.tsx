@@ -23,6 +23,7 @@ const PRODUCT: LandingProductData = {
   mainImageUrl: "https://cdn.example/cadeira.jpg",
   gallery: ["https://cdn.example/cadeira.jpg"],
   variants: [],
+  variantOptionName: "Cor",
   trackInventory: false,
   stockQuantity: 0,
   checkoutSlug: "checkout-cadeira",

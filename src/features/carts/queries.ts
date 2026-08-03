@@ -606,6 +606,10 @@ export interface CartDetail {
   } | null;
   items: {
     productName: string;
+    /** Variação comprada, congelada no momento do pedido */
+    variantName: string | null;
+    sku: string | null;
+    imageUrl: string | null;
     quantity: number;
     unitPriceCents: number;
     totalCents: number;
@@ -788,6 +792,9 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
       : null,
     items: itemRows.map((i) => ({
       productName: i.productName,
+      variantName: i.variantName,
+      sku: i.sku,
+      imageUrl: i.imageUrl,
       quantity: i.quantity,
       unitPriceCents: Number(i.unitPriceCents),
       totalCents: Number(i.totalCents),

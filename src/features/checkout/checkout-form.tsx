@@ -28,6 +28,7 @@ import {
 } from "@/features/checkout/actions";
 import { sendTrack } from "@/features/analytics/tracker";
 import type { CheckoutTheme } from "@/features/checkouts/queries";
+import type { CheckoutVariant } from "@/features/variants/resolve";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,10 @@ interface CheckoutFormProps {
   storeName: string;
   /** Landing page de origem (parâmetro `lp`), quando a visita veio de uma. */
   landingPageId?: string;
+  /** Variações do catálogo; vazio = produto sem opções */
+  variants?: CheckoutVariant[];
+  /** Identificador público da variação que abre selecionada */
+  initialVariantId?: string;
 }
 
 function Section({
@@ -87,6 +92,8 @@ export function CheckoutForm({
   utm,
   storeName,
   landingPageId = "",
+  variants = [],
+  initialVariantId = "",
 }: CheckoutFormProps) {
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
@@ -98,10 +105,23 @@ export function CheckoutForm({
   const [shippingMethodId, setShippingMethodId] = React.useState(
     shippingMethods[0]?.id ?? "",
   );
+  const [variantId, setVariantId] = React.useState(initialVariantId);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
 
+  const selectedVariant =
+    variants.find((item) => item.publicId === variantId) ?? null;
+
   const fmt = (cents: number) => formatMoney(cents, product.currency, "pt-PT");
-  const subtotal = product.priceCents * quantity;
+  const unitPriceCents = selectedVariant?.priceCents ?? product.priceCents;
+
+  // Trocar para uma opção com menos estoque reduz a quantidade na hora — o
+  // servidor recusaria de qualquer forma, e o cliente veria um erro seco.
+  // A quantidade efetiva é derivada, não sincronizada por efeito.
+  const maxQuantity = selectedVariant
+    ? Math.max(1, Math.min(10, selectedVariant.maxQuantity || 1))
+    : 10;
+  const effectiveQuantity = Math.min(quantity, maxQuantity);
+  const subtotal = unitPriceCents * effectiveQuantity;
   const selectedShipping = shippingMethods.find((m) => m.id === shippingMethodId);
   const shipping = selectedShipping
     ? calculateShippingCost(selectedShipping, subtotal)
@@ -192,33 +212,52 @@ export function CheckoutForm({
       <div className="flex gap-3">
         <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border bg-zinc-50">
           <Image
-            src={product.mainImage}
-            alt={product.name}
+            src={selectedVariant?.imageUrl ?? product.mainImage}
+            alt={
+              selectedVariant
+                ? `${product.name} — ${selectedVariant.label}`
+                : product.name
+            }
             fill
             className="object-contain p-1"
+            unoptimized={Boolean(selectedVariant?.imageUrl)}
           />
           <span className="absolute -top-0 -right-0 flex size-5 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-bold text-white">
-            {quantity}
+            {effectiveQuantity}
           </span>
         </div>
         <div className="min-w-0 text-sm">
           <p className="font-semibold">{product.name}</p>
-          <p className="text-zinc-500">{fmt(product.priceCents)} / un.</p>
+          {selectedVariant ? (
+            <p className="text-zinc-600">
+              {Object.entries(selectedVariant.options).length > 0
+                ? Object.entries(selectedVariant.options)
+                    .map(([name, value]) => `${name}: ${value}`)
+                    .join(" · ")
+                : selectedVariant.label}
+              {selectedVariant.sku ? (
+                <span className="block font-mono text-[11px] text-zinc-400">
+                  SKU {selectedVariant.sku}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          <p className="text-zinc-500">{fmt(unitPriceCents)} / un.</p>
           <div className="mt-1 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              onClick={() => setQuantity(Math.max(1, effectiveQuantity - 1))}
               className="flex size-6 items-center justify-center rounded border text-zinc-600 hover:bg-zinc-50"
               aria-label="Diminuir quantidade"
             >
               −
             </button>
             <span className="w-5 text-center text-sm font-semibold">
-              {quantity}
+              {effectiveQuantity}
             </span>
             <button
               type="button"
-              onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+              onClick={() => setQuantity(Math.min(maxQuantity, effectiveQuantity + 1))}
               className="flex size-6 items-center justify-center rounded border text-zinc-600 hover:bg-zinc-50"
               aria-label="Aumentar quantidade"
             >
@@ -283,7 +322,8 @@ export function CheckoutForm({
       {/* Formulário */}
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="productSlug" value={product.slug} />
-        <input type="hidden" name="quantity" value={quantity} />
+        <input type="hidden" name="variantId" value={variantId} />
+        <input type="hidden" name="quantity" value={effectiveQuantity} />
         <input type="hidden" name="paymentMethod" value={method} />
         <input type="hidden" name="shippingMethodId" value={shippingMethodId} />
         <input type="hidden" name="utmSource" value={utm.utmSource} />
@@ -312,6 +352,77 @@ export function CheckoutForm({
             <AlertTitle>Pagamento ainda não ativado</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
+        )}
+
+        {variants.length > 0 && (
+          <section className="rounded-2xl border bg-white p-5 md:p-6">
+            <h2 className="text-base font-bold">Opção escolhida</h2>
+            <div
+              role="radiogroup"
+              aria-label="Opção do produto"
+              className="mt-4 flex flex-wrap gap-2"
+            >
+              {variants.map((variant) => {
+                const selected = variant.publicId === variantId;
+                return (
+                  <button
+                    key={variant.publicId}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={!variant.purchasable}
+                    onClick={() => setVariantId(variant.publicId)}
+                    className={cn(
+                      "flex min-h-11 items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors",
+                      selected ? "" : "border-zinc-200 hover:border-zinc-300",
+                      !variant.purchasable &&
+                        "cursor-not-allowed opacity-50",
+                    )}
+                    style={
+                      selected
+                        ? {
+                            borderColor: "var(--checkout-primary)",
+                            backgroundColor:
+                              "color-mix(in srgb, var(--checkout-primary) 8%, white)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {variant.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={variant.thumbnailUrl}
+                        alt=""
+                        className="size-8 rounded object-cover"
+                      />
+                    ) : variant.hexColor ? (
+                      <span
+                        aria-hidden
+                        className="size-5 rounded-full border"
+                        style={{ backgroundColor: variant.hexColor }}
+                      />
+                    ) : null}
+                    <span>
+                      <span className="block font-semibold">{variant.label}</span>
+                      <span className="block text-xs text-zinc-500">
+                        {variant.purchasable
+                          ? fmt(variant.priceCents)
+                          : "Esgotado"}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedVariant &&
+            selectedVariant.trackInventory &&
+            !selectedVariant.allowBackorder ? (
+              <p className="mt-3 text-xs text-zinc-500">
+                {selectedVariant.stockQuantity} unidade(s) disponíveis desta
+                opção.
+              </p>
+            ) : null}
+          </section>
         )}
 
         <Section step={1} icon={User} title="Contacto">
