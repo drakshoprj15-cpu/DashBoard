@@ -71,6 +71,7 @@ export async function submitCheckoutAction(
     utmCampaign: formData.get("utmCampaign") ?? "",
     utmContent: formData.get("utmContent") ?? "",
     utmTerm: formData.get("utmTerm") ?? "",
+    landingPageId: formData.get("landingPageId") ?? "",
   });
 
   if (!parsed.success) {
@@ -123,6 +124,9 @@ export async function submitCheckoutAction(
   if (data.utmCampaign) utm.utm_campaign = data.utmCampaign;
   if (data.utmContent) utm.utm_content = data.utmContent;
   if (data.utmTerm) utm.utm_term = data.utmTerm;
+  // `lp` liga o pedido à landing page que o originou — é assim que a aba
+  // Métricas conta conversões reais, sem depender de pixel do navegador.
+  if (data.landingPageId) utm.lp = data.landingPageId;
 
   const db = getDb();
 
@@ -194,7 +198,7 @@ export async function submitCheckoutAction(
         totalCents: total,
         shippingAddress,
         shippingMethod: selectedShippingMethod?.name,
-        origin: "checkout",
+        origin: data.landingPageId ? "landing_page" : "checkout",
         countryCode: "PT",
         utm,
       })

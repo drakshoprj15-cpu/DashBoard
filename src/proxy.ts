@@ -9,6 +9,7 @@ const PUBLIC_PREFIXES = [
   "/recuperar-senha",
   "/auth",
   "/p/",
+  "/lp/",
   "/pay/",
   "/checkout/",
   "/loja",

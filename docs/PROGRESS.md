@@ -151,7 +151,29 @@
 ### FASE 5 — Analytics / Live View — ⏳ não iniciada
 ### FASE 6 — Financeiro — ⏳ não iniciada
 ### FASE 7 — Pixels e integrações — ⏳ não iniciada
-### FASE 8 — Landing pages e editor — ⏳ parcialmente adiantada
+### FASE 8 — Landing pages e editor — ✅ construtor implementado
+
+- ✅ **Construtor de landing pages (2026-08-03)** — `/landing-pages` deixou de
+  ser uma listagem de produtos e passou a ser um módulo completo: criação por
+  assistente em 4 passos, editor visual com 31 blocos, publicação versionada e
+  rota pública `/lp/[slug]`.
+- Arquitetura: o rascunho e a versão publicada vivem na mesma linha de
+  `landing_pages` (ver docs/DATABASE.md). **Publicar é uma escrita no banco** —
+  não gera build nem deploy. Deploy da Vercel continua sendo só para mudanças
+  no código, pelo push no GitHub já ligado ao projeto.
+- Integração com o resto da plataforma: produtos e variações do catálogo,
+  avaliações de Provas sociais, checkout real (`/checkout/[slug]`), pixels do
+  workspace, consentimento de cookies e livro de auditoria.
+- Métricas: visitas e cliques vêm de `landing_page_events`; **conversões vêm de
+  pedidos pagos** (`orders.utm.lp`), não de pixel — o número do painel bate com
+  o do financeiro.
+- Conformidade: nenhum modelo traz depoimento, avaliação, estoque ou contagem
+  inventados. A contagem regressiva exige uma data real e não reinicia sozinha;
+  sem data, o bloco não aparece na página publicada.
+- Validado em 2026-08-03: lint ✅ · typecheck ✅ · 133 testes ✅ · build ✅ ·
+  teste de fumo do fluxo público (publicar → abrir → evento → pausar) ✅.
+
+#### Notas anteriores da fase
 - **Landing page TechNébula publicada** (2026-07-28) em `/p/cadeira-gaming-alpha-gamer-nebula` — página estática em código (produto: cadeira ALPHA GAMER Nébula), listada na aba Landing pages do painel. Conteúdo editável em `src/features/landing/technebula-data.ts`.
 - Decisão registrada: o usuário enviou um zip/URL de uma página que imitava a loja real PCDIGA (domínio pcdiga.vip); a importação foi **recusada** por se tratar de imitação de marca de terceiros. A página foi recriada do zero com marca própria "TechNébula", escolhida pelo usuário. Avaliações fictícias ("996 avaliações") NÃO foram reproduzidas — o campo `rating` fica nulo até haver avaliações reais.
 - Botão "Comprar já" leva a `/checkout/[slug]`, que exibe honestamente "checkout em construção" até as Fases 3/4.

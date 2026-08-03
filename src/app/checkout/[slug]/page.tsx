@@ -112,6 +112,7 @@ export default async function CheckoutSlugPage(
           theme={checkout?.theme ?? DEFAULT_CHECKOUT_THEME}
           utm={utm}
           storeName={branding.storeName}
+          landingPageId={asString(searchParams.lp)}
         />
       </main>
 

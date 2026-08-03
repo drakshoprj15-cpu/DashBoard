@@ -78,6 +78,13 @@
       "when": 1785634922545,
       "tag": "0010_enable_rls_workspace_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785700000000,
+      "tag": "0011_landing_page_builder",
+      "breakpoints": true
     }
   ]
 }

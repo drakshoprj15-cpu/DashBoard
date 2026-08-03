@@ -47,6 +47,8 @@ interface CheckoutFormProps {
     utmTerm: string;
   };
   storeName: string;
+  /** Landing page de origem (parâmetro `lp`), quando a visita veio de uma. */
+  landingPageId?: string;
 }
 
 function Section({
@@ -84,6 +86,7 @@ export function CheckoutForm({
   theme,
   utm,
   storeName,
+  landingPageId = "",
 }: CheckoutFormProps) {
   const [state, formAction, pending] = useActionState<
     CheckoutActionResult | null,
@@ -288,6 +291,7 @@ export function CheckoutForm({
         <input type="hidden" name="utmCampaign" value={utm.utmCampaign} />
         <input type="hidden" name="utmContent" value={utm.utmContent} />
         <input type="hidden" name="utmTerm" value={utm.utmTerm} />
+        <input type="hidden" name="landingPageId" value={landingPageId} />
 
         {state?.status === "validation_error" && (
           <Alert variant="destructive">

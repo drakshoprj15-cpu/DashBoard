@@ -22,6 +22,14 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
 
   "customer.marketing_consent_updated": "Consentimento de marketing atualizado",
 
+  "landing_page.created": "Landing page criada",
+  "landing_page.published": "Landing page publicada",
+  "landing_page.paused": "Landing page pausada",
+  "landing_page.resumed": "Landing page retomada",
+  "landing_page.duplicated": "Landing page duplicada",
+  "landing_page.version_restored": "Versão da landing page restaurada",
+  "landing_page.deleted": "Landing page excluída",
+
   "webhook.created": "Webhook criado",
   "webhook.updated": "Webhook atualizado",
   "webhook.activated": "Webhook ativado",
@@ -39,6 +47,7 @@ export const ENTITY_TYPE_LABEL: Record<string, string> = {
   checkout: "Checkout",
   customer: "Cliente",
   webhook_endpoint: "Webhook",
+  landing_page: "Landing page",
 };
 
 export function actionLabel(action: string): string {
