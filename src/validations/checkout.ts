@@ -52,6 +52,8 @@ export const checkoutSchema = z
     utmCampaign: z.string().trim().optional().or(z.literal("")),
     utmContent: z.string().trim().optional().or(z.literal("")),
     utmTerm: z.string().trim().optional().or(z.literal("")),
+    /** Id da landing page de origem (parâmetro `lp` na URL do checkout) */
+    landingPageId: z.string().trim().max(64).optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
     const phone = data.phone ? normalizePtPhone(data.phone) : "";

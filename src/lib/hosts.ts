@@ -45,6 +45,7 @@ export function isPanelHost(host: string): boolean {
  */
 const STORE_PREFIXES = [
   "/p/",
+  "/lp/",
   "/pay/",
   "/checkout/",
   "/loja",
