@@ -127,18 +127,18 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
   },
   paid: {
     key: "paid",
-    label: "Pagamento confirmado",
+    label: "Pagamento aprovado",
     suggestedFor: ["paid", "recovered"],
-    subject: "Recebemos seu pagamento — pedido confirmado",
-    preview: "Seu pedido de {{produto}} está confirmado. Aqui está o resumo.",
+    subject: "Seu pagamento foi aprovado — pedido confirmado",
+    preview: "Seu pedido de {{produto}} foi aprovado. Aqui está o resumo.",
     emailBody:
-      "Olá {{nome}}, seu pagamento foi confirmado e o pedido de {{produto}} já está com a gente. " +
+      "Olá {{nome}}, seu pagamento foi aprovado e o pedido de {{produto}} já está com a gente. " +
       "Você vai receber as próximas atualizações por aqui.\n\n" +
       "Qualquer dúvida sobre o pedido, é só responder este e-mail que a gente ajuda.",
     whatsappBody:
       "Olá {{nome}}, aqui é da " +
       company.tradeName +
-      ". Seu pagamento do pedido de {{produto}} ({{valor}}) foi confirmado, obrigado pela compra! " +
+      ". Seu pagamento do pedido de {{produto}} ({{valor}}) foi aprovado, obrigado pela compra! " +
       "Qualquer dúvida, é só responder por aqui.\n\n" +
       "Se preferir não receber estas mensagens, é só responder PARAR.",
     hasPaymentCta: false,
