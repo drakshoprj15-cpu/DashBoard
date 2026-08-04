@@ -148,6 +148,16 @@ export const pixelType = pgEnum("pixel_type", [
   "custom_script",
 ]);
 
+/** Estado da última verificação de conexão de um pixel (Meta Pixel/CAPI) */
+export const pixelConnectionStatus = pgEnum("pixel_connection_status", [
+  "not_tested",
+  "connected",
+  "invalid_token",
+  "invalid_pixel",
+  "connection_error",
+  "disabled",
+]);
+
 export const integrationCategory = pgEnum("integration_category", [
   "payments",
   "analytics",

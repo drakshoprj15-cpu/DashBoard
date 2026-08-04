@@ -40,6 +40,22 @@ export function encryptSecret(plain: string): string {
   ].join(".");
 }
 
+/**
+ * Prévia mascarada de um token, segura para guardar e exibir sem nunca
+ * expor o valor completo (ex.: "EAAJ***...X9"). Usada só no momento do save,
+ * antes de o texto puro ser descartado — o valor original nunca é
+ * reconstituível a partir da prévia.
+ */
+export function maskTokenPreview(plain: string): string {
+  const trimmed = plain.trim();
+  if (trimmed.length === 0) return "";
+  if (trimmed.length <= 6) return "•".repeat(trimmed.length);
+
+  const visibleStart = trimmed.slice(0, 4);
+  const visibleEnd = trimmed.slice(-2);
+  return `${visibleStart}***...${visibleEnd}`;
+}
+
 export function decryptSecret(payload: string): string {
   const [ivB64, tagB64, dataB64] = payload.split(".");
   if (!ivB64 || !tagB64 || !dataB64) {

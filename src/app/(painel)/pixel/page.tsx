@@ -3,6 +3,8 @@ import { Database, Info, Radar, Power, Trash2 } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
 import {
+  getPixelOverviewStats,
+  getWorkspaceMetaSettings,
   listPixels,
   PIXEL_TYPE_INFO,
   type PixelType,
@@ -12,6 +14,10 @@ import {
   togglePixelAction,
 } from "@/features/pixels/actions";
 import { PixelForm } from "@/features/pixels/pixel-form";
+import { MetaPixelPage } from "@/features/pixels/meta/meta-pixel-page";
+import { MetaEventLogs } from "@/features/pixels/meta/meta-event-logs";
+import { PixelTabs } from "@/features/pixels/meta/pixel-tabs";
+import { listLandingPages } from "@/features/landing-pages/queries";
 import { getAppUrl } from "@/lib/app-url";
 import { alphaGamerNebula } from "@/features/landing/technebula-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,7 +35,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 export const metadata: Metadata = { title: "Pixel" };
 export const dynamic = "force-dynamic";
 
-export default async function PixelPage() {
+function OverviewStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2">
+      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className="text-lg font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+export default async function PixelPage(props: PageProps<"/pixel">) {
   if (!isDatabaseConfigured()) {
     return (
       <EmptyState
@@ -41,18 +56,81 @@ export default async function PixelPage() {
     );
   }
 
-  const rows = await listPixels();
+  const searchParams = await props.searchParams;
+
+  const [rows, stats, landingPageRows, workspaceMetaSettings] =
+    await Promise.all([
+      listPixels(),
+      getPixelOverviewStats(),
+      listLandingPages(),
+      getWorkspaceMetaSettings(),
+    ]);
   const appUrl = getAppUrl();
+
+  const landingPagesForPicker = landingPageRows.map((lp) => ({
+    id: lp.id,
+    name: lp.name,
+    publicName: lp.publicName,
+    slug: lp.slug,
+    productName: lp.productName,
+    status: lp.status,
+  }));
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight">Pixel</h2>
+        <h2 className="text-xl font-bold tracking-tight">
+          Meta Pixel e API de Conversões
+        </h2>
         <p className="text-muted-foreground text-sm">
-          Rastreamento das suas landing pages e do checkout
+          Configure o rastreamento pelo navegador e pelo servidor para cada
+          landing page.
         </p>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <OverviewStat label="Pixels ativos" value={stats.activePixels} />
+        <OverviewStat
+          label="Landing pages configuradas"
+          value={stats.landingPagesConfigured}
+        />
+        <OverviewStat
+          label="Eventos nas últimas 24h"
+          value={stats.eventsLast24h}
+        />
+        <OverviewStat label="Eventos com erro" value={stats.eventsWithError} />
+      </div>
+
+      <PixelTabs
+        general={<PixelGeneralTab rows={rows} appUrl={appUrl} />}
+        meta={
+          <>
+            <MetaPixelPage
+              landingPages={landingPagesForPicker}
+              initialWorkspaceRuleOn={
+                workspaceMetaSettings.countGeneratedOrdersAsPurchase
+              }
+            />
+            <MetaEventLogs
+              searchParams={searchParams}
+              landingPages={landingPagesForPicker}
+            />
+          </>
+        }
+      />
+    </div>
+  );
+}
+
+function PixelGeneralTab({
+  rows,
+  appUrl,
+}: {
+  rows: Awaited<ReturnType<typeof listPixels>>;
+  appUrl: string;
+}) {
+  return (
+    <div className="space-y-6">
       <Alert variant="info">
         <Info />
         <AlertTitle>Como os eventos disparam</AlertTitle>

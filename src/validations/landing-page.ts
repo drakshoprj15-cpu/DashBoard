@@ -140,6 +140,8 @@ export const landingTrackingSchema = z.object({
     .default(""),
   defaultUtm: z.string().trim().max(500).default(""),
   inheritWorkspacePixels: z.boolean().default(true),
+  /** `null` herda a regra global do workspace (Meta Pixel > "pedido gerado como compra") */
+  countGeneratedOrdersAsPurchase: z.boolean().nullable().default(null),
 });
 
 const codeField = z

@@ -56,6 +56,7 @@ function snapshotWith(blocks: LandingBlock[]): LandingSnapshot {
       gtmContainerId: "",
       defaultUtm: "",
       inheritWorkspacePixels: true,
+      countGeneratedOrdersAsPurchase: null,
     },
     customCode: {
       headCode: "",

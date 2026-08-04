@@ -11,7 +11,7 @@ export const pixelTypeEnum = z.enum([
 ]);
 
 /** Formatos oficiais de cada plataforma — evita salvar ID inválido. */
-const ID_PATTERNS: Record<string, { regex: RegExp; message: string }> = {
+export const ID_PATTERNS: Record<string, { regex: RegExp; message: string }> = {
   meta_pixel: {
     regex: /^\d{15,16}$/,
     message: "O ID do Meta Pixel tem 15 ou 16 dígitos",

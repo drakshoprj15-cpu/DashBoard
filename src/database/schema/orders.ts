@@ -59,6 +59,16 @@ export const orders = pgTable(
     /** UTMs e click ids capturados na sessão */
     utm: jsonb("utm").default({}).notNull(),
     origin: text("origin"), // store | checkout | payment_link | landing_page
+    /**
+     * Atribuição da Meta capturada no momento do checkout (cookies do
+     * navegador + IP/UA da requisição) — persistida aqui porque o webhook do
+     * gateway não tem acesso a cookies, e o Purchase pode ser enviado bem
+     * depois da visita original.
+     */
+    clientFbp: text("client_fbp"),
+    clientFbc: text("client_fbc"),
+    clientIp: text("client_ip"),
+    clientUserAgent: text("client_user_agent"),
     deviceType: text("device_type"),
     countryCode: text("country_code"),
     internalNotes: text("internal_notes"),

@@ -124,6 +124,11 @@ export interface LandingTracking {
   defaultUtm: string;
   /** Herdar os pixels configurados em /pixel além dos desta página */
   inheritWorkspacePixels: boolean;
+  /**
+   * Regra de Purchase da Meta específica desta página — `null` herda a
+   * configuração global do workspace (`workspaces.settings`).
+   */
+  countGeneratedOrdersAsPurchase: boolean | null;
 }
 
 export interface LandingCustomCode {

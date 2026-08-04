@@ -22,6 +22,12 @@ import {
 } from "@/payment-providers/broski";
 import { createNotification } from "@/features/notifications/create";
 import { pushEvent } from "@/features/notifications/pushcut";
+import { captureRequestAttribution } from "@/features/pixels/attribution";
+import {
+  buildPurchaseEventId,
+  sendPurchaseToMetaCapi,
+} from "@/features/pixels/meta-capi";
+import { getLandingPageMetaSettings } from "@/features/pixels/queries";
 import {
   resolveVariantForPurchase,
   type VariantResolution,
@@ -371,6 +377,46 @@ export async function submitCheckoutAction(
       await pushEvent("order_created", `Venda gerada · ${amount}`, detail);
     } catch (error) {
       console.error("[checkout] falha ao notificar venda gerada:", error);
+    }
+
+    // Atribuição da Meta (fbp/fbc/IP/UA) e Purchase do pedido gerado: nunca
+    // podem impedir a resposta do checkout — o pagamento já foi criado.
+    try {
+      const attribution = await captureRequestAttribution();
+      await db
+        .update(orders)
+        .set({
+          clientFbp: attribution.fbp,
+          clientFbc: attribution.fbc,
+          clientIp: attribution.ip,
+          clientUserAgent: attribution.userAgent,
+        })
+        .where(eq(orders.id, order.id));
+
+      const { rule } = await getLandingPageMetaSettings(
+        data.landingPageId || null,
+      );
+
+      if (rule === "generated") {
+        await sendPurchaseToMetaCapi({
+          workspaceId,
+          orderId: order.id,
+          landingPageId: data.landingPageId || null,
+          eventId: buildPurchaseEventId(order.id),
+          triggerType: "generated_order",
+          valueCents: total,
+          currency: "EUR",
+          email: data.email,
+          phone,
+          productName: chosenVariant
+            ? `${product.name} — ${chosenVariant.label}`
+            : product.name,
+          contentIds: chosenVariant?.sku ? [chosenVariant.sku] : undefined,
+          ...attribution,
+        });
+      }
+    } catch (error) {
+      console.error("[checkout] falha ao processar atribuição/Purchase Meta:", error);
     }
 
     return {

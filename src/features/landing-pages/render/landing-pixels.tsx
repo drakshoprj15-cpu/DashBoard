@@ -8,10 +8,13 @@ import type { LandingCustomCode, LandingTracking } from "../types";
  * Pixels configurados **nesta** landing page, além dos pixels globais do
  * workspace (esses continuam vindo de `PixelScripts`).
  *
+ * O Meta Pixel NÃO é renderizado aqui — é responsabilidade única de
+ * `PixelScripts` (com `landingPageId`), que já resolve a regra de fallback
+ * específico-vs-global. Renderizar aqui também disparava os dois ao mesmo
+ * tempo em páginas com pixel próprio.
+ *
  * Todos ficam atrás do `ConsentGate`: nada dispara antes de o visitante
- * aceitar cookies. `Purchase` nunca é disparado aqui — só o servidor, depois
- * de o pagamento ser confirmado pelo gateway, como já acontece no resto da
- * plataforma.
+ * aceitar cookies. `Purchase` nunca é disparado aqui — só o servidor.
  */
 export function LandingPixels({
   tracking,
@@ -21,27 +24,12 @@ export function LandingPixels({
   pageId: string;
 }) {
   const hasAny =
-    tracking.metaPixelId ||
-    tracking.tiktokPixelId ||
-    tracking.ga4MeasurementId ||
-    tracking.gtmContainerId;
+    tracking.tiktokPixelId || tracking.ga4MeasurementId || tracking.gtmContainerId;
 
   if (!hasAny) return null;
 
   return (
     <ConsentGate>
-      {tracking.metaPixelId ? (
-        <Script id={`lp-meta-${pageId}`} strategy="afterInteractive">
-          {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','${tracking.metaPixelId}');
-fbq('track','PageView');`}
-        </Script>
-      ) : null}
-
       {tracking.gtmContainerId ? (
         <Script id={`lp-gtm-${pageId}`} strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

@@ -167,21 +167,21 @@ export default async function PublicLandingPageRoute(
         />
       ) : null}
 
-      {snapshot.tracking.inheritWorkspacePixels ? (
-        <PixelScripts
-          event="ViewContent"
-          content={
-            product
-              ? {
-                  id: product.slug,
-                  name: product.name,
-                  valueCents: product.priceCents,
-                  currency: product.currency,
-                }
-              : undefined
-          }
-        />
-      ) : null}
+      <PixelScripts
+        landingPageId={page.id}
+        includeOtherGlobals={snapshot.tracking.inheritWorkspacePixels}
+        event="ViewContent"
+        content={
+          product
+            ? {
+                id: product.slug,
+                name: product.name,
+                valueCents: product.priceCents,
+                currency: product.currency,
+              }
+            : undefined
+        }
+      />
 
       <LandingPixels tracking={snapshot.tracking} pageId={page.id} />
       <LandingCustomCodeTop code={snapshot.customCode} pageId={page.id} />

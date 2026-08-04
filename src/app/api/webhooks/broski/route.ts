@@ -13,7 +13,10 @@ import {
   payouts,
 } from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
-import { sendPurchaseToMetaCapi } from "@/features/pixels/meta-capi";
+import {
+  buildPurchaseEventId,
+  sendPurchaseToMetaCapi,
+} from "@/features/pixels/meta-capi";
 import { sendOrderToUtmify } from "@/features/pixels/utmify";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { dispatchWebhookEvent } from "@/features/webhooks/dispatch";
@@ -182,6 +185,10 @@ export async function POST(request: Request) {
             createdAt: orders.createdAt,
             paidAt: orders.paidAt,
             utm: orders.utm,
+            clientFbp: orders.clientFbp,
+            clientFbc: orders.clientFbc,
+            clientIp: orders.clientIp,
+            clientUserAgent: orders.clientUserAgent,
           })
           .from(orders)
           .where(eq(orders.id, orderId))
@@ -314,12 +321,21 @@ export async function POST(request: Request) {
             utm: (orderRow.utm as Record<string, string> | null) ?? null,
           });
 
-          // Purchase só é reportado à Meta após confirmação real do gateway.
-          if (event.status === "approved" && orderRow.customerId) {
+          // Purchase pelo pagamento aprovado. Sempre tenta enviar — se o
+          // checkout já enviou este pedido como "generated_order", o índice
+          // único (pixelId, eventId, channel) em pixel_events bloqueia
+          // silenciosamente um segundo envio, sem precisar checar a regra
+          // aqui de novo.
+          if (event.status === "approved") {
+            const landingPageId =
+              (orderRow.utm as Record<string, string> | null)?.lp ?? null;
+
             await sendPurchaseToMetaCapi({
               workspaceId: orderRow.workspaceId,
               orderId,
-              eventId: `purchase_${orderId}`,
+              landingPageId,
+              eventId: buildPurchaseEventId(orderId),
+              triggerType: "payment_approved",
               valueCents: orderRow.totalCents,
               currency: orderRow.currency,
               email: customerRow?.email,
@@ -332,6 +348,10 @@ export async function POST(request: Request) {
               contentIds: itemRows
                 .map((item) => item.sku)
                 .filter((sku): sku is string => Boolean(sku)),
+              fbp: orderRow.clientFbp,
+              fbc: orderRow.clientFbc,
+              ip: orderRow.clientIp,
+              userAgent: orderRow.clientUserAgent,
             });
           }
 

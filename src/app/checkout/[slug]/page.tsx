@@ -84,6 +84,7 @@ export default async function CheckoutSlugPage(
   return (
     <div className="min-h-svh bg-zinc-50 text-zinc-900">
       <PixelScripts
+        landingPageId={asString(searchParams.lp) || null}
         event="InitiateCheckout"
         content={{
           // Identificador de conteúdo com a variação: é o SKU que a campanha

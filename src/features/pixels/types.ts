@@ -8,6 +8,26 @@ export type PixelType =
   | "utmify"
   | "custom_script";
 
+export type PixelConnectionStatus =
+  | "not_tested"
+  | "connected"
+  | "invalid_token"
+  | "invalid_pixel"
+  | "connection_error"
+  | "disabled";
+
+export const PIXEL_CONNECTION_STATUS_INFO: Record<
+  PixelConnectionStatus,
+  { label: string; badge: "muted" | "success" | "destructive" | "warning" }
+> = {
+  not_tested: { label: "Não testado", badge: "muted" },
+  connected: { label: "Conectado", badge: "success" },
+  invalid_token: { label: "Token inválido", badge: "destructive" },
+  invalid_pixel: { label: "Pixel inválido", badge: "destructive" },
+  connection_error: { label: "Erro de conexão", badge: "warning" },
+  disabled: { label: "Desativado", badge: "muted" },
+};
+
 export interface PixelRow {
   id: string;
   name: string;
@@ -16,7 +36,16 @@ export interface PixelRow {
   isActive: boolean;
   hasToken: boolean;
   lastActivityAt: Date | null;
+  landingPageId: string | null;
+  tokenPreview: string | null;
+  testEventCode: string | null;
+  connectionStatus: PixelConnectionStatus;
+  lastTestedAt: Date | null;
+  lastTestError: string | null;
 }
+
+/** Regra efetiva de contagem de Purchase — resolvida a partir do global + override da landing page. */
+export type PurchaseRule = "generated" | "approved";
 
 export const PIXEL_TYPE_INFO: Record<
   PixelType,

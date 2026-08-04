@@ -48,6 +48,7 @@ export const DEFAULT_TRACKING: LandingTracking = {
   gtmContainerId: "",
   defaultUtm: "",
   inheritWorkspacePixels: true,
+  countGeneratedOrdersAsPurchase: null,
 };
 
 export const DEFAULT_CUSTOM_CODE: LandingCustomCode = {

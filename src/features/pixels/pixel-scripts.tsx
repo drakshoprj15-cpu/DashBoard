@@ -13,6 +13,14 @@ interface PixelScriptsProps {
     valueCents: number;
     currency: string;
   };
+  /**
+   * Landing page de origem — aplica o fallback do Meta Pixel (pixels
+   * específicos da página, se houver algum ativo; senão os globais do
+   * workspace). Os demais tipos (GTM/GA4/Ads/TikTok) continuam só globais.
+   */
+  landingPageId?: string | null;
+  /** GTM/GA4/Ads/TikTok globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
+  includeOtherGlobals?: boolean;
 }
 
 /**
@@ -20,12 +28,21 @@ interface PixelScriptsProps {
  *
  * Regras:
  * - PageView dispara uma única vez por carregamento (o próprio snippet oficial).
- * - Purchase NUNCA é disparado aqui: só após confirmação de pagamento,
- *   pelo servidor (Conversions API), a partir do webhook do gateway.
+ * - Purchase NUNCA é disparado aqui: só após confirmação de pagamento (ou na
+ *   criação do pedido, se a regra "gerado" estiver ativa), pelo servidor
+ *   (Conversions API).
  * - Tokens privados jamais chegam ao navegador (a consulta pública filtra).
  */
-export async function PixelScripts({ event, content }: PixelScriptsProps) {
-  const active = await getActivePixelsForPublic();
+export async function PixelScripts({
+  event,
+  content,
+  landingPageId,
+  includeOtherGlobals = true,
+}: PixelScriptsProps) {
+  const active = await getActivePixelsForPublic(
+    landingPageId,
+    includeOtherGlobals,
+  );
   if (active.length === 0) return null;
 
   const byType = (t: PixelType) => active.filter((p) => p.type === t);
