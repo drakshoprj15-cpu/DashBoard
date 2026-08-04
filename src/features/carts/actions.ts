@@ -55,6 +55,7 @@ function escapeHtml(value: string): string {
  */
 function reminderHtml(
   body: string,
+  preview: string,
   reference: string,
   totalCents: number,
   currency: string,
@@ -62,17 +63,29 @@ function reminderHtml(
 ): string {
   const amount = formatMoney(totalCents, currency, "pt-PT");
   const safeBody = escapeHtml(body).replace(/\n/g, "<br>");
-  const cta =
-    checkoutUrl && /^https?:\/\//.test(checkoutUrl)
-      ? `<p style="margin:0 0 20px"><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;background:#d61f69;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">Concluir pagamento</a></p>`
-      : "";
+
+  // Sem link de pagamento não há botão — e o corpo do modelo remete a "o
+  // botão abaixo". Nesse caso a mensagem tem de oferecer um caminho real,
+  // senão o e-mail pede uma ação que não existe.
+  const hasCheckout = checkoutUrl && /^https?:\/\//.test(checkoutUrl);
+  const cta = hasCheckout
+    ? `<p style="margin:0 0 20px"><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;background:#d61f69;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">Concluir meu pedido</a></p>`
+    : `<p style="margin:0 0 20px;line-height:1.6">Responda a este e-mail e enviamos o link de pagamento em seguida.</p>`;
+
+  // Preheader: o que a caixa de entrada mostra depois do assunto. Fica
+  // escondido no corpo (display:none + altura zero) e é seguido de espaços
+  // invisíveis, senão o cliente de e-mail preenche o resto da linha com o
+  // início do HTML — normalmente o nome da marca repetido.
+  const preheader = `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preview)}${"&#8199;&#65279;&#847; ".repeat(30)}</div>`;
 
   return `<!doctype html><html lang="pt"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
+${preheader}
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
 <p style="margin:0 0 20px;font-size:20px;font-weight:800">${company.tradeName}</p>
 <p style="margin:0 0 18px;line-height:1.6">${safeBody}</p>
 ${cta}
-<p style="margin:0 0 14px;line-height:1.6;color:#52525b;font-size:14px">Pedido <strong>${escapeHtml(reference)}</strong> — <strong>${amount}</strong>.</p>
+<p style="margin:0 0 18px;line-height:1.6;color:#52525b;font-size:14px">Pedido <strong>${escapeHtml(reference)}</strong> — <strong>${amount}</strong>.</p>
+<p style="margin:0;line-height:1.6;color:#52525b;font-size:14px">Qualquer dúvida, é só responder a este e-mail.<br>— ${company.tradeName}</p>
 <hr style="margin:24px 0;border:none;border-top:1px solid #e4e4e7">
 <p style="margin:0;font-size:12px;color:#71717a">
 Recebeu este e-mail porque iniciou uma compra em ${company.tradeName}.<br>
@@ -196,6 +209,7 @@ export async function sendCartReminderAction(
 
   const html = reminderHtml(
     renderTemplate(template.emailBody, vars),
+    renderTemplate(template.preview, vars),
     order.reference,
     Number(order.totalCents),
     order.currency,

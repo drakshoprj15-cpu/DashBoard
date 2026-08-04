@@ -86,6 +86,7 @@ export function ReminderDialog({
   const body = channel === "email" ? selected.emailBody : selected.whatsappBody;
   const preview = renderTemplate(body, vars);
   const subject = renderTemplate(selected.subject, vars);
+  const preheader = renderTemplate(selected.preview, vars);
   const missing = findMissingVariables(body, vars);
 
   const optedOut = targets.filter((t) => t.marketingOptOut).length;
@@ -168,10 +169,16 @@ export function ReminderDialog({
             </Label>
             <div className="bg-muted/40 mt-1.5 space-y-2 rounded-lg border p-3 text-sm">
               {channel === "email" && (
-                <p className="font-medium">
-                  <span className="text-muted-foreground text-xs">Assunto: </span>
-                  {subject}
-                </p>
+                <>
+                  <p className="font-medium">
+                    <span className="text-muted-foreground text-xs">Assunto: </span>
+                    {subject}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    <span>Prévia na caixa de entrada: </span>
+                    {preheader}
+                  </p>
+                </>
               )}
               <p className="leading-relaxed whitespace-pre-wrap">{preview}</p>
             </div>
