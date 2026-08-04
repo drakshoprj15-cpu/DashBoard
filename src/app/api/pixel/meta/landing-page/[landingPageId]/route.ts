@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getSession } from "@/lib/auth/session";
 import { isDatabaseConfigured } from "@/database/client";
+import {
+  PixelAccessError,
+  requirePixelPermission,
+} from "@/features/pixels/access";
 import {
   getLandingPageMetaSettings,
   landingPageBelongsToWorkspace,
@@ -24,10 +27,6 @@ export async function GET(
   _request: Request,
   ctx: RouteContext<"/api/pixel/meta/landing-page/[landingPageId]">,
 ) {
-  const session = await getSession();
-  if (!session || session.demoMode) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "database_not_configured" },
@@ -35,16 +34,27 @@ export async function GET(
     );
   }
 
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requirePixelPermission("view"));
+  } catch (error) {
+    const status = error instanceof PixelAccessError ? error.status : 403;
+    return NextResponse.json(
+      { error: status === 401 ? "unauthorized" : "forbidden" },
+      { status },
+    );
+  }
+
   const { landingPageId } = await ctx.params;
 
-  const owned = await landingPageBelongsToWorkspace(landingPageId);
+  const owned = await landingPageBelongsToWorkspace(landingPageId, workspaceId);
   if (!owned) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   const [pixels, purchaseRule] = await Promise.all([
-    listLandingPagePixels(landingPageId),
-    getLandingPageMetaSettings(landingPageId),
+    listLandingPagePixels(landingPageId, workspaceId),
+    getLandingPageMetaSettings(landingPageId, workspaceId),
   ]);
 
   return NextResponse.json({ pixels, purchaseRule });

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
 
 import { getDb } from "@/database/client";
 import {
@@ -10,10 +11,11 @@ import {
   pixels,
 } from "@/database/schema";
 import { decryptSecret } from "@/lib/crypto";
-import { resolveEffectivePixelRows } from "@/features/pixels/queries";
+import { resolveEffectiveMetaRows } from "@/features/pixels/queries";
 import type { PixelConnectionStatus } from "@/features/pixels/types";
 
-const GRAPH_VERSION = "v21.0";
+const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v24.0";
+const MAX_DELIVERY_ATTEMPTS = 3;
 
 /** A Meta exige os dados do cliente com hash SHA-256 em minúsculas. */
 function hashed(value: string): string {
@@ -39,12 +41,11 @@ export interface PurchaseAttribution {
   fbc?: string | null;
   ip?: string | null;
   userAgent?: string | null;
+  sourceUrl?: string | null;
 }
 
 export type PurchaseTriggerType =
-  | "generated_order"
-  | "payment_approved"
-  | "reprocess";
+  "generated_order" | "payment_approved" | "reprocess";
 
 export interface PurchaseEventInput extends PurchaseAttribution {
   workspaceId: string;
@@ -58,7 +59,15 @@ export interface PurchaseEventInput extends PurchaseAttribution {
   currency: string;
   email?: string | null;
   phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  externalId?: string | null;
   productName?: string | null;
+  quantity?: number;
   /**
    * Identificadores do que foi comprado — SKU da variação quando existe.
    * É o que liga a conversão ao anúncio de catálogo certo (cor comprada,
@@ -67,7 +76,7 @@ export interface PurchaseEventInput extends PurchaseAttribution {
   contentIds?: string[];
 }
 
-function buildUserData(
+export function buildUserData(
   input: PurchaseEventInput,
 ): Record<string, string | string[]> {
   const userData: Record<string, string | string[]> = {};
@@ -75,6 +84,18 @@ function buildUserData(
   if (input.phone) {
     const digits = normalizePhoneDigits(input.phone);
     if (digits) userData.ph = [hashed(digits)];
+  }
+  const hashedFields = {
+    fn: input.firstName,
+    ln: input.lastName,
+    ct: input.city,
+    st: input.state,
+    zp: input.postalCode,
+    country: input.country,
+    external_id: input.externalId,
+  };
+  for (const [key, value] of Object.entries(hashedFields)) {
+    if (value?.trim()) userData[key] = [hashed(value)];
   }
   // fbp/fbc/IP/user agent NUNCA levam hash — são identificadores de sessão,
   // não dados pessoais diretos.
@@ -85,11 +106,14 @@ function buildUserData(
   return userData;
 }
 
-function buildCustomData(input: PurchaseEventInput): Record<string, unknown> {
+export function buildCustomData(
+  input: PurchaseEventInput,
+): Record<string, unknown> {
   return {
     currency: input.currency,
-    value: (input.valueCents / 100).toFixed(2),
+    value: input.valueCents / 100,
     order_id: input.orderId,
+    num_items: input.quantity ?? input.contentIds?.length ?? 1,
     ...(input.productName ? { content_name: input.productName } : {}),
     ...(input.contentIds && input.contentIds.length > 0
       ? { content_type: "product", content_ids: input.contentIds }
@@ -103,6 +127,10 @@ interface MetaGraphResult {
   body: Record<string, unknown>;
 }
 
+export function isRetryableMetaStatus(status: number): boolean {
+  return status === 0 || status === 429 || status >= 500;
+}
+
 async function callMetaGraph(
   pixelId: string,
   token: string,
@@ -113,9 +141,11 @@ async function callMetaGraph(
     `https://graph.facebook.com/${GRAPH_VERSION}/${pixelId}/events`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
-        access_token: token,
         data: events,
         ...(testEventCode ? { test_event_code: testEventCode } : {}),
       }),
@@ -130,7 +160,9 @@ async function callMetaGraph(
 }
 
 /** Nunca ecoa token/segredo — defensivo, mesmo a Meta não devolvendo isso. */
-function sanitizeResponse(body: Record<string, unknown>): Record<string, unknown> {
+function sanitizeResponse(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
   const clone: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (/token|secret|authorization/i.test(key)) continue;
@@ -152,29 +184,55 @@ async function deliverPurchase(
       event_time: Math.floor(Date.now() / 1000),
       event_id: input.eventId,
       action_source: "website",
+      ...(input.sourceUrl ? { event_source_url: input.sourceUrl } : {}),
       user_data: buildUserData(input),
       custom_data: buildCustomData(input),
     };
+    let result: MetaGraphResult | null = null;
 
-    const result = await callMetaGraph(pixel.pixelId!, token, [event]);
+    for (let attempt = 1; attempt <= MAX_DELIVERY_ATTEMPTS; attempt++) {
+      await db
+        .update(pixelEvents)
+        .set({
+          status: "processing",
+          retryCount: attempt - 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(pixelEvents.id, eventRowId));
+
+      try {
+        result = await callMetaGraph(pixel.pixelId!, token, [event]);
+      } catch {
+        result = { ok: false, status: 0, body: {} };
+      }
+
+      const retryable = isRetryableMetaStatus(result.status);
+      if (result.ok || !retryable || attempt === MAX_DELIVERY_ATTEMPTS) break;
+      await new Promise((resolve) =>
+        setTimeout(resolve, 250 * 4 ** (attempt - 1)),
+      );
+    }
+
+    if (!result) throw new Error("delivery_not_started");
     const traceId =
-      typeof result.body.fbtrace_id === "string" ? result.body.fbtrace_id : null;
+      typeof result.body.fbtrace_id === "string"
+        ? result.body.fbtrace_id
+        : null;
     const errorObj = result.body.error as
-      | { message?: string; code?: number }
-      | undefined;
+      { message?: string; code?: number } | undefined;
 
     await db
       .update(pixelEvents)
       .set({
         status: result.ok ? "sent" : "failed",
-        sentAt: new Date(),
+        sentAt: result.ok ? new Date() : null,
         httpStatus: result.status,
         metaTraceId: traceId,
         response: sanitizeResponse(result.body),
         errorCode: errorObj?.code ? String(errorObj.code) : null,
         error: result.ok
           ? null
-          : (errorObj?.message ?? "Falha desconhecida ao enviar à Meta").slice(
+          : (errorObj?.message ?? "Falha temporária ao enviar à Meta").slice(
               0,
               500,
             ),
@@ -187,12 +245,13 @@ async function deliverPurchase(
         .set({ lastActivityAt: new Date() })
         .where(eq(pixels.id, pixel.id));
     }
-  } catch (error) {
+  } catch {
     await db
       .update(pixelEvents)
       .set({
         status: "failed",
-        error: error instanceof Error ? error.message : "erro desconhecido",
+        error: "Falha interna ao preparar o evento para a Meta.",
+        updatedAt: new Date(),
       })
       .where(eq(pixelEvents.id, eventRowId));
   }
@@ -212,10 +271,15 @@ export async function sendPurchaseToMetaCapi(
   input: PurchaseEventInput,
 ): Promise<void> {
   const db = getDb();
-  const pixelRows = await resolveEffectivePixelRows(
+  const pixelRows = await resolveEffectiveMetaRows(
     input.landingPageId ?? null,
-    "meta_capi",
+    input.workspaceId,
   );
+
+  const queued: {
+    pixel: typeof pixels.$inferSelect;
+    eventRowId: string;
+  }[] = [];
 
   for (const pixel of pixelRows) {
     if (!pixel.pixelId || !pixel.encryptedToken || !pixel.isActive) continue;
@@ -240,7 +304,17 @@ export async function sendPurchaseToMetaCapi(
 
     if (inserted.length === 0) continue;
 
-    await deliverPurchase(pixel, inserted[0].id, input);
+    queued.push({ pixel, eventRowId: inserted[0].id });
+  }
+
+  if (queued.length > 0) {
+    after(async () => {
+      await Promise.allSettled(
+        queued.map(({ pixel, eventRowId }) =>
+          deliverPurchase(pixel, eventRowId, input),
+        ),
+      );
+    });
   }
 }
 
@@ -281,6 +355,10 @@ async function rebuildPurchaseInput(
     currency: orderRow.currency,
     email: customerRow?.email,
     phone: customerRow?.phone,
+    firstName: customerRow?.firstName,
+    lastName: customerRow?.lastName,
+    country: customerRow?.country,
+    externalId: customerRow?.id,
     productName: itemRows[0]
       ? itemRows[0].variantName
         ? `${itemRows[0].productName} — ${itemRows[0].variantName}`
@@ -289,6 +367,8 @@ async function rebuildPurchaseInput(
     contentIds: itemRows
       .map((item) => item.sku)
       .filter((sku): sku is string => Boolean(sku)),
+    quantity: itemRows.reduce((sum, item) => sum + item.quantity, 0),
+    sourceUrl: orderRow.checkoutUrl,
     fbp: orderRow.clientFbp,
     fbc: orderRow.clientFbc,
     ip: orderRow.clientIp,
@@ -301,7 +381,9 @@ async function rebuildPurchaseInput(
  * do log). Atualiza o registro existente em vez de inserir um novo — nunca
  * duplica o evento já registrado.
  */
-export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> {
+export async function reprocessPurchaseEvent(
+  eventRowId: string,
+): Promise<void> {
   const db = getDb();
   const [event] = await db
     .select()
@@ -309,7 +391,12 @@ export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> 
     .where(eq(pixelEvents.id, eventRowId))
     .limit(1);
 
-  if (!event || event.status !== "failed" || event.channel !== "server" || !event.orderId) {
+  if (
+    !event ||
+    event.status !== "failed" ||
+    event.channel !== "server" ||
+    !event.orderId
+  ) {
     throw new Error("Este evento não pode ser reprocessado.");
   }
 
@@ -319,7 +406,9 @@ export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> 
     .where(eq(pixels.id, event.pixelId))
     .limit(1);
   if (!pixel || !pixel.pixelId || !pixel.encryptedToken) {
-    throw new Error("O pixel deste evento não está mais configurado corretamente.");
+    throw new Error(
+      "O pixel deste evento não está mais configurado corretamente.",
+    );
   }
 
   const input = await rebuildPurchaseInput(
@@ -334,7 +423,8 @@ export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> 
     .set({
       status: "pending",
       triggerType: "reprocess",
-      retryCount: (event.retryCount ?? 0) + 1,
+      retryCount: event.retryCount ?? 0,
+      updatedAt: new Date(),
     })
     .where(eq(pixelEvents.id, eventRowId));
 
@@ -371,7 +461,8 @@ export async function testMetaConnection(
 
   try {
     const infoResp = await fetch(
-      `https://graph.facebook.com/${GRAPH_VERSION}/${pixelId}?fields=id,name&access_token=${encodeURIComponent(token)}`,
+      `https://graph.facebook.com/${GRAPH_VERSION}/${pixelId}?fields=id,name`,
+      { headers: { Authorization: `Bearer ${token}` } },
     );
     const infoBody = (await infoResp.json().catch(() => ({}))) as Record<
       string,
@@ -379,7 +470,8 @@ export async function testMetaConnection(
     >;
 
     if (!infoResp.ok) {
-      const err = infoBody.error as { code?: number; message?: string } | undefined;
+      const err = infoBody.error as
+        { code?: number; message?: string } | undefined;
       if (err?.code === 190) {
         return {
           ok: false,

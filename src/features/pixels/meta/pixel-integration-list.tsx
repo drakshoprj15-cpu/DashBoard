@@ -11,7 +11,10 @@ import {
   testPixelConnectionAction,
 } from "@/features/pixels/actions";
 import type { PixelRow } from "@/features/pixels/types";
-import { PixelIntegrationRow, type PixelRowState } from "./pixel-integration-row";
+import {
+  PixelIntegrationRow,
+  type PixelRowState,
+} from "./pixel-integration-row";
 
 function toRowState(p: PixelRow): PixelRowState {
   return {
@@ -23,7 +26,9 @@ function toRowState(p: PixelRow): PixelRowState {
     testEventCode: p.testEventCode ?? "",
     isActive: p.isActive,
     connectionStatus: p.connectionStatus,
-    lastTestedAt: p.lastTestedAt ? new Date(p.lastTestedAt).toISOString() : null,
+    lastTestedAt: p.lastTestedAt
+      ? new Date(p.lastTestedAt).toISOString()
+      : null,
     lastTestError: p.lastTestError,
     showToken: false,
     testing: false,
@@ -71,12 +76,14 @@ export function PixelIntegrationList({
   const [saving, startSaving] = useTransition();
 
   function updateRow(key: string, patch: Partial<PixelRowState>) {
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+    setRows((prev) =>
+      prev.map((r) => (r.key === key ? { ...r, ...patch } : r)),
+    );
     setDirty(true);
   }
 
-  function addRow(type: PixelRowState["type"]) {
-    setRows((prev) => [...prev, emptyRow(type)]);
+  function addRow() {
+    setRows((prev) => [...prev, emptyRow("meta_capi")]);
     setDirty(true);
   }
 
@@ -154,23 +161,14 @@ export function PixelIntegrationList({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => addRow("meta_pixel")}
-        >
-          <Plus /> Adicionar Meta Pixel
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" size="sm" onClick={addRow}>
+          <Plus /> Adicionar Pixel + CAPI
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => addRow("meta_capi")}
-        >
-          <Plus /> Adicionar Conversions API
-        </Button>
+        <span className="text-muted-foreground text-xs">
+          Cada integração envia pelo navegador e pelo servidor com o mesmo Pixel
+          ID.
+        </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t pt-4">

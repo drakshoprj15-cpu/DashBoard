@@ -139,6 +139,34 @@ export function CheckoutForm({
         currency: product.currency,
         properties: { method: state.method },
       });
+
+      const meta = state.metaPurchase;
+      const metaWindow = window as typeof window & {
+        fbq?: (...args: unknown[]) => void;
+        __infinityMetaPixelIds?: string[];
+        __infinityMetaTracked?: Record<string, boolean>;
+      };
+      if (meta && metaWindow.fbq) {
+        metaWindow.__infinityMetaTracked ??= {};
+        for (const pixelId of metaWindow.__infinityMetaPixelIds ?? []) {
+          const key = `${pixelId}:${meta.eventId}`;
+          if (metaWindow.__infinityMetaTracked[key]) continue;
+          metaWindow.__infinityMetaTracked[key] = true;
+          metaWindow.fbq(
+            "trackSingle",
+            pixelId,
+            "Purchase",
+            {
+              value: state.totalCents / 100,
+              currency: meta.currency,
+              content_type: "product",
+              content_ids: meta.contentIds,
+              content_name: meta.contentName,
+            },
+            { eventID: meta.eventId },
+          );
+        }
+      }
     }
   }, [state, product.slug, product.currency]);
 
