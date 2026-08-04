@@ -27,7 +27,6 @@ const SELECTABLE: PixelType[] = [
   "ga4",
   "gtm",
   "google_ads",
-  "tiktok_pixel",
   "utmify",
 ];
 

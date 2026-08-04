@@ -17,10 +17,10 @@ interface PixelScriptsProps {
   /**
    * Landing page de origem — aplica o fallback do Meta Pixel (pixels
    * específicos da página, se houver algum ativo; senão os globais do
-   * workspace). Os demais tipos (GTM/GA4/Ads/TikTok) continuam só globais.
+   * workspace). Os demais tipos (GTM/GA4/Ads) continuam só globais.
    */
   landingPageId?: string | null;
-  /** GTM/GA4/Ads/TikTok globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
+  /** GTM/GA4/Ads globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
   includeOtherGlobals?: boolean;
 }
 
@@ -52,7 +52,6 @@ export async function PixelScripts({
   const ga4 = byType("ga4");
   const gtm = byType("gtm");
   const googleAds = byType("google_ads");
-  const tiktok = byType("tiktok_pixel");
 
   const value = content ? content.valueCents / 100 : undefined;
   const metaConfig = {
@@ -149,27 +148,6 @@ ${
     ? `gtag('event','${event === "ViewContent" ? "view_item" : "begin_checkout"}',{currency:'${content.currency}',value:${value},items:[{item_id:'${content.id}',item_name:${JSON.stringify(content.name)}}]});`
     : ""
 }`}
-        </Script>
-      ))}
-
-      {tiktok.map((p) => (
-        <Script
-          key={`tt-${p.pixelId}`}
-          id={`tiktok-${p.pixelId}`}
-          strategy="afterInteractive"
-        >
-          {`!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
-ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
-ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
-for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
-ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};
-ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js";
-ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=r;ttq._t=ttq._t||{};ttq._t[e]=+new Date;
-ttq._o=ttq._o||{};ttq._o[e]=n||{};var o=d.createElement("script");o.type="text/javascript";
-o.async=!0;o.src=r+"?sdkid="+e+"&lib="+t;var a=d.getElementsByTagName("script")[0];
-a.parentNode.insertBefore(o,a)};
-ttq.load('${p.pixelId}');ttq.page();
-}(window,document,'ttq');`}
         </Script>
       ))}
     </ConsentGate>

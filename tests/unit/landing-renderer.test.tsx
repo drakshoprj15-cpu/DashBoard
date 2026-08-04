@@ -86,6 +86,27 @@ beforeEach(() => {
 });
 
 describe("LandingRenderer", () => {
+  it("usa o cabeçalho e o rodapé PCDIGA em qualquer landing page", () => {
+    render(
+      <LandingRenderer
+        snapshot={snapshotWith([
+          block("header", { showLogo: false }),
+          block("heading", { text: "Produto" }),
+          block("footer", { text: "Rodapé antigo" }),
+        ])}
+        reviews={[]}
+        pageId="page-1"
+        mode="editor"
+      />,
+    );
+
+    const logo = screen.getByRole("img", { name: "PCDIGA" });
+    expect(logo.getAttribute("src")).toBe("/brand/pcdiga.svg");
+    expect(screen.getByText(/PCDIGA · Pagamento seguro/)).toBeTruthy();
+    expect(screen.queryByText("Rodapé antigo")).toBeNull();
+    expect(screen.getByRole("link", { name: "Termos" })).toBeTruthy();
+  });
+
   it("mostra o preço do produto e o desconto calculado", () => {
     render(
       <LandingRenderer
@@ -118,7 +139,10 @@ describe("LandingRenderer", () => {
   });
 
   it("não renderiza blocos ocultos", () => {
-    const hidden: LandingBlock = { ...block("heading", { text: "Escondido" }), hidden: true };
+    const hidden: LandingBlock = {
+      ...block("heading", { text: "Escondido" }),
+      hidden: true,
+    };
 
     render(
       <LandingRenderer
@@ -151,7 +175,9 @@ describe("LandingRenderer", () => {
 
     render(
       <LandingRenderer
-        snapshot={snapshotWith([block("countdown", { title: "Termina em", endsAt })])}
+        snapshot={snapshotWith([
+          block("countdown", { title: "Termina em", endsAt }),
+        ])}
         reviews={[]}
         pageId="page-1"
         mode="editor"
