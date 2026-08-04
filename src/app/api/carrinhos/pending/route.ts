@@ -18,7 +18,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   const { searchParams } = new URL(request.url);

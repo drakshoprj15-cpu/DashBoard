@@ -71,7 +71,10 @@ export function TopProducts({ products, currency }: TopProductsProps) {
             const value = sortBy === "units" ? p.units : p.revenueCents;
             const widthPercent = Math.max(4, (value / maxValue) * 100);
             return (
-              <li key={p.productId ?? p.name} className="flex items-center gap-3">
+              <li
+                key={p.productId ?? p.name}
+                className="flex items-center gap-3"
+              >
                 <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-lg">
                   {p.imageUrl ? (
                     <Image
@@ -91,7 +94,8 @@ export function TopProducts({ products, currency }: TopProductsProps) {
                   <p className="truncate text-sm font-medium">{p.name}</p>
                   <div className="mt-1 flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
-                      {formatNumber(p.units)} {p.units === 1 ? "unid." : "unids."}
+                      {formatNumber(p.units)}{" "}
+                      {p.units === 1 ? "unid." : "unids."}
                     </span>
                     <span className="font-semibold">
                       {formatMoney(p.revenueCents, currency, "pt-PT")}

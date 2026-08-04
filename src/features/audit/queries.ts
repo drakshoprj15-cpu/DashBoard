@@ -3,7 +3,10 @@ import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { auditLogs, paymentWebhooks } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
-import { resolvePeriodRange, type DashboardPeriod } from "@/features/dashboard/period";
+import {
+  resolvePeriodRange,
+  type DashboardPeriod,
+} from "@/features/dashboard/period";
 
 export interface AuditLogRow {
   id: string;
@@ -25,7 +28,10 @@ export interface ReceivedWebhookRow {
 }
 
 /** Ações administrativas registadas no período, mais recentes primeiro. */
-export async function listAuditLogs(period: DashboardPeriod, limit = 200): Promise<AuditLogRow[]> {
+export async function listAuditLogs(
+  period: DashboardPeriod,
+  limit = 200,
+): Promise<AuditLogRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
@@ -99,7 +105,9 @@ export interface AuditSummary {
   webhookErrorsCount: number;
 }
 
-export async function getAuditSummary(period: DashboardPeriod): Promise<AuditSummary> {
+export async function getAuditSummary(
+  period: DashboardPeriod,
+): Promise<AuditSummary> {
   if (!isDatabaseConfigured()) {
     return { adminActionsCount: 0, webhooksCount: 0, webhookErrorsCount: 0 };
   }

@@ -20,7 +20,10 @@ export async function GET(request: Request) {
   const overview = await getFinanceOverview(period);
 
   if (!overview) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   return NextResponse.json(overview);

@@ -54,7 +54,12 @@ export interface OrderReportInput {
     document?: string | null;
     country?: string | null;
   };
-  items: { id: string | null; name: string; quantity: number; unitPriceCents: number }[];
+  items: {
+    id: string | null;
+    name: string;
+    quantity: number;
+    unitPriceCents: number;
+  }[];
   /** orders.utm já normalizado (utm_source, utm_campaign, ...). */
   utm?: Record<string, string> | null;
 }
@@ -68,7 +73,9 @@ export interface OrderReportInput {
  * `commission.gatewayFeeInCents` não é enviado (a Broski não informa a taxa
  * do gateway em nenhum ponto do fluxo).
  */
-export async function sendOrderToUtmify(input: OrderReportInput): Promise<void> {
+export async function sendOrderToUtmify(
+  input: OrderReportInput,
+): Promise<void> {
   const utmifyStatus = UTMIFY_STATUS_MAP[input.orderStatus];
   if (!utmifyStatus) return;
 
@@ -181,7 +188,9 @@ export async function sendOrderToUtmify(input: OrderReportInput): Promise<void> 
           status: response.ok ? "sent" : "failed",
           sentAt: new Date(),
           response: responseBody,
-          error: response.ok ? null : JSON.stringify(responseBody).slice(0, 500),
+          error: response.ok
+            ? null
+            : JSON.stringify(responseBody).slice(0, 500),
         })
         .where(eq(pixelEvents.id, inserted[0].id));
 

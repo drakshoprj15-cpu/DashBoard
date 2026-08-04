@@ -60,12 +60,7 @@ export interface FieldDef {
 }
 
 export type BlockGroup =
-  | "estrutura"
-  | "conteudo"
-  | "produto"
-  | "conversao"
-  | "confianca"
-  | "avancado";
+  "estrutura" | "conteudo" | "produto" | "conversao" | "confianca" | "avancado";
 
 export interface BlockDef {
   type: BlockType;
@@ -168,7 +163,13 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
         type: "image",
         help: "Vazio = usa a logo definida nas informações da página.",
       },
-      { key: "height", label: "Altura (px)", type: "number", min: 20, max: 160 },
+      {
+        key: "height",
+        label: "Altura (px)",
+        type: "number",
+        min: 20,
+        max: 160,
+      },
     ],
     defaults: { imageUrl: "", height: 48 },
   },
@@ -254,7 +255,11 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
           { value: "grid", label: "Grade" },
         ],
       },
-      { key: "allowZoom", label: "Permitir ampliar ao clicar", type: "boolean" },
+      {
+        key: "allowZoom",
+        label: "Permitir ampliar ao clicar",
+        type: "boolean",
+      },
     ],
     defaults: { images: "", layout: "thumbs", allowZoom: true },
   },
@@ -389,7 +394,11 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
           { value: "list", label: "Lista" },
         ],
       },
-      { key: "showPrice", label: "Mostrar preço em cada opção", type: "boolean" },
+      {
+        key: "showPrice",
+        label: "Mostrar preço em cada opção",
+        type: "boolean",
+      },
       { key: "showThumbnail", label: "Mostrar miniatura", type: "boolean" },
       {
         key: "hideSoldOut",
@@ -407,7 +416,13 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
           { value: "large", label: "Grande" },
         ],
       },
-      { key: "columns", label: "Colunas (máx.)", type: "number", min: 1, max: 6 },
+      {
+        key: "columns",
+        label: "Colunas (máx.)",
+        type: "number",
+        min: 1,
+        max: 6,
+      },
     ],
     defaults: {
       label: "",
@@ -705,7 +720,13 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
         label: "Texto quando ainda não há avaliações",
         type: "textarea",
       },
-      { key: "limit", label: "Quantas mostrar", type: "number", min: 1, max: 50 },
+      {
+        key: "limit",
+        label: "Quantas mostrar",
+        type: "number",
+        min: 1,
+        max: 50,
+      },
     ],
     defaults: {
       title: "Avaliações dos clientes",
@@ -880,9 +901,7 @@ export const BLOCK_CATALOG: Record<BlockType, BlockDef> = {
     description: "Bloco livre, higienizado antes de publicar.",
     group: "avancado",
     icon: Code2,
-    fields: [
-      { key: "html", label: "HTML", type: "code" },
-    ],
+    fields: [{ key: "html", label: "HTML", type: "code" }],
     defaults: { html: "" },
     notice:
       "Etiquetas de script, iframes e atributos de evento são removidos por segurança. Para scripts, use a aba Código.",

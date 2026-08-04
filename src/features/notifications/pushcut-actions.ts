@@ -61,7 +61,8 @@ export async function savePushcutAction(
   for (const slot of parsedSlots) {
     if (slot.events.length === 0) continue;
 
-    const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
+    const label =
+      PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
 
     if (!slot.webhookUrl && !current.slots[slot.key].configured) {
       return {
@@ -108,7 +109,8 @@ export async function savePushcutAction(
   const results: { label: string; ok: boolean; error?: string }[] = [];
   for (const slot of parsedSlots) {
     if (slot.events.length === 0) continue;
-    const label = PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
+    const label =
+      PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
     const test = await sendPushcutNotification(
       slot.key,
       `Infinity · ${label} ✅`,

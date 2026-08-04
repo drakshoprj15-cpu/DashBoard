@@ -98,11 +98,11 @@ export const getActiveCustomCodeForPublic = cache(
 
       const hasContent = Boolean(
         (row.metaPixelEnabled && row.metaPixelId) ||
-          row.customHeadCode ||
-          row.customBodyStartCode ||
-          row.customBodyEndCode ||
-          row.customCss ||
-          row.customJavaScript,
+        row.customHeadCode ||
+        row.customBodyStartCode ||
+        row.customBodyEndCode ||
+        row.customCss ||
+        row.customJavaScript,
       );
       if (!hasContent) return null;
 

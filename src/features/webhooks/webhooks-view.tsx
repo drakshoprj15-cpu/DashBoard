@@ -50,7 +50,8 @@ function BroskiInboundCard({ info }: { info: BroskiInboundInfo }) {
                 /api/webhooks/broski
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                Recebe eventos de pagamento do gateway — registado no painel da Broski, não editável aqui.
+                Recebe eventos de pagamento do gateway — registado no painel da
+                Broski, não editável aqui.
               </p>
             </div>
           </div>
@@ -58,7 +59,9 @@ function BroskiInboundCard({ info }: { info: BroskiInboundInfo }) {
             <p>{formatNumber(info.eventsReceived)} evento(s) recebido(s)</p>
             <p>
               Última chamada:{" "}
-              {info.lastEventAt ? formatDateTime(new Date(info.lastEventAt), "pt-PT") : "nunca"}
+              {info.lastEventAt
+                ? formatDateTime(new Date(info.lastEventAt), "pt-PT")
+                : "nunca"}
             </p>
           </div>
         </div>
@@ -69,9 +72,9 @@ function BroskiInboundCard({ info }: { info: BroskiInboundInfo }) {
 
 export function WebhooksView() {
   const [data, setData] = React.useState<WebhooksResponse | null>(null);
-  const [status, setStatus] = React.useState<"loading" | "success" | "error" | "empty">(
-    "loading",
-  );
+  const [status, setStatus] = React.useState<
+    "loading" | "success" | "error" | "empty"
+  >("loading");
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState<FilterOption>("all");
   const [sort, setSort] = React.useState<SortOption>("recent");
@@ -112,7 +115,8 @@ export function WebhooksView() {
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
-        (e) => e.name.toLowerCase().includes(q) || e.url.toLowerCase().includes(q),
+        (e) =>
+          e.name.toLowerCase().includes(q) || e.url.toLowerCase().includes(q),
       );
     }
 
@@ -154,14 +158,18 @@ export function WebhooksView() {
       {status === "error" && (
         <Alert variant="destructive">
           <AlertCircle />
-          <AlertDescription>Não foi possível carregar os webhooks. Tente novamente.</AlertDescription>
+          <AlertDescription>
+            Não foi possível carregar os webhooks. Tente novamente.
+          </AlertDescription>
         </Alert>
       )}
 
       {status === "empty" && (
         <Alert>
           <AlertCircle />
-          <AlertDescription>Configure o Supabase para gerir webhooks.</AlertDescription>
+          <AlertDescription>
+            Configure o Supabase para gerir webhooks.
+          </AlertDescription>
         </Alert>
       )}
 
@@ -195,14 +203,12 @@ export function WebhooksView() {
                   aria-label="Filtrar por estado"
                   className="border-border bg-card inline-flex items-center gap-0.5 rounded-lg border p-0.5"
                 >
-                  {(
-                    [
-                      { value: "all" as const, label: "Todos" },
-                      { value: "active" as const, label: "Ativos" },
-                      { value: "inactive" as const, label: "Inativos" },
-                      { value: "error" as const, label: "Erro" },
-                    ]
-                  ).map((f) => (
+                  {[
+                    { value: "all" as const, label: "Todos" },
+                    { value: "active" as const, label: "Ativos" },
+                    { value: "inactive" as const, label: "Inativos" },
+                    { value: "error" as const, label: "Erro" },
+                  ].map((f) => (
                     <Button
                       key={f.value}
                       type="button"

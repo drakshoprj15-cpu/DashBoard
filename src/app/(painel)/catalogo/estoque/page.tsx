@@ -37,7 +37,10 @@ export default async function EstoquePage() {
   const summary = summarizeInventory(products);
 
   const cards = [
-    { label: "Produtos controlados", value: formatNumber(summary.trackedCount) },
+    {
+      label: "Produtos controlados",
+      value: formatNumber(summary.trackedCount),
+    },
     { label: "Unidades em estoque", value: formatNumber(summary.totalUnits) },
     { label: "Estoque baixo", value: formatNumber(summary.lowStockCount) },
     { label: "Sem estoque", value: formatNumber(summary.outOfStockCount) },
@@ -48,7 +51,8 @@ export default async function EstoquePage() {
       <div>
         <h2 className="text-xl font-bold tracking-tight">Estoque</h2>
         <p className="text-muted-foreground text-sm">
-          Controle de estoque por produto, movimentações e alertas de estoque mínimo
+          Controle de estoque por produto, movimentações e alertas de estoque
+          mínimo
         </p>
       </div>
 
@@ -70,7 +74,9 @@ export default async function EstoquePage() {
             {cards.map((c) => (
               <Card key={c.label} className="gap-2 py-4">
                 <CardHeader className="px-4">
-                  <CardDescription className="text-xs">{c.label}</CardDescription>
+                  <CardDescription className="text-xs">
+                    {c.label}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="px-4">
                   <p className="text-lg font-bold tracking-tight md:text-xl">
@@ -83,17 +89,22 @@ export default async function EstoquePage() {
 
           {(summary.outOfStockCount > 0 || summary.lowStockCount > 0) && (
             <div className="border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning flex items-start gap-2.5 rounded-lg border px-4 py-3 text-sm">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <AlertTriangle
+                className="mt-0.5 size-4 shrink-0"
+                aria-hidden="true"
+              />
               <p>
                 {summary.outOfStockCount > 0 && (
                   <>
-                    <strong>{formatNumber(summary.outOfStockCount)}</strong> produto(s) sem estoque
+                    <strong>{formatNumber(summary.outOfStockCount)}</strong>{" "}
+                    produto(s) sem estoque
                     {summary.lowStockCount > 0 && " e "}
                   </>
                 )}
                 {summary.lowStockCount > 0 && (
                   <>
-                    <strong>{formatNumber(summary.lowStockCount)}</strong> com estoque baixo
+                    <strong>{formatNumber(summary.lowStockCount)}</strong> com
+                    estoque baixo
                   </>
                 )}
                 . Ajuste ou reponha antes que afete as vendas.

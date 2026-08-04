@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -13,7 +19,10 @@ import {
   parseSheetFile,
   type RawRow,
 } from "@/features/carts/import/parse";
-import { IMPORT_STATUS_LABEL, validateRows } from "@/features/carts/import/validate";
+import {
+  IMPORT_STATUS_LABEL,
+  validateRows,
+} from "@/features/carts/import/validate";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,7 +35,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /** Lote enviado por requisição — o servidor recusa acima disto. */
 const CHUNK_SIZE = 500;
@@ -73,7 +89,9 @@ function downloadTemplate() {
     "Cliente pediu para ligar à tarde",
   ];
   const csv = `﻿${IMPORT_COLUMNS.join(";")}\n${example.join(";")}`;
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const url = URL.createObjectURL(
+    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+  );
   const link = document.createElement("a");
   link.href = url;
   link.download = "modelo-carrinhos.csv";
@@ -90,11 +108,18 @@ function downloadTemplate() {
  * erros por linha antes de qualquer gravação. Só as linhas válidas seguem
  * para o servidor, que as revalida — o cliente nunca é fonte de verdade.
  */
-export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogProps) {
+export function ImportDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: ImportDialogProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = React.useState<ParsedState | null>(null);
-  const [currency, setCurrency] = React.useState<(typeof CURRENCIES)[number]>("EUR");
-  const [stage, setStage] = React.useState<"idle" | "parsing" | "importing">("idle");
+  const [currency, setCurrency] =
+    React.useState<(typeof CURRENCIES)[number]>("EUR");
+  const [stage, setStage] = React.useState<"idle" | "parsing" | "importing">(
+    "idle",
+  );
   const [error, setError] = React.useState<string | null>(null);
 
   const preview = React.useMemo(() => {
@@ -206,10 +231,14 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
             <>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs font-normal">Moeda dos valores</Label>
+                  <Label className="text-muted-foreground text-xs font-normal">
+                    Moeda dos valores
+                  </Label>
                   <select
                     value={currency}
-                    onChange={(e) => setCurrency(e.target.value as (typeof CURRENCIES)[number])}
+                    onChange={(e) =>
+                      setCurrency(e.target.value as (typeof CURRENCIES)[number])
+                    }
                     className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-2.5 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
                     aria-label="Moeda dos valores da planilha"
                   >
@@ -220,7 +249,12 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                     ))}
                   </select>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadTemplate}
+                >
                   <Download /> Baixar modelo
                 </Button>
               </div>
@@ -230,12 +264,18 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                 onClick={() => inputRef.current?.click()}
                 className="border-input hover:border-primary hover:bg-accent/40 flex w-full flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-10 text-center transition-colors"
               >
-                <Upload className="text-muted-foreground size-6" aria-hidden="true" />
+                <Upload
+                  className="text-muted-foreground size-6"
+                  aria-hidden="true"
+                />
                 <span className="text-sm font-medium">
-                  {stage === "parsing" ? "Lendo a planilha…" : "Escolher arquivo .csv ou .xlsx"}
+                  {stage === "parsing"
+                    ? "Lendo a planilha…"
+                    : "Escolher arquivo .csv ou .xlsx"}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  Até 5 MB e {MAX_ROWS.toLocaleString("pt-PT")} linhas por importação
+                  Até 5 MB e {MAX_ROWS.toLocaleString("pt-PT")} linhas por
+                  importação
                 </span>
               </button>
 
@@ -251,16 +291,22 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
               />
 
               <div className="text-muted-foreground space-y-1.5 text-xs">
-                <p className="text-foreground text-sm font-medium">Colunas reconhecidas</p>
-                <p className="font-mono leading-relaxed">{IMPORT_COLUMNS.join(" · ")}</p>
-                <p>
-                  Obrigatórias: <strong>produto</strong>, <strong>valor</strong> e pelo menos um de{" "}
-                  <strong>nome</strong>, <strong>email</strong> ou <strong>telefone</strong>. Sem status, a
-                  linha entra como &ldquo;Abandonado&rdquo;.
+                <p className="text-foreground text-sm font-medium">
+                  Colunas reconhecidas
+                </p>
+                <p className="font-mono leading-relaxed">
+                  {IMPORT_COLUMNS.join(" · ")}
                 </p>
                 <p>
-                  Linhas marcadas como pagas ou convertidas entram como &ldquo;Aguardando
-                  pagamento&rdquo;: venda confirmada só é registada pelo gateway, nunca por planilha.
+                  Obrigatórias: <strong>produto</strong>, <strong>valor</strong>{" "}
+                  e pelo menos um de <strong>nome</strong>,{" "}
+                  <strong>email</strong> ou <strong>telefone</strong>. Sem
+                  status, a linha entra como &ldquo;Abandonado&rdquo;.
+                </p>
+                <p>
+                  Linhas marcadas como pagas ou convertidas entram como
+                  &ldquo;Aguardando pagamento&rdquo;: venda confirmada só é
+                  registada pelo gateway, nunca por planilha.
                 </p>
               </div>
             </>
@@ -276,15 +322,29 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
           {preview && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="success">{preview.valid.length} prontas para importar</Badge>
+                <Badge variant="success">
+                  {preview.valid.length} prontas para importar
+                </Badge>
                 {preview.invalid.length > 0 && (
-                  <Badge variant="destructive">{preview.invalid.length} com erro</Badge>
+                  <Badge variant="destructive">
+                    {preview.invalid.length} com erro
+                  </Badge>
                 )}
                 {preview.warnings.length > 0 && (
-                  <Badge variant="warning">{preview.warnings.length} avisos</Badge>
+                  <Badge variant="warning">
+                    {preview.warnings.length} avisos
+                  </Badge>
                 )}
-                <span className="text-muted-foreground text-xs">{preview.fileName}</span>
-                <Button type="button" size="sm" variant="ghost" onClick={reset} className="ml-auto">
+                <span className="text-muted-foreground text-xs">
+                  {preview.fileName}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={reset}
+                  className="ml-auto"
+                >
                   Trocar arquivo
                 </Button>
               </div>
@@ -293,8 +353,8 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                 <Alert>
                   <AlertTriangle />
                   <AlertDescription>
-                    Colunas ignoradas por não corresponderem a nenhum campo conhecido:{" "}
-                    {preview.unknownHeaders.join(", ")}.
+                    Colunas ignoradas por não corresponderem a nenhum campo
+                    conhecido: {preview.unknownHeaders.join(", ")}.
                   </AlertDescription>
                 </Alert>
               )}
@@ -302,7 +362,8 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
               {preview.valid.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">
-                    Prévia — primeiras {Math.min(10, preview.valid.length)} de {preview.valid.length} linhas
+                    Prévia — primeiras {Math.min(10, preview.valid.length)} de{" "}
+                    {preview.valid.length} linhas
                   </p>
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
@@ -318,9 +379,13 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                       <TableBody>
                         {preview.valid.slice(0, 10).map((row) => (
                           <TableRow key={row.line}>
-                            <TableCell className="text-muted-foreground text-xs">{row.line}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs">
+                              {row.line}
+                            </TableCell>
                             <TableCell>
-                              <p className="text-sm font-medium">{row.name ?? "—"}</p>
+                              <p className="text-sm font-medium">
+                                {row.name ?? "—"}
+                              </p>
                               <p className="text-muted-foreground text-xs">
                                 {row.email ?? row.phone ?? ""}
                               </p>
@@ -328,14 +393,23 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                             <TableCell className="text-sm">
                               {row.productName}
                               {row.quantity > 1 && (
-                                <span className="text-muted-foreground"> ×{row.quantity}</span>
+                                <span className="text-muted-foreground">
+                                  {" "}
+                                  ×{row.quantity}
+                                </span>
                               )}
                             </TableCell>
                             <TableCell className="text-right text-sm font-medium">
-                              {formatMoney(row.amountCents * row.quantity, row.currency, "pt-PT")}
+                              {formatMoney(
+                                row.amountCents * row.quantity,
+                                row.currency,
+                                "pt-PT",
+                              )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant="muted">{IMPORT_STATUS_LABEL[row.status]}</Badge>
+                              <Badge variant="muted">
+                                {IMPORT_STATUS_LABEL[row.status]}
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -347,12 +421,18 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
 
               {preview.invalid.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Linhas com erro — serão ignoradas na importação</p>
+                  <p className="text-sm font-medium">
+                    Linhas com erro — serão ignoradas na importação
+                  </p>
                   <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3 text-xs">
                     {preview.invalid.slice(0, 50).map((row) => (
                       <li key={row.line} className="flex gap-2">
-                        <span className="text-muted-foreground shrink-0">Linha {row.line}:</span>
-                        <span className="text-destructive">{row.errors.join(" ")}</span>
+                        <span className="text-muted-foreground shrink-0">
+                          Linha {row.line}:
+                        </span>
+                        <span className="text-destructive">
+                          {row.errors.join(" ")}
+                        </span>
                       </li>
                     ))}
                     {preview.invalid.length > 50 && (
@@ -370,7 +450,9 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                   <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-3 text-xs">
                     {preview.warnings.slice(0, 50).map((w, i) => (
                       <li key={`${w.line}-${i}`} className="flex gap-2">
-                        <span className="text-muted-foreground shrink-0">Linha {w.line}:</span>
+                        <span className="text-muted-foreground shrink-0">
+                          Linha {w.line}:
+                        </span>
                         <span>{w.message}</span>
                       </li>
                     ))}
@@ -382,7 +464,8 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
                 <Alert variant="destructive">
                   <AlertTriangle />
                   <AlertDescription>
-                    Nenhuma linha válida encontrada. Corrija a planilha e envie novamente.
+                    Nenhuma linha válida encontrada. Corrija a planilha e envie
+                    novamente.
                   </AlertDescription>
                 </Alert>
               )}
@@ -406,7 +489,9 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className={cn(stage === "importing" && "pointer-events-none opacity-60")}
+            className={cn(
+              stage === "importing" && "pointer-events-none opacity-60",
+            )}
           >
             Cancelar
           </Button>

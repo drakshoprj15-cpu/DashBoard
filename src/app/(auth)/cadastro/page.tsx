@@ -20,9 +20,7 @@ export default function CadastroPage() {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Criar sua conta</CardTitle>
-        <CardDescription>
-          Comece a vender em poucos minutos.
-        </CardDescription>
+        <CardDescription>Comece a vender em poucos minutos.</CardDescription>
       </CardHeader>
       <CardContent>
         <AuthForm action={registerAction} submitLabel="Criar conta">

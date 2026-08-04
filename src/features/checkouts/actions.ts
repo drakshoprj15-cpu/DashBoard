@@ -204,9 +204,7 @@ export async function toggleCheckoutStatusAction(
       publishedAt: publish ? new Date() : null,
       updatedAt: new Date(),
     })
-    .where(
-      and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)),
-    )
+    .where(and(eq(checkouts.id, id), eq(checkouts.workspaceId, workspaceId)))
     .returning({ slug: checkouts.slug });
 
   if (row) {
@@ -245,7 +243,10 @@ export async function duplicateCheckoutAction(
       .select({ id: checkouts.id })
       .from(checkouts)
       .where(
-        and(eq(checkouts.workspaceId, workspaceId), eq(checkouts.slug, copySlug)),
+        and(
+          eq(checkouts.workspaceId, workspaceId),
+          eq(checkouts.slug, copySlug),
+        ),
       )
       .limit(1);
     if (taken.length === 0) break;

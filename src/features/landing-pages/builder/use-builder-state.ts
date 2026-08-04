@@ -243,7 +243,9 @@ export function useBuilderState(pageId: string, initial: BuilderDoc) {
   const updateBlockMeta = React.useCallback(
     (id: string, patch: Partial<Pick<LandingBlock, "anchorId">>) => {
       setBlocks((blocks) =>
-        blocks.map((block) => (block.id === id ? { ...block, ...patch } : block)),
+        blocks.map((block) =>
+          block.id === id ? { ...block, ...patch } : block,
+        ),
       );
     },
     [setBlocks],
@@ -253,7 +255,10 @@ export function useBuilderState(pageId: string, initial: BuilderDoc) {
 
   const setTheme = React.useCallback(
     (patch: Partial<LandingTheme>) =>
-      update((current) => ({ ...current, theme: { ...current.theme, ...patch } })),
+      update((current) => ({
+        ...current,
+        theme: { ...current.theme, ...patch },
+      })),
     [update],
   );
 

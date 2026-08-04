@@ -3,7 +3,10 @@ import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { ledgerEntries, orders, payouts } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
-import { getLedgerSummary, type LedgerSummary } from "@/features/ledger/queries";
+import {
+  getLedgerSummary,
+  type LedgerSummary,
+} from "@/features/ledger/queries";
 import {
   resolvePeriodRange,
   type ChartGranularity,
@@ -49,7 +52,9 @@ function bucketLabel(date: Date, granularity: ChartGranularity): string {
 }
 
 /** Consolida o livro-caixa, pedidos e o próximo repasse — a "Visão Geral" do Financeiro. */
-export async function getFinanceOverview(period: DashboardPeriod): Promise<FinanceOverview | null> {
+export async function getFinanceOverview(
+  period: DashboardPeriod,
+): Promise<FinanceOverview | null> {
   if (!isDatabaseConfigured()) return null;
 
   const db = getDb();
@@ -78,13 +83,22 @@ export async function getFinanceOverview(period: DashboardPeriod): Promise<Finan
         expectedArrivalAt: payouts.expectedArrivalAt,
       })
       .from(payouts)
-      .where(and(eq(payouts.workspaceId, workspaceId), eq(payouts.status, "upcoming")))
+      .where(
+        and(
+          eq(payouts.workspaceId, workspaceId),
+          eq(payouts.status, "upcoming"),
+        ),
+      )
       .orderBy(payouts.expectedArrivalAt)
       .limit(1),
     db
       .select({
         bucket: sql<Date>`date_trunc(${
-          range.granularity === "hour" ? "hour" : range.granularity === "week" ? "week" : "day"
+          range.granularity === "hour"
+            ? "hour"
+            : range.granularity === "week"
+              ? "week"
+              : "day"
         }, ${ledgerEntries.occurredAt} at time zone 'America/Sao_Paulo')`,
         inflowCents: sql<number>`coalesce(sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.direction} = 'in'), 0)::int`,
         outflowCents: sql<number>`coalesce(sum(${ledgerEntries.amountCents}) filter (where ${ledgerEntries.direction} = 'out'), 0)::int`,

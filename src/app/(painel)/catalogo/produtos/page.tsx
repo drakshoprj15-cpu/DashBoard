@@ -64,8 +64,8 @@ export default async function ProdutosPage() {
       <div>
         <h2 className="text-xl font-bold tracking-tight">Produtos</h2>
         <p className="text-muted-foreground text-sm">
-          {rows.length} {rows.length === 1 ? "produto" : "produtos"} · edite
-          um produto para personalizar a landing page
+          {rows.length} {rows.length === 1 ? "produto" : "produtos"} · edite um
+          produto para personalizar a landing page
         </p>
       </div>
 

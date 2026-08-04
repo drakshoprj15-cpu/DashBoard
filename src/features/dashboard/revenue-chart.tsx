@@ -20,15 +20,35 @@ export function RevenueChart({ data }: RevenueChartProps) {
       <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="fillAprovada" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-chart-3)" stopOpacity={0.35} />
-            <stop offset="95%" stopColor="var(--color-chart-3)" stopOpacity={0.02} />
+            <stop
+              offset="5%"
+              stopColor="var(--color-chart-3)"
+              stopOpacity={0.35}
+            />
+            <stop
+              offset="95%"
+              stopColor="var(--color-chart-3)"
+              stopOpacity={0.02}
+            />
           </linearGradient>
           <linearGradient id="fillPendente" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-chart-4)" stopOpacity={0.35} />
-            <stop offset="95%" stopColor="var(--color-chart-4)" stopOpacity={0.02} />
+            <stop
+              offset="5%"
+              stopColor="var(--color-chart-4)"
+              stopOpacity={0.35}
+            />
+            <stop
+              offset="95%"
+              stopColor="var(--color-chart-4)"
+              stopOpacity={0.02}
+            />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--color-border)"
+          vertical={false}
+        />
         <XAxis
           dataKey="day"
           tickLine={false}

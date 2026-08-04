@@ -22,7 +22,10 @@ export function calculateShippingCost(
   method: ShippingMethodRow,
   subtotalCents: number,
 ): number {
-  if (method.freeAboveCents !== null && subtotalCents >= method.freeAboveCents) {
+  if (
+    method.freeAboveCents !== null &&
+    subtotalCents >= method.freeAboveCents
+  ) {
     return 0;
   }
   return method.priceCents;

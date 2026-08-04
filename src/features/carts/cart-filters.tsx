@@ -110,7 +110,9 @@ export function CartFilters({
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">Produto</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            Produto
+          </Label>
           <select
             value={value.productId}
             onChange={(e) => onChange({ productId: e.target.value })}
@@ -127,7 +129,9 @@ export function CartFilters({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">Pagamento</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            Pagamento
+          </Label>
           <select
             value={value.method}
             onChange={(e) => onChange({ method: e.target.value })}
@@ -144,7 +148,9 @@ export function CartFilters({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">Gateway</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            Gateway
+          </Label>
           <select
             value={value.gateway}
             onChange={(e) => onChange({ gateway: e.target.value })}
@@ -157,10 +163,14 @@ export function CartFilters({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">País</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            País
+          </Label>
           <Input
             value={value.country}
-            onChange={(e) => onChange({ country: e.target.value.toUpperCase().slice(0, 2) })}
+            onChange={(e) =>
+              onChange({ country: e.target.value.toUpperCase().slice(0, 2) })
+            }
             placeholder="PT"
             className="h-9 w-16"
             aria-label="Filtrar por país"
@@ -168,7 +178,9 @@ export function CartFilters({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">Moeda</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            Moeda
+          </Label>
           <select
             value={value.currency}
             onChange={(e) => onChange({ currency: e.target.value })}
@@ -183,7 +195,9 @@ export function CartFilters({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">De</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            De
+          </Label>
           <Input
             type="date"
             value={value.from}
@@ -193,7 +207,9 @@ export function CartFilters({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">Até</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            Até
+          </Label>
           <Input
             type="date"
             value={value.to}
@@ -204,7 +220,9 @@ export function CartFilters({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs font-normal">Ordenar por</Label>
+          <Label className="text-muted-foreground text-xs font-normal">
+            Ordenar por
+          </Label>
           <select
             value={sort}
             onChange={(e) => onSortChange(e.target.value)}
@@ -220,13 +238,28 @@ export function CartFilters({
         </div>
 
         <div className="flex gap-1.5 pb-0.5">
-          <Button type="button" variant="outline" size="sm" onClick={() => onChange(quickRange(1))}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onChange(quickRange(1))}
+          >
             Hoje
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onChange(quickRange(7))}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onChange(quickRange(7))}
+          >
             7 dias
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onChange(quickRange(30))}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onChange(quickRange(30))}
+          >
             30 dias
           </Button>
         </div>
@@ -237,7 +270,9 @@ export function CartFilters({
             variant={value.imported === "1" ? "default" : "outline"}
             size="sm"
             aria-pressed={value.imported === "1"}
-            onClick={() => onChange({ imported: value.imported === "1" ? "" : "1" })}
+            onClick={() =>
+              onChange({ imported: value.imported === "1" ? "" : "1" })
+            }
           >
             Importados
           </Button>
@@ -246,14 +281,22 @@ export function CartFilters({
             variant={value.archived === "1" ? "default" : "outline"}
             size="sm"
             aria-pressed={value.archived === "1"}
-            onClick={() => onChange({ archived: value.archived === "1" ? "" : "1" })}
+            onClick={() =>
+              onChange({ archived: value.archived === "1" ? "" : "1" })
+            }
           >
             Com arquivados
           </Button>
         </div>
 
         {hasActiveFilters && (
-          <Button type="button" variant="ghost" size="sm" onClick={onClear} className="text-muted-foreground pb-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClear}
+            className="text-muted-foreground pb-0.5"
+          >
             <X /> Limpar filtros
           </Button>
         )}

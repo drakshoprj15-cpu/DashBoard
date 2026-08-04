@@ -17,7 +17,10 @@ export async function GET() {
   const snapshot = await getLiveSnapshot();
 
   if (!snapshot) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   return NextResponse.json(snapshot);

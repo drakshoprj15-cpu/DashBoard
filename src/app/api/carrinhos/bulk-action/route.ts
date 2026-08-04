@@ -38,7 +38,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   const json = await request.json().catch(() => null);
@@ -56,10 +59,9 @@ export async function POST(request: Request) {
 
   if (action === "archive" || action === "unarchive") {
     const result = await archiveCartsAction(orderIds, action === "archive");
-    return NextResponse.json(
-      result.ok ? result : { ...result, sent: 0 },
-      { status: result.ok ? 200 : 400 },
-    );
+    return NextResponse.json(result.ok ? result : { ...result, sent: 0 }, {
+      status: result.ok ? 200 : 400,
+    });
   }
 
   // Marcações de status são por pedido — cada uma tem as suas próprias regras

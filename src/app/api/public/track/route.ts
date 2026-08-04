@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { recordTrackEvent, TRACK_EVENTS, type TrackEvent } from "@/features/analytics/track";
+import {
+  recordTrackEvent,
+  TRACK_EVENTS,
+  type TrackEvent,
+} from "@/features/analytics/track";
 
 export const dynamic = "force-dynamic";
 

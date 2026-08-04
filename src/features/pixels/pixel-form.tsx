@@ -107,7 +107,9 @@ export function PixelForm() {
             {needsToken && (
               <div className="space-y-2">
                 <Label htmlFor="token">
-                  {type === "utmify" ? "Token de API (x-api-token)" : "Token de acesso"}
+                  {type === "utmify"
+                    ? "Token de API (x-api-token)"
+                    : "Token de acesso"}
                 </Label>
                 <Input
                   id="token"

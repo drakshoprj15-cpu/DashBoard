@@ -44,7 +44,10 @@ import { CopyUrlButton, LandingPageActions } from "./page-actions";
 
 const STATUS_META: Record<
   LandingStatus,
-  { label: string; variant: "success" | "warning" | "muted" | "info" | "destructive" }
+  {
+    label: string;
+    variant: "success" | "warning" | "muted" | "info" | "destructive";
+  }
 > = {
   published: { label: "Publicada", variant: "success" },
   draft: { label: "Rascunho", variant: "muted" },
@@ -102,9 +105,12 @@ export function LandingPagesView({
   appUrl: string;
 }) {
   const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | LandingStatus>("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | LandingStatus>(
+    "all",
+  );
   const [productFilter, setProductFilter] = React.useState("all");
-  const [period, setPeriod] = React.useState<(typeof PERIODS)[number]["value"]>("all");
+  const [period, setPeriod] =
+    React.useState<(typeof PERIODS)[number]["value"]>("all");
   // Limite calculado no momento da escolha, não durante a renderização: ler o
   // relógio no corpo do componente tornaria a lista instável entre renders.
   const [periodCutoff, setPeriodCutoff] = React.useState<number | null>(null);
@@ -116,7 +122,8 @@ export function LandingPagesView({
 
     return pages.filter((page) => {
       if (statusFilter !== "all" && page.status !== statusFilter) return false;
-      if (productFilter !== "all" && page.productId !== productFilter) return false;
+      if (productFilter !== "all" && page.productId !== productFilter)
+        return false;
       if (cutoff && new Date(page.updatedAt) < cutoff) return false;
       if (!term) return true;
       return (
@@ -166,12 +173,36 @@ export function LandingPagesView({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        <SummaryCard icon={LayoutGrid} label="Páginas" value={formatNumber(totals.total)} />
-        <SummaryCard icon={CheckCircle2} label="Publicadas" value={formatNumber(totals.published)} />
-        <SummaryCard icon={FileEdit} label="Rascunhos" value={formatNumber(totals.draft)} />
-        <SummaryCard icon={Users} label="Visualizações" value={formatNumber(totals.views)} />
-        <SummaryCard icon={MousePointerClick} label="Cliques" value={formatNumber(totals.clicks)} />
-        <SummaryCard icon={ShoppingBag} label="Conversões" value={formatNumber(totals.purchases)} />
+        <SummaryCard
+          icon={LayoutGrid}
+          label="Páginas"
+          value={formatNumber(totals.total)}
+        />
+        <SummaryCard
+          icon={CheckCircle2}
+          label="Publicadas"
+          value={formatNumber(totals.published)}
+        />
+        <SummaryCard
+          icon={FileEdit}
+          label="Rascunhos"
+          value={formatNumber(totals.draft)}
+        />
+        <SummaryCard
+          icon={Users}
+          label="Visualizações"
+          value={formatNumber(totals.views)}
+        />
+        <SummaryCard
+          icon={MousePointerClick}
+          label="Cliques"
+          value={formatNumber(totals.clicks)}
+        />
+        <SummaryCard
+          icon={ShoppingBag}
+          label="Conversões"
+          value={formatNumber(totals.purchases)}
+        />
         <SummaryCard
           icon={TrendingUp}
           label="Taxa de conversão"
@@ -226,7 +257,8 @@ export function LandingPagesView({
           className={selectClass}
           value={period}
           onChange={(event) => {
-            const value = event.target.value as (typeof PERIODS)[number]["value"];
+            const value = event.target
+              .value as (typeof PERIODS)[number]["value"];
             setPeriod(value);
             setPeriodCutoff(
               value === "all"

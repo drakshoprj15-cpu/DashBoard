@@ -181,7 +181,8 @@ export async function listLandingPages(): Promise<LandingPageRow[]> {
       createdAt: row.createdAt,
       thumbnailUrl: findThumbnail(content) ?? row.logoUrl,
       hasUnpublishedChanges:
-        row.publishedVersion === null || row.draftVersion > row.publishedVersion,
+        row.publishedVersion === null ||
+        row.draftVersion > row.publishedVersion,
       metrics: metricsByPage.get(row.id) ?? EMPTY_METRICS,
     };
   });

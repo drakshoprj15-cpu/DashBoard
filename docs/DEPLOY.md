@@ -88,10 +88,10 @@ derruba o painel, e nenhum anúncio expõe o endereço administrativo.
 2. Na Vercel: projeto → Settings → Domains → Add, com o domínio e o `www`.
 3. No registrador do domínio, crie os registros de DNS:
 
-   | Tipo  | Nome | Valor                                  |
-   | ----- | ---- | -------------------------------------- |
-   | A     | `@`  | `216.198.79.1`                         |
-   | CNAME | `www`| `3d4970c7b04bd998.vercel-dns-017.com.` |
+   | Tipo  | Nome  | Valor                                  |
+   | ----- | ----- | -------------------------------------- |
+   | A     | `@`   | `216.198.79.1`                         |
+   | CNAME | `www` | `3d4970c7b04bd998.vercel-dns-017.com.` |
 
 4. No painel, em **Landing pages → Domínios**, cadastre o domínio, escolha o
    produto que ele serve na raiz e clique em **Verificar** — a verificação

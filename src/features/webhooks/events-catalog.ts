@@ -72,7 +72,10 @@ export const WEBHOOK_EVENTS: WebhookEventDef[] = [
   },
 ];
 
-export const WEBHOOK_EVENT_KEYS = WEBHOOK_EVENTS.map((e) => e.key) as [string, ...string[]];
+export const WEBHOOK_EVENT_KEYS = WEBHOOK_EVENTS.map((e) => e.key) as [
+  string,
+  ...string[],
+];
 
 export const WEBHOOK_EVENT_LABEL: Record<string, string> = Object.fromEntries(
   WEBHOOK_EVENTS.map((e) => [e.key, e.label]),

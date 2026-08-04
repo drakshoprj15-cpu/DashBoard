@@ -42,18 +42,38 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 const SHORTCUTS = [
-  { href: "/financeiro/processador", label: "Processador", icon: CreditCard, description: "Gateway de pagamento" },
-  { href: "/financeiro/entradas-saidas", label: "Entradas e Saídas", icon: Receipt, description: "Livro-caixa completo" },
-  { href: "/financeiro/repasses", label: "Repasses", icon: Banknote, description: "Saldo repassado e previsto" },
-  { href: "/pedidos", label: "Pedidos", icon: ShoppingBag, description: "Vendas registadas" },
+  {
+    href: "/financeiro/processador",
+    label: "Processador",
+    icon: CreditCard,
+    description: "Gateway de pagamento",
+  },
+  {
+    href: "/financeiro/entradas-saidas",
+    label: "Entradas e Saídas",
+    icon: Receipt,
+    description: "Livro-caixa completo",
+  },
+  {
+    href: "/financeiro/repasses",
+    label: "Repasses",
+    icon: Banknote,
+    description: "Saldo repassado e previsto",
+  },
+  {
+    href: "/pedidos",
+    label: "Pedidos",
+    icon: ShoppingBag,
+    description: "Vendas registadas",
+  },
 ];
 
 export function OverviewView() {
   const [period, setPeriod] = React.useState<DashboardPeriod>("30d");
   const [data, setData] = React.useState<FinanceOverview | null>(null);
-  const [status, setStatus] = React.useState<"loading" | "success" | "error" | "empty">(
-    "loading",
-  );
+  const [status, setStatus] = React.useState<
+    "loading" | "success" | "error" | "empty"
+  >("loading");
 
   React.useEffect(() => {
     let active = true;
@@ -203,7 +223,11 @@ export function OverviewView() {
               <CardContent className="px-4">
                 <p className="text-2xl font-bold tracking-tight">
                   {data.nextPayout
-                    ? formatMoney(data.nextPayout.amountCents, currency, "pt-PT")
+                    ? formatMoney(
+                        data.nextPayout.amountCents,
+                        currency,
+                        "pt-PT",
+                      )
                     : "—"}
                 </p>
                 {data.nextPayout?.expectedArrivalAt && (
@@ -218,7 +242,9 @@ export function OverviewView() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             <Card className="gap-2 py-4">
               <CardHeader className="px-4">
-                <CardDescription className="text-xs">Pedidos pagos no período</CardDescription>
+                <CardDescription className="text-xs">
+                  Pedidos pagos no período
+                </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
                 <p className="text-lg font-bold tracking-tight">
@@ -228,7 +254,9 @@ export function OverviewView() {
             </Card>
             <Card className="gap-2 py-4">
               <CardHeader className="px-4">
-                <CardDescription className="text-xs">Pedidos pendentes</CardDescription>
+                <CardDescription className="text-xs">
+                  Pedidos pendentes
+                </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
                 <p className="text-lg font-bold tracking-tight">
@@ -241,7 +269,9 @@ export function OverviewView() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Entradas vs. Saídas</CardTitle>
-              <CardDescription>Movimentação do livro-caixa no período</CardDescription>
+              <CardDescription>
+                Movimentação do livro-caixa no período
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {data.chartSeries.length === 0 ? (
@@ -250,21 +280,36 @@ export function OverviewView() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={data.chartSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <BarChart
+                    data={data.chartSeries}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--color-border)"
+                      vertical={false}
+                    />
                     <XAxis
                       dataKey="label"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+                      tick={{
+                        fill: "var(--color-muted-foreground)",
+                        fontSize: 12,
+                      }}
                       minTickGap={24}
                     />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
                       width={76}
-                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-                      tickFormatter={(v: number) => formatMoney(v, currency, "pt-PT")}
+                      tick={{
+                        fill: "var(--color-muted-foreground)",
+                        fontSize: 12,
+                      }}
+                      tickFormatter={(v: number) =>
+                        formatMoney(v, currency, "pt-PT")
+                      }
                     />
                     <Tooltip
                       contentStyle={{
@@ -279,8 +324,16 @@ export function OverviewView() {
                         name === "inflowCents" ? "Entradas" : "Saídas",
                       ]}
                     />
-                    <Bar dataKey="inflowCents" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="outflowCents" fill="var(--color-destructive)" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      dataKey="inflowCents"
+                      fill="var(--color-success)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="outflowCents"
+                      fill="var(--color-destructive)"
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -298,10 +351,17 @@ export function OverviewView() {
                         <Icon className="size-4" aria-hidden="true" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{s.label}</p>
-                        <p className="text-muted-foreground truncate text-xs">{s.description}</p>
+                        <p className="truncate text-sm font-medium">
+                          {s.label}
+                        </p>
+                        <p className="text-muted-foreground truncate text-xs">
+                          {s.description}
+                        </p>
                       </div>
-                      <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+                      <ArrowRight
+                        className="text-muted-foreground size-4 shrink-0"
+                        aria-hidden="true"
+                      />
                     </CardContent>
                   </Card>
                 </Link>

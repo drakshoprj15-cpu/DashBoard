@@ -3,7 +3,8 @@
  * Repasses.
  */
 
-export type PayoutStatus = "upcoming" | "processing" | "paid" | "failed" | "cancelled";
+export type PayoutStatus =
+  "upcoming" | "processing" | "paid" | "failed" | "cancelled";
 
 export const PAYOUT_STATUS_LABEL: Record<PayoutStatus, string> = {
   upcoming: "Previsto",

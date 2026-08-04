@@ -16,7 +16,8 @@ import { normalizePhone } from "@/features/carts/phone";
  * e só a confirmação do gateway pode produzi-la. Uma planilha marcando linhas
  * como pagas viraria faturamento inventado no Dashboard e no Financeiro.
  */
-export type ImportStatus = "abandoned" | "awaiting_payment" | "pending" | "declined";
+export type ImportStatus =
+  "abandoned" | "awaiting_payment" | "pending" | "declined";
 
 export const IMPORT_STATUS_LABEL: Record<ImportStatus, string> = {
   abandoned: "Abandonado",
@@ -150,7 +151,9 @@ export function parseSheetDate(raw: string | undefined): Date | null {
   const brMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (brMatch) {
     const [, day, month, year] = brMatch;
-    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    const date = new Date(
+      Date.UTC(Number(year), Number(month) - 1, Number(day)),
+    );
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
@@ -247,7 +250,10 @@ export function buildDedupeKey(parts: {
  * (nome, e-mail ou telefone), produto e valor. Status ausente vira
  * "Abandonado".
  */
-export function validateRows(rows: RawRow[], defaultCurrency = "EUR"): ValidationOutcome {
+export function validateRows(
+  rows: RawRow[],
+  defaultCurrency = "EUR",
+): ValidationOutcome {
   const valid: ValidCartImportRow[] = [];
   const invalid: InvalidCartImportRow[] = [];
   const warnings: { line: number; message: string }[] = [];
@@ -289,11 +295,20 @@ export function validateRows(rows: RawRow[], defaultCurrency = "EUR"): Validatio
 
     const amountCents = parseAmountCents(row.valor);
     if (amountCents === null) {
-      errors.push(row.valor ? `Valor inválido: "${row.valor.trim()}".` : "Valor é obrigatório.");
+      errors.push(
+        row.valor
+          ? `Valor inválido: "${row.valor.trim()}".`
+          : "Valor é obrigatório.",
+      );
     }
 
-    const quantityRaw = Number((row.quantidade ?? "1").replace(/\D/g, "") || "1");
-    const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? Math.min(quantityRaw, 999) : 1;
+    const quantityRaw = Number(
+      (row.quantidade ?? "1").replace(/\D/g, "") || "1",
+    );
+    const quantity =
+      Number.isFinite(quantityRaw) && quantityRaw > 0
+        ? Math.min(quantityRaw, 999)
+        : 1;
 
     const { status, warning } = resolveImportStatus(row.status);
     if (warning) warnings.push({ line: row._line, message: warning });
@@ -323,11 +338,17 @@ export function validateRows(rows: RawRow[], defaultCurrency = "EUR"): Validatio
       continue;
     }
 
-    const dedupeKey = buildDedupeKey({ email, phone, productName, checkoutUrl });
+    const dedupeKey = buildDedupeKey({
+      email,
+      phone,
+      productName,
+      checkoutUrl,
+    });
     if (seen.has(dedupeKey)) {
       warnings.push({
         line: row._line,
-        message: "Linha duplicada dentro da própria planilha — só a primeira será importada.",
+        message:
+          "Linha duplicada dentro da própria planilha — só a primeira será importada.",
       });
       continue;
     }

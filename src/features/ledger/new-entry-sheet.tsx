@@ -49,7 +49,9 @@ export function NewEntrySheet() {
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Novo lançamento</SheetTitle>
-          <SheetDescription>Entrada ou saída manual no livro-caixa</SheetDescription>
+          <SheetDescription>
+            Entrada ou saída manual no livro-caixa
+          </SheetDescription>
         </SheetHeader>
 
         <form action={formAction} className="flex flex-1 flex-col gap-4 px-4">
@@ -81,19 +83,39 @@ export function NewEntrySheet() {
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
-            <Input id="description" name="description" required maxLength={200} />
+            <Input
+              id="description"
+              name="description"
+              required
+              maxLength={200}
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">
-              Categoria <span className="text-muted-foreground font-normal">(opcional)</span>
+              Categoria{" "}
+              <span className="text-muted-foreground font-normal">
+                (opcional)
+              </span>
             </Label>
-            <Input id="category" name="category" maxLength={80} placeholder="Ex.: Taxa, Frete, Publicidade" />
+            <Input
+              id="category"
+              name="category"
+              maxLength={80}
+              placeholder="Ex.: Taxa, Frete, Publicidade"
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="amount">Valor</Label>
-            <Input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
+            <Input
+              id="amount"
+              name="amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+            />
           </div>
 
           <SheetFooter className="px-0">

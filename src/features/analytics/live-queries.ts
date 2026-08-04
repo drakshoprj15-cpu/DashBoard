@@ -93,7 +93,9 @@ const COUNTRY_NAMES: Record<string, string> = {
 };
 
 function countryLabel(code: string | null, city: string | null): string {
-  const name = code ? (COUNTRY_NAMES[code.toUpperCase()] ?? code) : "Desconhecido";
+  const name = code
+    ? (COUNTRY_NAMES[code.toUpperCase()] ?? code)
+    : "Desconhecido";
   return city ? `${city} · ${name}` : name;
 }
 
@@ -127,12 +129,16 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
       views: sql<number>`coalesce(sum(${visitorSessions.pageViews}), 0)::int`,
     })
     .from(visitorSessions)
-    .where(and(ws, sql`${visitorSessions.createdAt} >= date_trunc('day', now())`));
+    .where(
+      and(ws, sql`${visitorSessions.createdAt} >= date_trunc('day', now())`),
+    );
 
   const [last24] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(visitorSessions)
-    .where(and(ws, sql`${visitorSessions.createdAt} >= now() - interval '24 hours'`));
+    .where(
+      and(ws, sql`${visitorSessions.createdAt} >= now() - interval '24 hours'`),
+    );
 
   const [ordersToday] = await db
     .select({
@@ -141,9 +147,7 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
       revenueCents: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${PAID_STATUSES_SQL}), 0)::int`,
     })
     .from(orders)
-    .where(
-      and(wsOrders, sql`${orders.createdAt} >= date_trunc('day', now())`),
-    );
+    .where(and(wsOrders, sql`${orders.createdAt} >= date_trunc('day', now())`));
 
   const locationRows = await db
     .select({
@@ -209,7 +213,10 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
       deviceType: visitorSessions.deviceType,
     })
     .from(analyticsEvents)
-    .leftJoin(visitorSessions, eq(analyticsEvents.sessionId, visitorSessions.id))
+    .leftJoin(
+      visitorSessions,
+      eq(analyticsEvents.sessionId, visitorSessions.id),
+    )
     .where(eq(analyticsEvents.workspaceId, workspaceId))
     .orderBy(desc(analyticsEvents.occurredAt))
     .limit(50);
@@ -234,10 +241,26 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
 
   const funnel: FunnelStep[] = [
     { label: "Visitantes", event: "page_view", count: countOf("page_view") },
-    { label: "Viu produto", event: "view_content", count: countOf("view_content") },
-    { label: "Clicou comprar", event: "click_buy", count: countOf("click_buy") },
-    { label: "Abriu checkout", event: "checkout_opened", count: countOf("checkout_opened") },
-    { label: "Pagamento criado", event: "payment_created", count: countOf("payment_created") },
+    {
+      label: "Viu produto",
+      event: "view_content",
+      count: countOf("view_content"),
+    },
+    {
+      label: "Clicou comprar",
+      event: "click_buy",
+      count: countOf("click_buy"),
+    },
+    {
+      label: "Abriu checkout",
+      event: "checkout_opened",
+      count: countOf("checkout_opened"),
+    },
+    {
+      label: "Pagamento criado",
+      event: "payment_created",
+      count: countOf("payment_created"),
+    },
   ];
 
   const onlineNow = online?.n ?? 0;
@@ -275,8 +298,7 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
       os: s.os,
       countryCode: s.countryCode,
       city: s.city,
-      utmSource:
-        (s.utm as Record<string, string> | null)?.utm_source ?? null,
+      utmSource: (s.utm as Record<string, string> | null)?.utm_source ?? null,
       pageViews: s.pageViews,
       durationSeconds: s.durationSeconds,
       lastSeenAt: s.lastSeenAt,

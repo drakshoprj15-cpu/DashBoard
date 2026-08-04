@@ -65,7 +65,8 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
     label: "Pagamento pendente",
     suggestedFor: ["awaiting_payment", "pending"],
     subject: "Seu pedido ainda está aguardando pagamento",
-    preview: "O link de pagamento continua ativo — dá para concluir em menos de um minuto.",
+    preview:
+      "O link de pagamento continua ativo — dá para concluir em menos de um minuto.",
     emailBody:
       "Olá {{nome}}, vimos que seu pedido de {{produto}} ainda está aguardando pagamento. " +
       "Você pode finalizar com segurança pelo link abaixo.\n\n" +
@@ -82,7 +83,8 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
     label: "Carrinho abandonado",
     suggestedFor: ["abandoned"],
     subject: "Você esqueceu um item no carrinho",
-    preview: "Guardámos o seu carrinho. Retome de onde parou, sem preencher tudo de novo.",
+    preview:
+      "Guardámos o seu carrinho. Retome de onde parou, sem preencher tudo de novo.",
     emailBody:
       "Olá {{nome}}, seu carrinho com {{produto}} ainda está disponível. " +
       "Para continuar sua compra, é só usar o link abaixo — está tudo como você deixou, " +
@@ -99,7 +101,8 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
     label: "Pagamento recusado",
     suggestedFor: ["declined"],
     subject: "Houve um problema com seu pagamento",
-    preview: "O pedido continua reservado. Basta tentar de novo com outro método de pagamento.",
+    preview:
+      "O pedido continua reservado. Basta tentar de novo com outro método de pagamento.",
     emailBody:
       "Olá {{nome}}, identificamos que o pagamento do seu pedido não foi aprovado. " +
       "Costuma ser um bloqueio automático do banco, não um problema com os seus dados. " +
@@ -121,7 +124,9 @@ export const CART_TEMPLATE_LIST: CartTemplate[] = [
 
 /** Template mais adequado à categoria do carrinho, com fallback seguro. */
 export function suggestTemplate(category: CartCategory): CartTemplateKey {
-  const match = CART_TEMPLATE_LIST.find((t) => t.suggestedFor.includes(category));
+  const match = CART_TEMPLATE_LIST.find((t) =>
+    t.suggestedFor.includes(category),
+  );
   return match?.key ?? "pending";
 }
 
@@ -151,7 +156,10 @@ export function renderTemplate(text: string, vars: TemplateVars): string {
 }
 
 /** Variáveis do template que não têm valor — a UI avisa antes de enviar. */
-export function findMissingVariables(text: string, vars: TemplateVars): TemplateVariable[] {
+export function findMissingVariables(
+  text: string,
+  vars: TemplateVars,
+): TemplateVariable[] {
   const missing = new Set<TemplateVariable>();
   for (const match of text.matchAll(VARIABLE_PATTERN)) {
     const name = match[1] as TemplateVariable;
@@ -190,7 +198,10 @@ function firstName(fullName: string | null): string {
 }
 
 /** Constrói as variáveis de um carrinho, já formatadas para leitura humana. */
-export function buildTemplateVars(source: TemplateSource, locale = "pt-PT"): TemplateVars {
+export function buildTemplateVars(
+  source: TemplateSource,
+  locale = "pt-PT",
+): TemplateVars {
   return {
     nome: firstName(source.customerName),
     email: source.customerEmail ?? "",

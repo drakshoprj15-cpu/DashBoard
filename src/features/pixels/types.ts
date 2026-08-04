@@ -65,7 +65,7 @@ export const PIXEL_TYPE_INFO: Record<
     idLabel: "Nome da credencial",
     idPlaceholder: "Ex.: Credencial principal",
     helper:
-      "Só um nome livre para identificar aqui — a UTMify não usa um \"ID de pixel\", só o token abaixo.",
+      'Só um nome livre para identificar aqui — a UTMify não usa um "ID de pixel", só o token abaixo.',
   },
   custom_script: {
     label: "Script personalizado",

@@ -103,7 +103,9 @@ function toPaymentResult(order: BroskiOrder): PaymentResult {
   return {
     externalId: order.id,
     status: STATUS_MAP[order.status] ?? "created",
-    method: (order.method === "mbway" ? "mbway" : "multibanco") as PaymentMethod,
+    method: (order.method === "mbway"
+      ? "mbway"
+      : "multibanco") as PaymentMethod,
     amountCents: order.amount,
     currency: order.currency ?? "EUR",
     displayData: order.multibanco
@@ -138,7 +140,8 @@ export class BroskiProvider implements PaymentProvider {
     const response = await fetch(`${BROSKI_BASE_URL}${path}`, {
       method,
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body:
+        options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
 
     const json = (await response.json().catch(() => ({}))) as T & BroskiError;
@@ -187,7 +190,8 @@ export class BroskiProvider implements PaymentProvider {
         external_reference: input.orderId,
         description: input.metadata?.description?.slice(0, 140),
         checkout_url: input.successUrl ?? input.metadata?.checkoutUrl,
-        product_type: input.metadata?.productType === "physical" ? "physical" : "digital",
+        product_type:
+          input.metadata?.productType === "physical" ? "physical" : "digital",
         customer: {
           name: input.customer.name,
           email: input.customer.email,
@@ -322,7 +326,8 @@ export class BroskiProvider implements PaymentProvider {
         ? obj?.id
         : // dispute.created referencia o pedido em data.object.order
           obj?.order,
-      status: isOrder && obj ? (STATUS_MAP[obj.status] ?? undefined) : undefined,
+      status:
+        isOrder && obj ? (STATUS_MAP[obj.status] ?? undefined) : undefined,
       amountCents: obj?.amount,
       raw: event,
     };

@@ -10,7 +10,9 @@ import { isDashboardPeriod } from "@/features/dashboard/period";
 
 export const dynamic = "force-dynamic";
 
-function isDirectionFilter(value: string | null): value is LedgerDirectionFilter {
+function isDirectionFilter(
+  value: string | null,
+): value is LedgerDirectionFilter {
   return value === "all" || value === "in" || value === "out";
 }
 

@@ -44,7 +44,9 @@ export async function listShippingMethods(): Promise<ShippingMethodRow[]> {
 }
 
 /** Apenas os fretes ativos — usados no checkout público. */
-export async function listActiveShippingMethods(): Promise<ShippingMethodRow[]> {
+export async function listActiveShippingMethods(): Promise<
+  ShippingMethodRow[]
+> {
   const all = await listShippingMethods();
   return all.filter((m) => m.isActive);
 }

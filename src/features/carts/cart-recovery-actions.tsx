@@ -14,7 +14,11 @@ import {
   suggestTemplate,
 } from "@/features/carts/templates";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /** Mensagem de WhatsApp pronta para um carrinho, no modelo sugerido pelo status. */
 export function buildWhatsAppMessage(row: CartRowDTO): string {
@@ -92,7 +96,9 @@ export function CartRecoveryActions({
               variant="ghost"
               size="icon-sm"
               aria-label="Enviar lembrete por e-mail"
-              disabled={!row.customerEmail || row.marketingOptOut || !recoverable}
+              disabled={
+                !row.customerEmail || row.marketingOptOut || !recoverable
+              }
               onClick={() => onSendEmail(row)}
             >
               <Mail />
@@ -110,7 +116,11 @@ export function CartRecoveryActions({
               variant="ghost"
               size="icon-sm"
               aria-label="Enviar lembrete por WhatsApp"
-              className={hasWhatsApp && !row.marketingOptOut ? "hover:text-success" : undefined}
+              className={
+                hasWhatsApp && !row.marketingOptOut
+                  ? "hover:text-success"
+                  : undefined
+              }
               disabled={!hasWhatsApp || row.marketingOptOut}
               onClick={() => onOpenWhatsApp(row)}
             >
@@ -137,7 +147,9 @@ export function CartRecoveryActions({
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          {row.checkoutUrl ? "Copiar link do checkout" : "Sem link de checkout registado"}
+          {row.checkoutUrl
+            ? "Copiar link do checkout"
+            : "Sem link de checkout registado"}
         </TooltipContent>
       </Tooltip>
 

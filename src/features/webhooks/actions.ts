@@ -118,7 +118,12 @@ export async function updateWebhookEndpointAction(
         isActive: d.isActive,
         updatedAt: new Date(),
       })
-      .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.workspaceId, workspaceId),
+        ),
+      )
       .returning({ id: webhookEndpoints.id });
 
     if (!row) return { ok: false, error: "Webhook não encontrado." };
@@ -138,7 +143,9 @@ export async function updateWebhookEndpointAction(
   }
 }
 
-export async function regenerateWebhookSecretAction(formData: FormData): Promise<void> {
+export async function regenerateWebhookSecretAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id || !isDatabaseConfigured()) return;
 
@@ -148,7 +155,12 @@ export async function regenerateWebhookSecretAction(formData: FormData): Promise
   await db
     .update(webhookEndpoints)
     .set({ encryptedSecret: encryptSecret(newSecret()), updatedAt: new Date() })
-    .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)));
+    .where(
+      and(
+        eq(webhookEndpoints.id, id),
+        eq(webhookEndpoints.workspaceId, workspaceId),
+      ),
+    );
 
   await recordAuditLog({
     action: "webhook.secret_regenerated",
@@ -159,7 +171,9 @@ export async function regenerateWebhookSecretAction(formData: FormData): Promise
   revalidatePath("/webhooks");
 }
 
-export async function toggleWebhookEndpointAction(formData: FormData): Promise<void> {
+export async function toggleWebhookEndpointAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
   const activate = formData.get("activate") === "true";
   if (!id || !isDatabaseConfigured()) return;
@@ -170,7 +184,12 @@ export async function toggleWebhookEndpointAction(formData: FormData): Promise<v
   const [row] = await db
     .update(webhookEndpoints)
     .set({ isActive: activate, updatedAt: new Date() })
-    .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(webhookEndpoints.id, id),
+        eq(webhookEndpoints.workspaceId, workspaceId),
+      ),
+    )
     .returning({ name: webhookEndpoints.name });
 
   if (row) {
@@ -185,7 +204,9 @@ export async function toggleWebhookEndpointAction(formData: FormData): Promise<v
   revalidatePath("/webhooks");
 }
 
-export async function duplicateWebhookEndpointAction(formData: FormData): Promise<void> {
+export async function duplicateWebhookEndpointAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id || !isDatabaseConfigured()) return;
 
@@ -195,7 +216,12 @@ export async function duplicateWebhookEndpointAction(formData: FormData): Promis
   const [original] = await db
     .select()
     .from(webhookEndpoints)
-    .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(webhookEndpoints.id, id),
+        eq(webhookEndpoints.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!original) return;
@@ -222,7 +248,9 @@ export async function duplicateWebhookEndpointAction(formData: FormData): Promis
   revalidatePath("/webhooks");
 }
 
-export async function deleteWebhookEndpointAction(formData: FormData): Promise<void> {
+export async function deleteWebhookEndpointAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id || !isDatabaseConfigured()) return;
 
@@ -231,7 +259,12 @@ export async function deleteWebhookEndpointAction(formData: FormData): Promise<v
 
   const [row] = await db
     .delete(webhookEndpoints)
-    .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(webhookEndpoints.id, id),
+        eq(webhookEndpoints.workspaceId, workspaceId),
+      ),
+    )
     .returning({ name: webhookEndpoints.name });
 
   if (row) {
@@ -272,12 +305,20 @@ export async function sendTestWebhookAction(
     const [endpoint] = await db
       .select()
       .from(webhookEndpoints)
-      .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.workspaceId, workspaceId),
+        ),
+      )
       .limit(1);
 
     if (!endpoint) return { ok: false, error: "Webhook não encontrado." };
     if (!endpoint.encryptedSecret) {
-      return { ok: false, error: "Este webhook não tem um segredo configurado." };
+      return {
+        ok: false,
+        error: "Este webhook não tem um segredo configurado.",
+      };
     }
 
     const { createHmac } = await import("node:crypto");

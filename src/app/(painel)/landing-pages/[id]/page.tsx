@@ -34,7 +34,9 @@ export default async function LandingPageEditor(
       listLandingVersions(page.id),
       getLandingEventSeries(page.id),
       getLandingSources(page.id),
-      page.product ? getPublishedReviews(page.product.slug) : Promise.resolve([]),
+      page.product
+        ? getPublishedReviews(page.product.slug)
+        : Promise.resolve([]),
       getSession(),
     ]);
 

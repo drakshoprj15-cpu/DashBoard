@@ -122,7 +122,9 @@ export function CheckoutForm({
     : 10;
   const effectiveQuantity = Math.min(quantity, maxQuantity);
   const subtotal = unitPriceCents * effectiveQuantity;
-  const selectedShipping = shippingMethods.find((m) => m.id === shippingMethodId);
+  const selectedShipping = shippingMethods.find(
+    (m) => m.id === shippingMethodId,
+  );
   const shipping = selectedShipping
     ? calculateShippingCost(selectedShipping, subtotal)
     : 0;
@@ -257,7 +259,9 @@ export function CheckoutForm({
             </span>
             <button
               type="button"
-              onClick={() => setQuantity(Math.min(maxQuantity, effectiveQuantity + 1))}
+              onClick={() =>
+                setQuantity(Math.min(maxQuantity, effectiveQuantity + 1))
+              }
               className="flex size-6 items-center justify-center rounded border text-zinc-600 hover:bg-zinc-50"
               aria-label="Aumentar quantidade"
             >
@@ -273,8 +277,14 @@ export function CheckoutForm({
         </div>
         <div className="flex justify-between">
           <dt className="text-zinc-500">Portes de envio</dt>
-          <dd className={cn("font-medium", shipping === 0 && "text-emerald-600")}>
-            {selectedShipping ? (shipping === 0 ? "Grátis" : fmt(shipping)) : "—"}
+          <dd
+            className={cn("font-medium", shipping === 0 && "text-emerald-600")}
+          >
+            {selectedShipping
+              ? shipping === 0
+                ? "Grátis"
+                : fmt(shipping)
+              : "—"}
           </dd>
         </div>
         <div className="flex justify-between border-t pt-2 text-base font-bold">
@@ -375,8 +385,7 @@ export function CheckoutForm({
                     className={cn(
                       "flex min-h-11 items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors",
                       selected ? "" : "border-zinc-200 hover:border-zinc-300",
-                      !variant.purchasable &&
-                        "cursor-not-allowed opacity-50",
+                      !variant.purchasable && "cursor-not-allowed opacity-50",
                     )}
                     style={
                       selected
@@ -403,7 +412,9 @@ export function CheckoutForm({
                       />
                     ) : null}
                     <span>
-                      <span className="block font-semibold">{variant.label}</span>
+                      <span className="block font-semibold">
+                        {variant.label}
+                      </span>
                       <span className="block text-xs text-zinc-500">
                         {variant.purchasable
                           ? fmt(variant.priceCents)
@@ -429,15 +440,32 @@ export function CheckoutForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">Nome</Label>
-              <Input id="firstName" name="firstName" autoComplete="given-name" required />
+              <Input
+                id="firstName"
+                name="firstName"
+                autoComplete="given-name"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lastName">Apelido</Label>
-              <Input id="lastName" name="lastName" autoComplete="family-name" required />
+              <Input
+                id="lastName"
+                name="lastName"
+                autoComplete="family-name"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
-              <Input id="email" name="email" type="email" autoComplete="email" placeholder="voce@exemplo.pt" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="voce@exemplo.pt"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="phone">
@@ -446,7 +474,9 @@ export function CheckoutForm({
                 ) : (
                   <>
                     Telefone{" "}
-                    <span className="text-zinc-400 font-normal">(opcional)</span>
+                    <span className="text-zinc-400 font-normal">
+                      (opcional)
+                    </span>
                   </>
                 )}
               </Label>
@@ -472,21 +502,45 @@ export function CheckoutForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="addressLine1">Morada</Label>
-              <Input id="addressLine1" name="addressLine1" autoComplete="address-line1" placeholder="Rua, número, andar" required />
+              <Input
+                id="addressLine1"
+                name="addressLine1"
+                autoComplete="address-line1"
+                placeholder="Rua, número, andar"
+                required
+              />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="addressLine2">
-                Complemento <span className="text-muted-foreground font-normal">(opcional)</span>
+                Complemento{" "}
+                <span className="text-muted-foreground font-normal">
+                  (opcional)
+                </span>
               </Label>
-              <Input id="addressLine2" name="addressLine2" autoComplete="address-line2" />
+              <Input
+                id="addressLine2"
+                name="addressLine2"
+                autoComplete="address-line2"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="postalCode">Código postal</Label>
-              <Input id="postalCode" name="postalCode" autoComplete="postal-code" placeholder="1234-567" required />
+              <Input
+                id="postalCode"
+                name="postalCode"
+                autoComplete="postal-code"
+                placeholder="1234-567"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="city">Localidade</Label>
-              <Input id="city" name="city" autoComplete="address-level2" required />
+              <Input
+                id="city"
+                name="city"
+                autoComplete="address-level2"
+                required
+              />
             </div>
           </div>
         </Section>
@@ -573,8 +627,7 @@ export function CheckoutForm({
                 aria-pressed={method === opt.key}
                 className={cn(
                   "flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors",
-                  method !== opt.key &&
-                    "border-zinc-200 hover:border-zinc-300",
+                  method !== opt.key && "border-zinc-200 hover:border-zinc-300",
                 )}
                 style={
                   method === opt.key
@@ -587,17 +640,24 @@ export function CheckoutForm({
                 }
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={opt.img} alt="" className="h-8 rounded border bg-white px-1.5 py-0.5" />
+                <img
+                  src={opt.img}
+                  alt=""
+                  className="h-8 rounded border bg-white px-1.5 py-0.5"
+                />
                 <span>
                   <span className="block text-sm font-bold">{opt.label}</span>
-                  <span className="block text-xs text-zinc-500">{opt.hint}</span>
+                  <span className="block text-xs text-zinc-500">
+                    {opt.hint}
+                  </span>
                 </span>
               </button>
             ))}
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-xs text-zinc-500">
             <Lock className="size-3.5" />
-            Pagamento processado em Portugal por infraestrutura licenciada na UE.
+            Pagamento processado em Portugal por infraestrutura licenciada na
+            UE.
           </p>
         </Section>
 

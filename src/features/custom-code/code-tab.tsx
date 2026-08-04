@@ -101,7 +101,9 @@ export function CodeTab({
   const [savedSnapshot, setSavedSnapshot] = React.useState<FormState>(() =>
     toFormState(initial),
   );
-  const [updatedAt, setUpdatedAt] = React.useState<string | null>(initial.updatedAt);
+  const [updatedAt, setUpdatedAt] = React.useState<string | null>(
+    initial.updatedAt,
+  );
   const [verify, setVerify] = React.useState<VerifyState>("idle");
   const [device, setDevice] = React.useState<"desktop" | "mobile">("desktop");
   const [previewKey, setPreviewKey] = React.useState(0);
@@ -124,7 +126,8 @@ export function CodeTab({
     if (!state) return;
     if (state.ok) {
       toast.success(state.message ?? "Código salvo com sucesso.");
-      if (pendingSnapshotRef.current) setSavedSnapshot(pendingSnapshotRef.current);
+      if (pendingSnapshotRef.current)
+        setSavedSnapshot(pendingSnapshotRef.current);
       if (state.updatedAt) setUpdatedAt(state.updatedAt);
       setPreviewKey((k) => k + 1);
       setVerify("idle");
@@ -179,13 +182,30 @@ export function CodeTab({
   }
 
   return (
-    <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-6">
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={handleSubmit}
+      className="space-y-6"
+    >
       <input type="hidden" name="id" value={productId} />
       <input type="hidden" name="customHeadCode" value={form.customHeadCode} />
-      <input type="hidden" name="customBodyStartCode" value={form.customBodyStartCode} />
-      <input type="hidden" name="customBodyEndCode" value={form.customBodyEndCode} />
+      <input
+        type="hidden"
+        name="customBodyStartCode"
+        value={form.customBodyStartCode}
+      />
+      <input
+        type="hidden"
+        name="customBodyEndCode"
+        value={form.customBodyEndCode}
+      />
       <input type="hidden" name="customCss" value={form.customCss} />
-      <input type="hidden" name="customJavaScript" value={form.customJavaScript} />
+      <input
+        type="hidden"
+        name="customJavaScript"
+        value={form.customJavaScript}
+      />
 
       {/* Barra de estado e ações */}
       <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
@@ -224,8 +244,8 @@ export function CodeTab({
             <Radar className="text-muted-foreground size-4" /> Meta Pixel
           </CardTitle>
           <CardDescription>
-            Configuração rápida só para esta landing page — não altera os
-            pixels cadastrados em{" "}
+            Configuração rápida só para esta landing page — não altera os pixels
+            cadastrados em{" "}
             <Link href="/pixel" className="underline underline-offset-2">
               Pixel
             </Link>
@@ -243,11 +263,19 @@ export function CodeTab({
                 placeholder="Ex.: 123456789012345"
                 value={form.metaPixelId}
                 onChange={(e) =>
-                  setField("metaPixelId", e.target.value.replace(/\D/g, "").slice(0, 16))
+                  setField(
+                    "metaPixelId",
+                    e.target.value.replace(/\D/g, "").slice(0, 16),
+                  )
                 }
                 aria-invalid={Boolean(pixelIdError)}
               />
-              <p className={cn("text-xs", pixelIdError ? "text-destructive" : "text-muted-foreground")}>
+              <p
+                className={cn(
+                  "text-xs",
+                  pixelIdError ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
                 {pixelIdError ?? "15 ou 16 dígitos, só números."}
               </p>
             </div>
@@ -256,7 +284,9 @@ export function CodeTab({
                 id="metaPixelEnabled"
                 name="metaPixelEnabled"
                 checked={form.metaPixelEnabled}
-                onCheckedChange={(v) => setField("metaPixelEnabled", v === true)}
+                onCheckedChange={(v) =>
+                  setField("metaPixelEnabled", v === true)
+                }
               />
               <Label htmlFor="metaPixelEnabled" className="cursor-pointer">
                 Ativar Meta Pixel
@@ -290,21 +320,29 @@ export function CodeTab({
               onClick={handleVerify}
               disabled={verify === "loading" || !savedSnapshot.metaPixelEnabled}
             >
-              {verify === "loading" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+              {verify === "loading" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <ShieldCheck />
+              )}
               Verificar instalação
             </Button>
             {verify === "found" && (
               <span className="text-success flex items-center gap-1 text-xs">
-                <CheckCircle2 className="size-3.5" /> Pixel encontrado na página publicada
+                <CheckCircle2 className="size-3.5" /> Pixel encontrado na página
+                publicada
               </span>
             )}
             {verify === "missing" && (
               <span className="text-warning-foreground dark:text-warning flex items-center gap-1 text-xs">
-                <AlertTriangle className="size-3.5" /> Pixel não encontrado — salve e publique o produto
+                <AlertTriangle className="size-3.5" /> Pixel não encontrado —
+                salve e publique o produto
               </span>
             )}
             {verify === "error" && (
-              <span className="text-destructive text-xs">Não foi possível verificar agora.</span>
+              <span className="text-destructive text-xs">
+                Não foi possível verificar agora.
+              </span>
             )}
           </div>
         </CardContent>
@@ -413,8 +451,8 @@ export function CodeTab({
               <AlertTriangle />
               <AlertTitle>Landing page ainda não publicada</AlertTitle>
               <AlertDescription>
-                Ative o produto em &quot;Dados do produto&quot; para publicar
-                a landing page e liberar a pré-visualização.
+                Ative o produto em &quot;Dados do produto&quot; para publicar a
+                landing page e liberar a pré-visualização.
               </AlertDescription>
             </Alert>
           ) : (
@@ -446,7 +484,9 @@ export function CodeTab({
                   loading="lazy"
                   className={cn(
                     "bg-background mx-auto rounded border shadow-sm",
-                    device === "mobile" ? "h-[700px] w-[390px]" : "h-[700px] w-full",
+                    device === "mobile"
+                      ? "h-[700px] w-[390px]"
+                      : "h-[700px] w-full",
                   )}
                 />
               </div>

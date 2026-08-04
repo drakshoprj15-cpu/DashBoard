@@ -26,7 +26,8 @@ export function PaymentMethods({ methods, currency }: PaymentMethodsProps) {
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{m.label}</span>
               <span className="text-muted-foreground text-xs">
-                {formatNumber(m.count)} {m.count === 1 ? "pagamento" : "pagamentos"}
+                {formatNumber(m.count)}{" "}
+                {m.count === 1 ? "pagamento" : "pagamentos"}
               </span>
             </div>
             <div className="bg-muted h-2 overflow-hidden rounded-full">
@@ -37,7 +38,10 @@ export function PaymentMethods({ methods, currency }: PaymentMethodsProps) {
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
-                {(share * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                {(share * 100).toLocaleString("pt-BR", {
+                  maximumFractionDigits: 1,
+                })}
+                %
               </span>
               <span className="font-semibold">
                 {formatMoney(m.amountCents, currency, "pt-PT")}

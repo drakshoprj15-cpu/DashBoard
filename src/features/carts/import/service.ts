@@ -36,7 +36,10 @@ function syntheticEmail(row: ValidCartImportRow): string {
   return `sem-email-${seed || "carrinho"}@importacao.invalid`;
 }
 
-function splitName(full: string | null): { firstName: string | null; lastName: string | null } {
+function splitName(full: string | null): {
+  firstName: string | null;
+  lastName: string | null;
+} {
   if (!full) return { firstName: null, lastName: null };
   const parts = full.trim().split(/\s+/);
   if (parts.length === 1) return { firstName: parts[0], lastName: null };
@@ -58,7 +61,10 @@ function importReference(): string {
  * vieram de importação. Só compara com importados: um pedido real do
  * checkout nunca deve ser silenciosamente "absorvido" por uma planilha.
  */
-async function loadExistingKeys(db: Database, workspaceId: string): Promise<Set<string>> {
+async function loadExistingKeys(
+  db: Database,
+  workspaceId: string,
+): Promise<Set<string>> {
   const rows = await db
     .select({
       orderId: orders.id,
@@ -70,14 +76,21 @@ async function loadExistingKeys(db: Database, workspaceId: string): Promise<Set<
     .from(orders)
     .leftJoin(customers, eq(orders.customerId, customers.id))
     .leftJoin(orderItems, eq(orderItems.orderId, orders.id))
-    .where(and(eq(orders.workspaceId, workspaceId), eq(orders.origin, IMPORT_ORIGIN)));
+    .where(
+      and(
+        eq(orders.workspaceId, workspaceId),
+        eq(orders.origin, IMPORT_ORIGIN),
+      ),
+    );
 
   const keys = new Set<string>();
   for (const row of rows) {
     if (!row.productName) continue;
     keys.add(
       buildDedupeKey({
-        email: row.email?.includes("@importacao.invalid") ? null : (row.email ?? null),
+        email: row.email?.includes("@importacao.invalid")
+          ? null
+          : (row.email ?? null),
         phone: row.phone ?? null,
         productName: row.productName,
         checkoutUrl: row.checkoutUrl ?? null,
@@ -115,16 +128,25 @@ export async function importCartRows(
 
   // Clientes já existentes, resolvidos em lote — evita um SELECT por linha.
   const emails = Array.from(
-    new Set(rows.map((row) => (row.email ?? syntheticEmail(row)).toLowerCase())),
+    new Set(
+      rows.map((row) => (row.email ?? syntheticEmail(row)).toLowerCase()),
+    ),
   );
   const existingCustomers =
     emails.length > 0
       ? await db
           .select({ id: customers.id, email: customers.email })
           .from(customers)
-          .where(and(eq(customers.workspaceId, workspaceId), inArray(customers.email, emails)))
+          .where(
+            and(
+              eq(customers.workspaceId, workspaceId),
+              inArray(customers.email, emails),
+            ),
+          )
       : [];
-  const customerIdByEmail = new Map(existingCustomers.map((c) => [c.email.toLowerCase(), c.id]));
+  const customerIdByEmail = new Map(
+    existingCustomers.map((c) => [c.email.toLowerCase(), c.id]),
+  );
 
   const events: Parameters<typeof recordCartEvents>[0] = [];
 
@@ -178,7 +200,9 @@ export async function importCartRows(
           workspaceId,
           reference: importReference(),
           customerId,
-          status: ORDER_STATUS_BY_IMPORT_STATUS[row.status] as (typeof orders.$inferInsert)["status"],
+          status: ORDER_STATUS_BY_IMPORT_STATUS[
+            row.status
+          ] as (typeof orders.$inferInsert)["status"],
           currency: row.currency,
           subtotalCents: totalCents,
           totalCents,

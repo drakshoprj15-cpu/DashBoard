@@ -4,7 +4,14 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import type { OnMount } from "@monaco-editor/react";
-import { Check, Copy, Maximize2, Minimize2, Sparkles, TextSelect } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  TextSelect,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

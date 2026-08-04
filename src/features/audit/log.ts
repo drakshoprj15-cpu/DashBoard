@@ -20,7 +20,9 @@ export interface RecordAuditLogInput {
  * a sessão do utilizador hoje, então não há "quem" real para registar ainda,
  * só o "quê" e o "quando".
  */
-export async function recordAuditLog(input: RecordAuditLogInput): Promise<void> {
+export async function recordAuditLog(
+  input: RecordAuditLogInput,
+): Promise<void> {
   if (!isDatabaseConfigured()) return;
 
   try {

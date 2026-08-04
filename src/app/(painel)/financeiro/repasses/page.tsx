@@ -21,7 +21,10 @@ export default async function RepassesPage() {
     );
   }
 
-  const [payouts, summary] = await Promise.all([listPayouts(), getPayoutsSummary()]);
+  const [payouts, summary] = await Promise.all([
+    listPayouts(),
+    getPayoutsSummary(),
+  ]);
 
   return (
     <div className="space-y-6">

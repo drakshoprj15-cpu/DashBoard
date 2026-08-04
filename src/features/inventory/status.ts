@@ -26,6 +26,7 @@ export function classifyStock(
   minStockAlert: number | null,
 ): StockStatus {
   if (stockQuantity <= 0) return "out_of_stock";
-  if (minStockAlert !== null && stockQuantity <= minStockAlert) return "low_stock";
+  if (minStockAlert !== null && stockQuantity <= minStockAlert)
+    return "low_stock";
   return "ok";
 }

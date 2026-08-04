@@ -9,8 +9,14 @@ import {
   updateMinStockAction,
   type InventoryActionResult,
 } from "@/features/inventory/actions";
-import { MOVEMENT_TYPE_LABEL, type MovementType } from "@/validations/inventory";
-import type { InventoryMovementRow, InventoryProductRow } from "@/features/inventory/queries";
+import {
+  MOVEMENT_TYPE_LABEL,
+  type MovementType,
+} from "@/validations/inventory";
+import type {
+  InventoryMovementRow,
+  InventoryProductRow,
+} from "@/features/inventory/queries";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,10 +34,21 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-const MOVEMENT_TYPES = Object.entries(MOVEMENT_TYPE_LABEL) as [MovementType, string][];
+const MOVEMENT_TYPES = Object.entries(MOVEMENT_TYPE_LABEL) as [
+  MovementType,
+  string,
+][];
 
-function MovementHistory({ productId, open }: { productId: string; open: boolean }) {
-  const [movements, setMovements] = React.useState<InventoryMovementRow[] | null>(null);
+function MovementHistory({
+  productId,
+  open,
+}: {
+  productId: string;
+  open: boolean;
+}) {
+  const [movements, setMovements] = React.useState<
+    InventoryMovementRow[] | null
+  >(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -40,10 +57,15 @@ function MovementHistory({ productId, open }: { productId: string; open: boolean
     async function fetchMovements() {
       if (active) setMovements(null);
       try {
-        const res = await fetch(`/api/inventory/movements?productId=${productId}`, {
-          cache: "no-store",
-        });
-        const json = (await res.json()) as { movements: InventoryMovementRow[] };
+        const res = await fetch(
+          `/api/inventory/movements?productId=${productId}`,
+          {
+            cache: "no-store",
+          },
+        );
+        const json = (await res.json()) as {
+          movements: InventoryMovementRow[];
+        };
         if (active) setMovements(json.movements);
       } catch {
         if (active) setMovements([]);
@@ -57,11 +79,17 @@ function MovementHistory({ productId, open }: { productId: string; open: boolean
   }, [open, productId]);
 
   if (movements === null) {
-    return <p className="text-muted-foreground text-xs">A carregar histórico…</p>;
+    return (
+      <p className="text-muted-foreground text-xs">A carregar histórico…</p>
+    );
   }
 
   if (movements.length === 0) {
-    return <p className="text-muted-foreground text-xs">Sem movimentações registadas.</p>;
+    return (
+      <p className="text-muted-foreground text-xs">
+        Sem movimentações registadas.
+      </p>
+    );
   }
 
   return (
@@ -73,9 +101,17 @@ function MovementHistory({ productId, open }: { productId: string; open: boolean
               {MOVEMENT_TYPE_LABEL[m.reason as MovementType] ?? m.reason}
             </p>
             {m.note && <p className="text-muted-foreground">{m.note}</p>}
-            <p className="text-muted-foreground">{formatDateTime(m.createdAt, "pt-PT")}</p>
+            <p className="text-muted-foreground">
+              {formatDateTime(m.createdAt, "pt-PT")}
+            </p>
           </div>
-          <span className={m.quantity >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"}>
+          <span
+            className={
+              m.quantity >= 0
+                ? "text-success font-semibold"
+                : "text-destructive font-semibold"
+            }
+          >
             {m.quantity >= 0 ? "+" : ""}
             {formatNumber(m.quantity)}
           </span>
@@ -85,7 +121,11 @@ function MovementHistory({ productId, open }: { productId: string; open: boolean
   );
 }
 
-export function AdjustStockSheet({ product }: { product: InventoryProductRow }) {
+export function AdjustStockSheet({
+  product,
+}: {
+  product: InventoryProductRow;
+}) {
   const [open, setOpen] = React.useState(false);
   const [type, setType] = React.useState<MovementType>("restock");
 
@@ -132,7 +172,11 @@ export function AdjustStockSheet({ product }: { product: InventoryProductRow }) 
             )}
 
             <p className="text-muted-foreground text-xs">
-              Estoque atual: <span className="text-foreground font-semibold">{formatNumber(product.stockQuantity)}</span> unidade(s)
+              Estoque atual:{" "}
+              <span className="text-foreground font-semibold">
+                {formatNumber(product.stockQuantity)}
+              </span>{" "}
+              unidade(s)
             </p>
 
             <div className="space-y-2">
@@ -154,7 +198,8 @@ export function AdjustStockSheet({ product }: { product: InventoryProductRow }) 
 
             <div className="space-y-2">
               <Label htmlFor="quantity">
-                Quantidade{type === "correction" ? " (use negativo para reduzir)" : ""}
+                Quantidade
+                {type === "correction" ? " (use negativo para reduzir)" : ""}
               </Label>
               <Input
                 id="quantity"
@@ -167,7 +212,10 @@ export function AdjustStockSheet({ product }: { product: InventoryProductRow }) 
 
             <div className="space-y-2">
               <Label htmlFor="note">
-                Nota <span className="text-muted-foreground font-normal">(opcional)</span>
+                Nota{" "}
+                <span className="text-muted-foreground font-normal">
+                  (opcional)
+                </span>
               </Label>
               <Input id="note" name="note" maxLength={280} />
             </div>
@@ -209,7 +257,8 @@ export function AdjustStockSheet({ product }: { product: InventoryProductRow }) 
               </Alert>
             )}
             <p className="text-muted-foreground text-xs">
-              Deixe em branco para desativar o alerta de estoque baixo deste produto.
+              Deixe em branco para desativar o alerta de estoque baixo deste
+              produto.
             </p>
           </form>
 

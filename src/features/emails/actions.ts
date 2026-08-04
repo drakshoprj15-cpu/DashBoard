@@ -2,7 +2,11 @@
 
 import { z } from "zod";
 
-import { getCustomRecipients, getSegmentRecipients, type Recipient } from "@/features/emails/segments";
+import {
+  getCustomRecipients,
+  getSegmentRecipients,
+  type Recipient,
+} from "@/features/emails/segments";
 import type { SegmentKey } from "@/features/emails/types";
 import {
   isResendConfigured,
@@ -18,12 +22,20 @@ const campaignSchema = z.object({
   customerIds: z.string().trim().optional().or(z.literal("")),
   subject: z.string().trim().min(3, "Escreva um assunto"),
   body: z.string().trim().min(10, "Escreva a mensagem"),
-  testEmail: z.string().trim().email("E-mail de teste inválido").optional().or(z.literal("")),
+  testEmail: z
+    .string()
+    .trim()
+    .email("E-mail de teste inválido")
+    .optional()
+    .or(z.literal("")),
   mode: z.enum(["test", "send"]),
 });
 
 /** Resolve a lista final de destinatários — segmento fixo ou seleção manual de Carrinhos. */
-async function resolveRecipients(segment: SegmentKey, customerIdsRaw: string | undefined): Promise<Recipient[]> {
+async function resolveRecipients(
+  segment: SegmentKey,
+  customerIdsRaw: string | undefined,
+): Promise<Recipient[]> {
   if (segment === "custom") {
     const ids = (customerIdsRaw ?? "")
       .split(",")
@@ -124,7 +136,10 @@ export async function sendCampaignAction(
       : { ok: false, error: result.error };
   }
 
-  const recipients = await resolveRecipients(segment as SegmentKey, customerIds);
+  const recipients = await resolveRecipients(
+    segment as SegmentKey,
+    customerIds,
+  );
   if (recipients.length === 0) {
     return {
       ok: false,

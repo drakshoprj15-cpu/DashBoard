@@ -50,7 +50,11 @@ export const manualWhatsAppProvider: WhatsAppProvider = {
       return { ok: false, error: "Telefone inválido ou incompleto." };
     }
     const url = whatsAppUrl(phone, body);
-    if (!url) return { ok: false, error: "Não foi possível montar o link do WhatsApp." };
+    if (!url)
+      return {
+        ok: false,
+        error: "Não foi possível montar o link do WhatsApp.",
+      };
     return { ok: true, url };
   },
 };

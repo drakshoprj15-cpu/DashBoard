@@ -25,7 +25,11 @@ import {
 } from "lucide-react";
 
 import { formatMoney, formatNumber, formatPercent } from "@/lib/format";
-import { CART_TABS, ORDER_STATUS_LABEL, type CartTab } from "@/features/carts/status";
+import {
+  CART_TABS,
+  ORDER_STATUS_LABEL,
+  type CartTab,
+} from "@/features/carts/status";
 import type {
   CartListResponseDTO,
   CartRowDTO,
@@ -46,7 +50,10 @@ import {
 } from "@/features/carts/cart-filters";
 import { CartsTable } from "@/features/carts/carts-table";
 import { CartDetailSheet } from "@/features/carts/cart-detail-sheet";
-import { ReminderDialog, type ReminderChannel } from "@/features/carts/reminder-dialog";
+import {
+  ReminderDialog,
+  type ReminderChannel,
+} from "@/features/carts/reminder-dialog";
 import { ImportDialog } from "@/features/carts/import-dialog";
 import { CancelOrderDialog } from "@/features/carts/cancel-order-dialog";
 import { buildWhatsAppMessage } from "@/features/carts/cart-recovery-actions";
@@ -77,7 +84,9 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const tab: CartTab = isCartTab(searchParams.get("status")) ? (searchParams.get("status") as CartTab) : "all";
+  const tab: CartTab = isCartTab(searchParams.get("status"))
+    ? (searchParams.get("status") as CartTab)
+    : "all";
   const filters: CartFiltersState = {
     q: searchParams.get("q") ?? "",
     method: searchParams.get("method") ?? "",
@@ -91,20 +100,28 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
     archived: searchParams.get("archived") ?? "",
   };
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-  const pageSize = Number(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE)) || DEFAULT_PAGE_SIZE;
+  const pageSize =
+    Number(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE)) ||
+    DEFAULT_PAGE_SIZE;
 
   const sortParam = `${searchParams.get("sortBy") ?? "createdAt"}:${searchParams.get("sortDir") ?? "desc"}`;
-  const sort = SORT_OPTIONS.some((o) => o.value === sortParam) ? sortParam : DEFAULT_SORT;
+  const sort = SORT_OPTIONS.some((o) => o.value === sortParam)
+    ? sortParam
+    : DEFAULT_SORT;
   const [sortBy, sortDir] = sort.split(":") as [
     "createdAt" | "totalCents" | "lastReminderSentAt",
     "asc" | "desc",
   ];
 
   const hasActiveFilters =
-    Object.entries(filters).some(([, value]) => Boolean(value)) || tab !== "all";
+    Object.entries(filters).some(([, value]) => Boolean(value)) ||
+    tab !== "all";
 
   const updateParams = React.useCallback(
-    (patch: Record<string, string | number | undefined>, opts?: { resetPage?: boolean }) => {
+    (
+      patch: Record<string, string | number | undefined>,
+      opts?: { resetPage?: boolean },
+    ) => {
       const params = new URLSearchParams(searchParams.toString());
       for (const [key, value] of Object.entries(patch)) {
         if (value === undefined || value === "") params.delete(key);
@@ -153,8 +170,12 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
     sortDir,
   ]);
 
-  const [listData, setListData] = React.useState<CartListResponseDTO | null>(null);
-  const [status, setStatus] = React.useState<"loading" | "success" | "error">("loading");
+  const [listData, setListData] = React.useState<CartListResponseDTO | null>(
+    null,
+  );
+  const [status, setStatus] = React.useState<"loading" | "success" | "error">(
+    "loading",
+  );
   const [lastSyncedAt, setLastSyncedAt] = React.useState<Date | null>(null);
 
   // Contador: incrementar força o efeito abaixo a rebuscar mesmo com o
@@ -204,7 +225,8 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
   const [detailOrderId, setDetailOrderId] = React.useState<string | null>(null);
   const [detailRefreshToken, setDetailRefreshToken] = React.useState(0);
   const [syncingIds, setSyncingIds] = React.useState<Set<string>>(new Set());
-  const [reminderTarget, setReminderTarget] = React.useState<ReminderTarget | null>(null);
+  const [reminderTarget, setReminderTarget] =
+    React.useState<ReminderTarget | null>(null);
   const [sending, setSending] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [cancelTarget, setCancelTarget] = React.useState<string | null>(null);
@@ -232,10 +254,14 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
   async function handleSync(orderId: string) {
     setSyncingIds((prev) => new Set(prev).add(orderId));
     try {
-      const res = await fetch(`/api/carrinhos/${orderId}/sync`, { method: "POST" });
+      const res = await fetch(`/api/carrinhos/${orderId}/sync`, {
+        method: "POST",
+      });
       const json = await res.json();
       if (!res.ok) {
-        toast.error(json.message ?? "Não foi possível sincronizar com o gateway.");
+        toast.error(
+          json.message ?? "Não foi possível sincronizar com o gateway.",
+        );
       } else {
         toast.success(
           json.orderStatus
@@ -332,7 +358,9 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
 
     // Só temos os dados completos dos carrinhos da página atual; os demais
     // entram como alvo apenas pelo id (a pré-visualização usa o primeiro).
-    const known = json.orderIds.map((id) => rowById.get(id)).filter((r): r is CartRowDTO => Boolean(r));
+    const known = json.orderIds
+      .map((id) => rowById.get(id))
+      .filter((r): r is CartRowDTO => Boolean(r));
     setReminderTarget({
       rows: known.length > 0 ? known : rows.slice(0, 1),
       matchedTotal: json.matchedTotal,
@@ -350,9 +378,13 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
     });
   }
 
-  async function confirmReminder(channel: ReminderChannel, template: CartTemplateKey) {
+  async function confirmReminder(
+    channel: ReminderChannel,
+    template: CartTemplateKey,
+  ) {
     if (!reminderTarget) return;
-    const orderIds = pendingIdsRef.current ?? reminderTarget.rows.map((r) => r.orderId);
+    const orderIds =
+      pendingIdsRef.current ?? reminderTarget.rows.map((r) => r.orderId);
 
     if (channel === "whatsapp") {
       // WhatsApp é sempre uma conversa de cada vez — o operador confirma cada
@@ -372,10 +404,14 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
     try {
       const result = await bulkSendReminderAction(orderIds, template);
       if (result.sent > 0) {
-        toast.success(`Lembrete enviado para ${result.sent} ${result.sent === 1 ? "cliente" : "clientes"}.`);
+        toast.success(
+          `Lembrete enviado para ${result.sent} ${result.sent === 1 ? "cliente" : "clientes"}.`,
+        );
       }
       if (result.skipped > 0) {
-        toast.warning(`${result.skipped} não receberam${result.errors[0] ? ` (${result.errors[0]})` : ""}.`);
+        toast.warning(
+          `${result.skipped} não receberam${result.errors[0] ? ` (${result.errors[0]})` : ""}.`,
+        );
       }
       setReminderTarget(null);
       pendingIdsRef.current = null;
@@ -477,7 +513,8 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
 
   function toggleSelectAll() {
     setSelected((prev) => {
-      const allSelected = rows.length > 0 && rows.every((r) => prev.has(r.orderId));
+      const allSelected =
+        rows.length > 0 && rows.every((r) => prev.has(r.orderId));
       if (allSelected) return new Set();
       return new Set(rows.map((r) => r.orderId));
     });
@@ -488,7 +525,12 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
   const money = (cents: number) => formatMoney(cents, currency, "pt-PT");
   const count = (value: number) => formatNumber(value, "pt-PT");
 
-  const cards: { label: string; value: string; sub: string; icon: LucideIcon }[] = [
+  const cards: {
+    label: string;
+    value: string;
+    sub: string;
+    icon: LucideIcon;
+  }[] = [
     {
       label: "Carrinhos abandonados",
       value: count(facets?.totals.abandoned.count ?? 0),
@@ -566,7 +608,12 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
             >
               <Download /> Exportar CSV
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={openPendingReminderDialog}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={openPendingReminderDialog}
+            >
               <Megaphone /> Novo disparo manual
             </Button>
             <Button
@@ -576,13 +623,19 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
               disabled={status === "loading"}
               onClick={() => fetchData()}
             >
-              <RefreshCw className={status === "loading" ? "animate-spin" : undefined} /> Atualizar
+              <RefreshCw
+                className={status === "loading" ? "animate-spin" : undefined}
+              />{" "}
+              Atualizar
             </Button>
           </div>
           {lastSyncedAt && (
             <span className="text-muted-foreground text-xs">
               Última sincronização:{" "}
-              {lastSyncedAt.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
+              {lastSyncedAt.toLocaleTimeString("pt-PT", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           )}
         </div>
@@ -595,18 +648,29 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
           className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium"
         >
           Entenda os status
-          <ChevronDown className={infoOpen ? "size-4 rotate-180 transition-transform" : "size-4 transition-transform"} />
+          <ChevronDown
+            className={
+              infoOpen
+                ? "size-4 rotate-180 transition-transform"
+                : "size-4 transition-transform"
+            }
+          />
         </button>
         {infoOpen && (
           <div className="text-muted-foreground border-t px-4 py-3 text-sm leading-relaxed">
-            A loja vai da landing direto ao checkout, sem carrinho clássico — por isso o “carrinho” aqui é o{" "}
-            <strong>pedido gerado e ainda não pago</strong>. <strong>Aguardando pagamento</strong>: cobrança criada,
-            sem confirmação ainda. <strong>Pendente</strong>: em processamento/análise no gateway.{" "}
-            <strong>Pago</strong>: confirmado pelo webhook do gateway — nunca pelo navegador.{" "}
-            <strong>Abandonado</strong>: aguardando pagamento há mais de 24h sem atualização.{" "}
-            <strong>Recuperado</strong>: marcado à mão pelo operador — aparece aqui como convertido, mas não
-            entra na receita do Financeiro, que só conta pagamento confirmado pelo gateway. Os demais estados
-            (expirado, cancelado, reembolsado, chargeback) ficam agrupados em “Outros”.
+            A loja vai da landing direto ao checkout, sem carrinho clássico —
+            por isso o “carrinho” aqui é o{" "}
+            <strong>pedido gerado e ainda não pago</strong>.{" "}
+            <strong>Aguardando pagamento</strong>: cobrança criada, sem
+            confirmação ainda. <strong>Pendente</strong>: em
+            processamento/análise no gateway. <strong>Pago</strong>: confirmado
+            pelo webhook do gateway — nunca pelo navegador.{" "}
+            <strong>Abandonado</strong>: aguardando pagamento há mais de 24h sem
+            atualização. <strong>Recuperado</strong>: marcado à mão pelo
+            operador — aparece aqui como convertido, mas não entra na receita do
+            Financeiro, que só conta pagamento confirmado pelo gateway. Os
+            demais estados (expirado, cancelado, reembolsado, chargeback) ficam
+            agrupados em “Outros”.
           </div>
         )}
       </div>
@@ -627,7 +691,11 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filtrar por status">
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="tablist"
+          aria-label="Filtrar por status"
+        >
           {CART_TABS.map((t) => (
             <Button
               key={t.key}
@@ -636,10 +704,16 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
               variant={tab === t.key ? "default" : "outline"}
               role="tab"
               aria-selected={tab === t.key}
-              onClick={() => updateParams({ status: t.key === "all" ? undefined : t.key })}
+              onClick={() =>
+                updateParams({ status: t.key === "all" ? undefined : t.key })
+              }
             >
               {t.label}
-              <span className={tab === t.key ? "opacity-80" : "text-muted-foreground"}>
+              <span
+                className={
+                  tab === t.key ? "opacity-80" : "text-muted-foreground"
+                }
+              >
                 {count(facets?.tabCounts[t.key] ?? 0)}
               </span>
             </Button>
@@ -654,7 +728,9 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
       <CartFilters
         value={filters}
         onChange={(patch) => updateParams(patch as Record<string, string>)}
-        onClear={() => updateParams({ ...EMPTY_CART_FILTERS, status: undefined })}
+        onClear={() =>
+          updateParams({ ...EMPTY_CART_FILTERS, status: undefined })
+        }
         products={products}
         hasActiveFilters={hasActiveFilters}
         sort={sort}
@@ -667,10 +743,18 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
       {selected.size > 0 && (
         <div className="bg-accent/50 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
           <p className="text-sm font-medium">
-            {selected.size} {selected.size === 1 ? "carrinho selecionado" : "carrinhos selecionados"}
+            {selected.size}{" "}
+            {selected.size === 1
+              ? "carrinho selecionado"
+              : "carrinhos selecionados"}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={openSelectionReminderDialog}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={openSelectionReminderDialog}
+            >
               <Mail /> Enviar lembrete
             </Button>
             <Button
@@ -700,7 +784,12 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
             >
               Marcar recusado
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={createCampaignFromSelection}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={createCampaignFromSelection}
+            >
               <Megaphone /> Criar campanha
             </Button>
             <Button
@@ -720,7 +809,12 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
             >
               <Archive /> Arquivar
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelected(new Set())}
+            >
               <X /> Limpar seleção
             </Button>
           </div>
@@ -761,7 +855,9 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
             pageSize={pageSize}
             total={listData.total}
             pageSizeOptions={PAGE_SIZE_OPTIONS}
-            onPageChange={(p) => updateParams({ page: p }, { resetPage: false })}
+            onPageChange={(p) =>
+              updateParams({ page: p }, { resetPage: false })
+            }
             onPageSizeChange={(ps) => updateParams({ pageSize: ps })}
           />
         )}
@@ -794,7 +890,11 @@ export function CarrinhosView({ products }: { products: ProductOption[] }) {
         onConfirm={confirmReminder}
       />
 
-      <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={afterMutation} />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={afterMutation}
+      />
 
       <CancelOrderDialog
         open={cancelTarget !== null}

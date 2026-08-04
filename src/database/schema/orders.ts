@@ -41,9 +41,15 @@ export const orders = pgTable(
     campaignId: uuid("campaign_id"),
     status: orderStatus("status").default("created").notNull(),
     currency: text("currency").default("BRL").notNull(),
-    subtotalCents: bigint("subtotal_cents", { mode: "number" }).default(0).notNull(),
-    discountCents: bigint("discount_cents", { mode: "number" }).default(0).notNull(),
-    shippingCents: bigint("shipping_cents", { mode: "number" }).default(0).notNull(),
+    subtotalCents: bigint("subtotal_cents", { mode: "number" })
+      .default(0)
+      .notNull(),
+    discountCents: bigint("discount_cents", { mode: "number" })
+      .default(0)
+      .notNull(),
+    shippingCents: bigint("shipping_cents", { mode: "number" })
+      .default(0)
+      .notNull(),
     taxCents: bigint("tax_cents", { mode: "number" }).default(0).notNull(),
     totalCents: bigint("total_cents", { mode: "number" }).default(0).notNull(),
     couponId: uuid("coupon_id"),
@@ -59,7 +65,9 @@ export const orders = pgTable(
     paidAt: timestamp("paid_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** Último lembrete de pagamento enviado — evita reenviar em intervalo curto */
-    lastReminderSentAt: timestamp("last_reminder_sent_at", { withTimezone: true }),
+    lastReminderSentAt: timestamp("last_reminder_sent_at", {
+      withTimezone: true,
+    }),
     /** Link para o cliente retomar o pagamento — usado nos lembretes */
     checkoutUrl: text("checkout_url"),
     /** Quantos lembretes já foram disparados (qualquer canal) */
@@ -73,7 +81,9 @@ export const orders = pgTable(
      * isso. Aqui é só uma marcação de recuperação, exibida em Carrinhos e
      * invisível para o Financeiro.
      */
-    recoveredManuallyAt: timestamp("recovered_manually_at", { withTimezone: true }),
+    recoveredManuallyAt: timestamp("recovered_manually_at", {
+      withTimezone: true,
+    }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     /** Lote de importação de planilha que originou este registo */
     importBatchId: uuid("import_batch_id"),

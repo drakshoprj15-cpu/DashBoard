@@ -39,7 +39,10 @@ export async function listWebhookEndpoints(): Promise<WebhookEndpointRow[]> {
       lastDeliveryAt: sql<Date | null>`max(${webhookDeliveries.createdAt})`,
     })
     .from(webhookEndpoints)
-    .leftJoin(webhookDeliveries, eq(webhookDeliveries.endpointId, webhookEndpoints.id))
+    .leftJoin(
+      webhookDeliveries,
+      eq(webhookDeliveries.endpointId, webhookEndpoints.id),
+    )
     .where(eq(webhookEndpoints.workspaceId, workspaceId))
     .groupBy(
       webhookEndpoints.id,
@@ -62,7 +65,9 @@ export interface WebhookEndpointDetail extends WebhookEndpointRow {
 }
 
 /** Endpoint completo, incluindo o secret descriptografado (só sob ação explícita). */
-export async function getWebhookEndpointDetail(id: string): Promise<WebhookEndpointDetail | null> {
+export async function getWebhookEndpointDetail(
+  id: string,
+): Promise<WebhookEndpointDetail | null> {
   if (!isDatabaseConfigured()) return null;
 
   const db = getDb();
@@ -71,7 +76,12 @@ export async function getWebhookEndpointDetail(id: string): Promise<WebhookEndpo
   const [row] = await db
     .select()
     .from(webhookEndpoints)
-    .where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(webhookEndpoints.id, id),
+        eq(webhookEndpoints.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!row) return null;

@@ -191,7 +191,8 @@ function BehaviorStage({
 }) {
   const ring = {
     info: "border-info/40 text-info bg-info/10",
-    warning: "border-warning/40 text-warning-foreground dark:text-warning bg-warning/10",
+    warning:
+      "border-warning/40 text-warning-foreground dark:text-warning bg-warning/10",
     success: "border-success/40 text-success bg-success/10",
   }[tone];
 
@@ -260,7 +261,9 @@ function TopLocationsCard({ data }: { data: LiveSnapshot | null }) {
         <CardTitle className="flex items-center gap-1.5 text-sm">
           <MapPin className="size-3.5" /> Principais localizações
         </CardTitle>
-        <CardDescription className="text-xs">Visitantes de hoje</CardDescription>
+        <CardDescription className="text-xs">
+          Visitantes de hoje
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2.5 px-4">
         {locations.length === 0 ? (

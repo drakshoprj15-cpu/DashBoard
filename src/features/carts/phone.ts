@@ -50,7 +50,11 @@ export function normalizePhone(
   if (digits.startsWith("00")) {
     // Prefixo internacional em formato antigo (00351…).
     digits = digits.slice(2);
-  } else if (!hadPlus && digits.length <= 11 && !digits.startsWith(defaultDialCode)) {
+  } else if (
+    !hadPlus &&
+    digits.length <= 11 &&
+    !digits.startsWith(defaultDialCode)
+  ) {
     // Número nacional sem indicativo — só então assumimos o país padrão.
     digits = `${defaultDialCode}${digits}`;
   }

@@ -110,7 +110,9 @@ export const emailSuppressions = pgTable(
     reason: text("reason").notNull(),
     ...timestamps,
   },
-  (t) => [uniqueIndex("email_suppressions_unique_idx").on(t.workspaceId, t.email)],
+  (t) => [
+    uniqueIndex("email_suppressions_unique_idx").on(t.workspaceId, t.email),
+  ],
 );
 
 /** Contagem de envios recentes por destinatário (controle de frequência) */
@@ -128,5 +130,7 @@ export const emailFrequencyCaps = pgTable(
       .notNull(),
     ...timestamps,
   },
-  (t) => [uniqueIndex("email_frequency_caps_unique_idx").on(t.workspaceId, t.email)],
+  (t) => [
+    uniqueIndex("email_frequency_caps_unique_idx").on(t.workspaceId, t.email),
+  ],
 );

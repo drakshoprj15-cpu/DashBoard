@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircle, CheckCircle2, FileClock, Webhook, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileClock,
+  Webhook,
+  XCircle,
+} from "lucide-react";
 
 import {
   DASHBOARD_PERIODS,
@@ -36,7 +42,9 @@ interface AuditResponse {
 }
 
 function formatChanges(changes: Record<string, unknown>): string {
-  const entries = Object.entries(changes).filter(([, v]) => v !== undefined && v !== null);
+  const entries = Object.entries(changes).filter(
+    ([, v]) => v !== undefined && v !== null,
+  );
   if (entries.length === 0) return "—";
   return entries.map(([k, v]) => `${k}: ${String(v)}`).join(" · ");
 }
@@ -45,9 +53,9 @@ export function LogsView() {
   const [period, setPeriod] = React.useState<DashboardPeriod>("30d");
   const [tab, setTab] = React.useState<Tab>("admin");
   const [data, setData] = React.useState<AuditResponse | null>(null);
-  const [status, setStatus] = React.useState<"loading" | "success" | "error" | "empty">(
-    "loading",
-  );
+  const [status, setStatus] = React.useState<
+    "loading" | "success" | "error" | "empty"
+  >("loading");
 
   React.useEffect(() => {
     let active = true;
@@ -55,7 +63,9 @@ export function LogsView() {
     async function fetchData() {
       if (active) setStatus("loading");
       try {
-        const res = await fetch(`/api/audit?period=${period}`, { cache: "no-store" });
+        const res = await fetch(`/api/audit?period=${period}`, {
+          cache: "no-store",
+        });
         if (!active) return;
         if (res.status === 503) {
           setData(null);
@@ -86,12 +96,18 @@ export function LogsView() {
           aria-label="Selecionar seção"
           className="border-border bg-card inline-flex items-center gap-0.5 rounded-lg border p-0.5"
         >
-          {(
-            [
-              { key: "admin" as const, label: "Ações administrativas", icon: FileClock },
-              { key: "webhooks" as const, label: "Webhooks recebidos", icon: Webhook },
-            ]
-          ).map((t) => (
+          {[
+            {
+              key: "admin" as const,
+              label: "Ações administrativas",
+              icon: FileClock,
+            },
+            {
+              key: "webhooks" as const,
+              label: "Webhooks recebidos",
+              icon: Webhook,
+            },
+          ].map((t) => (
             <Button
               key={t.key}
               type="button"
@@ -152,14 +168,18 @@ export function LogsView() {
       {status === "error" && (
         <Alert variant="destructive">
           <AlertCircle />
-          <AlertDescription>Não foi possível carregar os logs. Tente novamente.</AlertDescription>
+          <AlertDescription>
+            Não foi possível carregar os logs. Tente novamente.
+          </AlertDescription>
         </Alert>
       )}
 
       {status === "empty" && (
         <Alert>
           <AlertCircle />
-          <AlertDescription>Configure o Supabase para acompanhar os logs da operação.</AlertDescription>
+          <AlertDescription>
+            Configure o Supabase para acompanhar os logs da operação.
+          </AlertDescription>
         </Alert>
       )}
 
@@ -168,7 +188,9 @@ export function LogsView() {
           <div className="grid grid-cols-3 gap-3">
             <Card className="gap-2 py-4">
               <CardHeader className="px-4">
-                <CardDescription className="text-xs">Ações administrativas</CardDescription>
+                <CardDescription className="text-xs">
+                  Ações administrativas
+                </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
                 <p className="text-lg font-bold tracking-tight">
@@ -178,7 +200,9 @@ export function LogsView() {
             </Card>
             <Card className="gap-2 py-4">
               <CardHeader className="px-4">
-                <CardDescription className="text-xs">Webhooks recebidos</CardDescription>
+                <CardDescription className="text-xs">
+                  Webhooks recebidos
+                </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
                 <p className="text-lg font-bold tracking-tight">
@@ -188,7 +212,9 @@ export function LogsView() {
             </Card>
             <Card className="gap-2 py-4">
               <CardHeader className="px-4">
-                <CardDescription className="text-xs">Webhooks com erro</CardDescription>
+                <CardDescription className="text-xs">
+                  Webhooks com erro
+                </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
                 <p
@@ -205,7 +231,11 @@ export function LogsView() {
 
           {tab === "admin" && (
             <Card>
-              <CardContent className={data.adminLogs.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"}>
+              <CardContent
+                className={
+                  data.adminLogs.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"
+                }
+              >
                 {data.adminLogs.length === 0 ? (
                   <EmptyState
                     icon={FileClock}
@@ -218,15 +248,26 @@ export function LogsView() {
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <thead>
                         <tr className="text-muted-foreground border-b text-left text-xs">
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Ação</th>
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Entidade</th>
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Detalhes</th>
-                          <th scope="col" className="pb-2.5 font-medium">Data</th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Ação
+                          </th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Entidade
+                          </th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Detalhes
+                          </th>
+                          <th scope="col" className="pb-2.5 font-medium">
+                            Data
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.adminLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-muted/40 border-b transition-colors last:border-0">
+                          <tr
+                            key={log.id}
+                            className="hover:bg-muted/40 border-b transition-colors last:border-0"
+                          >
                             <td className="py-3 pr-3 font-medium whitespace-nowrap">
                               {actionLabel(log.action)}
                             </td>
@@ -251,7 +292,11 @@ export function LogsView() {
 
           {tab === "webhooks" && (
             <Card>
-              <CardContent className={data.webhooks.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"}>
+              <CardContent
+                className={
+                  data.webhooks.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"
+                }
+              >
                 {data.webhooks.length === 0 ? (
                   <EmptyState
                     icon={Webhook}
@@ -264,16 +309,29 @@ export function LogsView() {
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <thead>
                         <tr className="text-muted-foreground border-b text-left text-xs">
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Origem</th>
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Evento</th>
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Assinatura</th>
-                          <th scope="col" className="pr-3 pb-2.5 font-medium">Estado</th>
-                          <th scope="col" className="pb-2.5 font-medium">Recebido em</th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Origem
+                          </th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Evento
+                          </th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Assinatura
+                          </th>
+                          <th scope="col" className="pr-3 pb-2.5 font-medium">
+                            Estado
+                          </th>
+                          <th scope="col" className="pb-2.5 font-medium">
+                            Recebido em
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.webhooks.map((w) => (
-                          <tr key={w.id} className="hover:bg-muted/40 border-b transition-colors last:border-0">
+                          <tr
+                            key={w.id}
+                            className="hover:bg-muted/40 border-b transition-colors last:border-0"
+                          >
                             <td className="py-3 pr-3 font-medium whitespace-nowrap capitalize">
                               {w.providerKey}
                             </td>
@@ -283,11 +341,19 @@ export function LogsView() {
                             <td className="py-3 pr-3">
                               {w.signatureValid ? (
                                 <span className="text-success flex items-center gap-1 text-xs">
-                                  <CheckCircle2 className="size-3.5" aria-hidden="true" /> Válida
+                                  <CheckCircle2
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />{" "}
+                                  Válida
                                 </span>
                               ) : (
                                 <span className="text-destructive flex items-center gap-1 text-xs">
-                                  <XCircle className="size-3.5" aria-hidden="true" /> Inválida
+                                  <XCircle
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />{" "}
+                                  Inválida
                                 </span>
                               )}
                             </td>

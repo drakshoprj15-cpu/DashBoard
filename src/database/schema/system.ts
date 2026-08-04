@@ -1,11 +1,4 @@
-import {
-  bigint,
-  index,
-  jsonb,
-  pgTable,
-  text,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { bigint, index, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 import { id, timestamps } from "./_helpers";
 import { workspaces, profiles } from "./workspaces";

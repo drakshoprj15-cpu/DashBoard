@@ -8,8 +8,14 @@ import { decryptSecret } from "@/lib/crypto";
 const REQUEST_TIMEOUT_MS = 8000;
 
 /** Assina o corpo no mesmo formato que já usamos para verificar webhooks recebidos (Broski). */
-function signPayload(secret: string, timestamp: number, rawBody: string): string {
-  const v1 = createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest("hex");
+function signPayload(
+  secret: string,
+  timestamp: number,
+  rawBody: string,
+): string {
+  const v1 = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest("hex");
   return `t=${timestamp},v1=${v1}`;
 }
 
@@ -17,7 +23,12 @@ async function attemptDelivery(
   url: string,
   rawBody: string,
   headers: Record<string, string>,
-): Promise<{ ok: boolean; httpStatus: number | null; responseBody: string | null; durationMs: number }> {
+): Promise<{
+  ok: boolean;
+  httpStatus: number | null;
+  responseBody: string | null;
+  durationMs: number;
+}> {
   const start = Date.now();
   try {
     const controller = new AbortController();
@@ -85,7 +96,11 @@ export async function dispatchWebhookEvent(
       continue;
     }
 
-    const rawBody = JSON.stringify({ event: eventType, data: payload, sentAt: new Date().toISOString() });
+    const rawBody = JSON.stringify({
+      event: eventType,
+      data: payload,
+      sentAt: new Date().toISOString(),
+    });
     const timestamp = Math.floor(Date.now() / 1000);
     const headers = {
       "Content-Type": "application/json; charset=utf-8",
@@ -103,7 +118,11 @@ export async function dispatchWebhookEvent(
     // Sem worker de reenvio: depois da 2ª tentativa síncrona, a entrega vai
     // direto para dead_letter — não há fila para reprocessar mais tarde.
     const maxAttempts = 2;
-    const status = result.ok ? "success" : attempts >= maxAttempts ? "dead_letter" : "failed";
+    const status = result.ok
+      ? "success"
+      : attempts >= maxAttempts
+        ? "dead_letter"
+        : "failed";
 
     await db.insert(webhookDeliveries).values({
       workspaceId,

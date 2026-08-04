@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { BellOff, Bell, Database, Users } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
-import { listCustomers, summarizeCustomers } from "@/features/customers/queries";
+import {
+  listCustomers,
+  summarizeCustomers,
+} from "@/features/customers/queries";
 import { toggleMarketingConsentAction } from "@/features/customers/actions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +89,9 @@ export default async function ClientesPage() {
                   <th className="pb-2.5 font-medium">Cliente</th>
                   <th className="pb-2.5 text-right font-medium">Pedidos</th>
                   <th className="pb-2.5 text-right font-medium">Gasto total</th>
-                  <th className="pb-2.5 text-right font-medium">Ticket médio</th>
+                  <th className="pb-2.5 text-right font-medium">
+                    Ticket médio
+                  </th>
                   <th className="pb-2.5 font-medium">Última compra</th>
                   <th className="pb-2.5 font-medium">Marketing</th>
                   <th className="pb-2.5 text-right font-medium">Ações</th>
@@ -99,7 +104,9 @@ export default async function ClientesPage() {
                       <p className="font-medium">{c.name}</p>
                       <p className="text-muted-foreground text-xs">{c.email}</p>
                       {c.phone && (
-                        <p className="text-muted-foreground text-xs">{c.phone}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {c.phone}
+                        </p>
                       )}
                     </td>
                     <td className="py-3 text-right">

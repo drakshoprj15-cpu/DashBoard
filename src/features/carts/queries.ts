@@ -61,7 +61,9 @@ export function clampPageSize(size: number | undefined | null): number {
  * de busca não intencional (ou, no limite, uma forma de negação de serviço
  * com curingas custosos).
  */
-export function sanitizeSearchTerm(raw: string | undefined | null): string | undefined {
+export function sanitizeSearchTerm(
+  raw: string | undefined | null,
+): string | undefined {
   if (!raw) return undefined;
   const trimmed = raw.trim().slice(0, 120);
   if (!trimmed) return undefined;
@@ -76,7 +78,9 @@ export function sanitizeSearchTerm(raw: string | undefined | null): string | und
  * cast explícito para `timestamptz`.
  */
 function abandonCutoff(now: Date = new Date()): string {
-  return new Date(now.getTime() - ABANDON_THRESHOLD_HOURS * 3_600_000).toISOString();
+  return new Date(
+    now.getTime() - ABANDON_THRESHOLD_HOURS * 3_600_000,
+  ).toISOString();
 }
 
 /**
@@ -87,7 +91,10 @@ function abandonCutoff(now: Date = new Date()): string {
  */
 const NOT_RECOVERED = sql`${orders.recoveredManuallyAt} is null`;
 
-function tabCondition(tab: CartTab | undefined, cutoff: string): SQL | undefined {
+function tabCondition(
+  tab: CartTab | undefined,
+  cutoff: string,
+): SQL | undefined {
   if (!tab || tab === "all") return undefined;
   switch (tab) {
     case "awaiting_payment":
@@ -133,8 +140,14 @@ export interface CartFilters {
 
 export type CartSortBy = "createdAt" | "totalCents" | "lastReminderSentAt";
 
-export function isCartSortBy(value: string | null | undefined): value is CartSortBy {
-  return value === "createdAt" || value === "totalCents" || value === "lastReminderSentAt";
+export function isCartSortBy(
+  value: string | null | undefined,
+): value is CartSortBy {
+  return (
+    value === "createdAt" ||
+    value === "totalCents" ||
+    value === "lastReminderSentAt"
+  );
 }
 
 /**
@@ -142,7 +155,10 @@ export function isCartSortBy(value: string | null | undefined): value is CartSor
  * `desc` puro traria os nulos primeiro — quem ordena por "último lembrete"
  * quer justamente ver quem já recebeu, então os nulos vão sempre para o fim.
  */
-function cartOrderBy(sortBy: CartSortBy | undefined, sortDir: "asc" | "desc" | undefined): SQL {
+function cartOrderBy(
+  sortBy: CartSortBy | undefined,
+  sortDir: "asc" | "desc" | undefined,
+): SQL {
   const direction = sortDir === "asc" ? sql`asc` : sql`desc`;
   switch (sortBy) {
     case "totalCents":
@@ -194,7 +210,8 @@ async function buildBaseWhere(
 ): Promise<SQL> {
   const conditions: SQL[] = [eq(orders.workspaceId, workspaceId)];
 
-  if (!filters.includeArchived) conditions.push(sql`${orders.archivedAt} is null`);
+  if (!filters.includeArchived)
+    conditions.push(sql`${orders.archivedAt} is null`);
   if (filters.importedOnly) conditions.push(eq(orders.origin, IMPORT_ORIGIN));
 
   const term = sanitizeSearchTerm(filters.search);
@@ -203,7 +220,12 @@ async function buildBaseWhere(
     const txRows = await db
       .select({ orderId: payments.orderId })
       .from(payments)
-      .where(and(eq(payments.workspaceId, workspaceId), ilike(payments.externalId, like)))
+      .where(
+        and(
+          eq(payments.workspaceId, workspaceId),
+          ilike(payments.externalId, like),
+        ),
+      )
       .limit(500);
     const txOrderIds = txRows.map((r) => r.orderId);
 
@@ -222,9 +244,12 @@ async function buildBaseWhere(
 
   if (filters.paymentMethod || filters.gateway) {
     const paymentConds: SQL[] = [eq(payments.workspaceId, workspaceId)];
-    if (filters.paymentMethod) paymentConds.push(eq(payments.method, filters.paymentMethod));
+    if (filters.paymentMethod)
+      paymentConds.push(eq(payments.method, filters.paymentMethod));
     if (filters.gateway) {
-      paymentConds.push(sql`${payments.metadata}->>'provider' = ${filters.gateway}`);
+      paymentConds.push(
+        sql`${payments.metadata}->>'provider' = ${filters.gateway}`,
+      );
     }
     const rows = await db
       .select({ orderId: payments.orderId })
@@ -240,7 +265,10 @@ async function buildBaseWhere(
       .select({ orderId: orderItems.orderId })
       .from(orderItems)
       .where(
-        and(eq(orderItems.workspaceId, workspaceId), eq(orderItems.productId, filters.productId)),
+        and(
+          eq(orderItems.workspaceId, workspaceId),
+          eq(orderItems.productId, filters.productId),
+        ),
       )
       .limit(2000);
     const ids = rows.map((r) => r.orderId);
@@ -249,7 +277,8 @@ async function buildBaseWhere(
 
   if (filters.country) conditions.push(eq(orders.countryCode, filters.country));
   if (filters.currency) conditions.push(eq(orders.currency, filters.currency));
-  if (filters.dateFrom) conditions.push(gte(orders.createdAt, filters.dateFrom));
+  if (filters.dateFrom)
+    conditions.push(gte(orders.createdAt, filters.dateFrom));
   if (filters.dateTo) conditions.push(lte(orders.createdAt, filters.dateTo));
 
   return and(...conditions)!;
@@ -324,7 +353,11 @@ async function fetchFirstItemByOrder(
   for (const r of rows) {
     const existing = map.get(r.orderId);
     if (!existing) {
-      map.set(r.orderId, { productName: r.productName, quantity: r.quantity, itemCount: 1 });
+      map.set(r.orderId, {
+        productName: r.productName,
+        quantity: r.quantity,
+        itemCount: 1,
+      });
     } else {
       existing.itemCount += 1;
     }
@@ -441,7 +474,8 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
   ]);
 
   const result: CartRow[] = rows.map((r) => {
-    const hoursSinceUpdate = (Date.now() - new Date(r.updatedAt).getTime()) / 3_600_000;
+    const hoursSinceUpdate =
+      (Date.now() - new Date(r.updatedAt).getTime()) / 3_600_000;
     const item = itemsByOrder.get(r.orderId);
     const payment = paymentByOrder.get(r.orderId);
 
@@ -449,9 +483,14 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
       orderId: r.orderId,
       reference: r.reference,
       status: r.status,
-      category: resolveCartCategory(r.status, hoursSinceUpdate, r.recoveredManuallyAt),
+      category: resolveCartCategory(
+        r.status,
+        hoursSinceUpdate,
+        r.recoveredManuallyAt,
+      ),
       customerId: r.customerId,
-      customerName: [r.customerFirst, r.customerLast].filter(Boolean).join(" ") || null,
+      customerName:
+        [r.customerFirst, r.customerLast].filter(Boolean).join(" ") || null,
       customerEmail: r.customerEmail,
       customerPhone: r.customerPhone,
       customerDocument: r.customerDocument,
@@ -596,7 +635,10 @@ function emptyFacets(): CartFacets {
  * resultados existem antes de clicar).
  */
 export async function getCartsFacets(
-  filters: Omit<CartFilters, "tab" | "page" | "pageSize" | "sortBy" | "sortDir">,
+  filters: Omit<
+    CartFilters,
+    "tab" | "page" | "pageSize" | "sortBy" | "sortDir"
+  >,
 ): Promise<CartFacets> {
   if (!isDatabaseConfigured()) return emptyFacets();
 
@@ -639,7 +681,9 @@ export async function getCartsFacets(
       recoveredAfterReminderCount: sql<number>`count(*) filter (where ${recoveredAfterReminderSql})::int`,
       recoveredRevenue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${recoveredAfterReminderSql}), 0)::bigint`,
       totalCount: sql<number>`count(*)::int`,
-      dominantCurrency: sql<string | null>`mode() within group (order by ${orders.currency})`,
+      dominantCurrency: sql<
+        string | null
+      >`mode() within group (order by ${orders.currency})`,
     })
     .from(orders)
     .leftJoin(customers, eq(orders.customerId, customers.id))
@@ -652,7 +696,8 @@ export async function getCartsFacets(
   const recoveredAfterReminder = row?.recoveredAfterReminderCount ?? 0;
 
   // `sum(bigint)` volta como string no driver — Number() aqui, uma única vez.
-  const num = (value: number | string | null | undefined): number => Number(value ?? 0);
+  const num = (value: number | string | null | undefined): number =>
+    Number(value ?? 0);
 
   return {
     tabCounts: {
@@ -668,18 +713,31 @@ export async function getCartsFacets(
     },
     dominantCurrency: row?.dominantCurrency ?? "EUR",
     totals: {
-      awaitingPayment: { count: row?.awaitingCount ?? 0, valueCents: num(row?.awaitingValue) },
-      pending: { count: row?.pendingCount ?? 0, valueCents: num(row?.pendingValue) },
+      awaitingPayment: {
+        count: row?.awaitingCount ?? 0,
+        valueCents: num(row?.awaitingValue),
+      },
+      pending: {
+        count: row?.pendingCount ?? 0,
+        valueCents: num(row?.pendingValue),
+      },
       paid: { count: paidCount, valueCents: num(row?.paidValue) },
-      declined: { count: row?.declinedCount ?? 0, valueCents: num(row?.declinedValue) },
-      abandoned: { count: row?.abandonedCount ?? 0, valueCents: num(row?.abandonedValue) },
+      declined: {
+        count: row?.declinedCount ?? 0,
+        valueCents: num(row?.declinedValue),
+      },
+      abandoned: {
+        count: row?.abandonedCount ?? 0,
+        valueCents: num(row?.abandonedValue),
+      },
       recovered: {
         count: paidCount + manualRecoveredCount,
         valueCents: num(row?.paidValue) + num(row?.manualRecoveredValue),
       },
       remindersSent,
       recoveredRevenueCents: num(row?.recoveredRevenue),
-      recoveryRate: remindersSent > 0 ? recoveredAfterReminder / remindersSent : 0,
+      recoveryRate:
+        remindersSent > 0 ? recoveredAfterReminder / remindersSent : 0,
       conversionRate: totalCount > 0 ? paidCount / totalCount : 0,
     },
   };
@@ -710,7 +768,14 @@ export interface TimelineEvent {
   label: string;
   detail?: string;
   at: Date;
-  source: "order" | "payment" | "webhook" | "refund" | "chargeback" | "history" | "recovery";
+  source:
+    | "order"
+    | "payment"
+    | "webhook"
+    | "refund"
+    | "chargeback"
+    | "history"
+    | "recovery";
 }
 
 export interface CartDetail {
@@ -784,9 +849,26 @@ export interface CartDetail {
     expiresAt: Date | null;
     createdAt: Date;
   }[];
-  refunds: { id: string; amountCents: number; status: string; reason: string | null; createdAt: Date }[];
-  chargebacks: { id: string; amountCents: number; status: string; reason: string | null; createdAt: Date }[];
-  consents: { type: string; granted: boolean; source: string | null; createdAt: Date }[];
+  refunds: {
+    id: string;
+    amountCents: number;
+    status: string;
+    reason: string | null;
+    createdAt: Date;
+  }[];
+  chargebacks: {
+    id: string;
+    amountCents: number;
+    status: string;
+    reason: string | null;
+    createdAt: Date;
+  }[];
+  consents: {
+    type: string;
+    granted: boolean;
+    source: string | null;
+    createdAt: Date;
+  }[];
   timeline: TimelineEvent[];
 }
 
@@ -810,7 +892,9 @@ const CART_EVENT_LABEL: Record<string, string> = {
 };
 
 /** Detalhe completo de um carrinho/pedido para o drawer — escopado ao workspace. */
-export async function getCartDetail(orderId: string): Promise<CartDetail | null> {
+export async function getCartDetail(
+  orderId: string,
+): Promise<CartDetail | null> {
   if (!isDatabaseConfigured()) return null;
 
   const db = getDb();
@@ -824,12 +908,24 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
   if (!orderRow) return null;
 
   const [customerRow] = orderRow.customerId
-    ? await db.select().from(customers).where(eq(customers.id, orderRow.customerId)).limit(1)
+    ? await db
+        .select()
+        .from(customers)
+        .where(eq(customers.id, orderRow.customerId))
+        .limit(1)
     : [undefined];
 
   const [itemRows, paymentRows, historyRows, eventRows] = await Promise.all([
-    db.select().from(orderItems).where(eq(orderItems.orderId, orderId)).orderBy(asc(orderItems.createdAt)),
-    db.select().from(payments).where(eq(payments.orderId, orderId)).orderBy(asc(payments.createdAt)),
+    db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderId))
+      .orderBy(asc(orderItems.createdAt)),
+    db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, orderId))
+      .orderBy(asc(payments.createdAt)),
     db
       .select()
       .from(orderStatusHistory)
@@ -844,22 +940,27 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
 
   const paymentIds = paymentRows.map((p) => p.id);
 
-  const [webhookRows, refundRows, chargebackRows, consentRows] = await Promise.all([
-    paymentIds.length > 0
-      ? db
-          .select()
-          .from(paymentWebhooks)
-          .where(inArray(paymentWebhooks.paymentId, paymentIds))
-          .orderBy(asc(paymentWebhooks.createdAt))
-      : Promise.resolve([]),
-    db.select().from(refunds).where(eq(refunds.orderId, orderId)),
-    db.select().from(chargebacks).where(eq(chargebacks.orderId, orderId)),
-    customerRow
-      ? db.select().from(customerConsents).where(eq(customerConsents.customerId, customerRow.id))
-      : Promise.resolve([]),
-  ]);
+  const [webhookRows, refundRows, chargebackRows, consentRows] =
+    await Promise.all([
+      paymentIds.length > 0
+        ? db
+            .select()
+            .from(paymentWebhooks)
+            .where(inArray(paymentWebhooks.paymentId, paymentIds))
+            .orderBy(asc(paymentWebhooks.createdAt))
+        : Promise.resolve([]),
+      db.select().from(refunds).where(eq(refunds.orderId, orderId)),
+      db.select().from(chargebacks).where(eq(chargebacks.orderId, orderId)),
+      customerRow
+        ? db
+            .select()
+            .from(customerConsents)
+            .where(eq(customerConsents.customerId, customerRow.id))
+        : Promise.resolve([]),
+    ]);
 
-  const hoursSinceUpdate = (Date.now() - new Date(orderRow.updatedAt).getTime()) / 3_600_000;
+  const hoursSinceUpdate =
+    (Date.now() - new Date(orderRow.updatedAt).getTime()) / 3_600_000;
 
   const timeline: TimelineEvent[] = [
     {
@@ -898,21 +999,28 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
     }),
     ...webhookRows.map((w): TimelineEvent => ({
       key: `webhook_${w.id}`,
-      label: PAYMENT_EVENT_LABEL[w.eventType] ?? `Webhook recebido: ${w.eventType}`,
+      label:
+        PAYMENT_EVENT_LABEL[w.eventType] ?? `Webhook recebido: ${w.eventType}`,
       detail: w.signatureValid ? "assinatura válida" : "assinatura inválida",
       at: w.createdAt,
       source: "webhook",
     })),
     ...refundRows.map((r): TimelineEvent => ({
       key: `refund_${r.id}`,
-      label: r.status === "completed" ? "Reembolso concluído" : "Reembolso solicitado",
+      label:
+        r.status === "completed"
+          ? "Reembolso concluído"
+          : "Reembolso solicitado",
       detail: r.reason ?? undefined,
       at: r.completedAt ?? r.createdAt,
       source: "refund",
     })),
     ...chargebackRows.map((c): TimelineEvent => ({
       key: `chargeback_${c.id}`,
-      label: c.status === "open" ? "Chargeback aberto" : `Chargeback ${c.status === "won" ? "ganho" : "perdido"}`,
+      label:
+        c.status === "open"
+          ? "Chargeback aberto"
+          : `Chargeback ${c.status === "won" ? "ganho" : "perdido"}`,
       detail: c.reason ?? undefined,
       at: c.disputedAt ?? c.createdAt,
       source: "chargeback",
@@ -931,7 +1039,11 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
       id: orderRow.id,
       reference: orderRow.reference,
       status: orderRow.status,
-      category: resolveCartCategory(orderRow.status, hoursSinceUpdate, orderRow.recoveredManuallyAt),
+      category: resolveCartCategory(
+        orderRow.status,
+        hoursSinceUpdate,
+        orderRow.recoveredManuallyAt,
+      ),
       currency: orderRow.currency,
       subtotalCents: Number(orderRow.subtotalCents),
       discountCents: Number(orderRow.discountCents),
@@ -960,7 +1072,10 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
     customer: customerRow
       ? {
           id: customerRow.id,
-          name: [customerRow.firstName, customerRow.lastName].filter(Boolean).join(" ") || customerRow.email,
+          name:
+            [customerRow.firstName, customerRow.lastName]
+              .filter(Boolean)
+              .join(" ") || customerRow.email,
           email: customerRow.email,
           phone: customerRow.phone,
           document: customerRow.document,

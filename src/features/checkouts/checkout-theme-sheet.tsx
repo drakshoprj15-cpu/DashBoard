@@ -103,7 +103,10 @@ export function CheckoutThemeSheet({
           <SheetDescription>{checkoutName}</SheetDescription>
         </SheetHeader>
 
-        <form action={formAction} className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
+        <form
+          action={formAction}
+          className="flex flex-1 flex-col gap-4 overflow-y-auto px-4"
+        >
           <input type="hidden" name="id" value={checkoutId} />
           <input type="hidden" name="logoUrl" value={logoUrl} />
 

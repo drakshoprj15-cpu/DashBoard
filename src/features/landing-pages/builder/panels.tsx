@@ -90,16 +90,52 @@ export function DesignPanel({ state }: { state: BuilderState }) {
         description="Aplicadas a toda a página. A prévia atualiza enquanto escolhe."
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <ThemeColor label="Cor principal" field="primaryColor" state={state} />
-          <ThemeColor label="Cor secundária" field="secondaryColor" state={state} />
-          <ThemeColor label="Fundo da página" field="backgroundColor" state={state} />
+          <ThemeColor
+            label="Cor principal"
+            field="primaryColor"
+            state={state}
+          />
+          <ThemeColor
+            label="Cor secundária"
+            field="secondaryColor"
+            state={state}
+          />
+          <ThemeColor
+            label="Fundo da página"
+            field="backgroundColor"
+            state={state}
+          />
           <ThemeColor label="Texto" field="textColor" state={state} />
-          <ThemeColor label="Fundo dos botões" field="buttonColor" state={state} />
-          <ThemeColor label="Texto dos botões" field="buttonTextColor" state={state} />
-          <ThemeColor label="Fundo do cabeçalho" field="headerBackground" state={state} />
-          <ThemeColor label="Texto do cabeçalho" field="headerTextColor" state={state} />
-          <ThemeColor label="Fundo do rodapé" field="footerBackground" state={state} />
-          <ThemeColor label="Texto do rodapé" field="footerTextColor" state={state} />
+          <ThemeColor
+            label="Fundo dos botões"
+            field="buttonColor"
+            state={state}
+          />
+          <ThemeColor
+            label="Texto dos botões"
+            field="buttonTextColor"
+            state={state}
+          />
+          <ThemeColor
+            label="Fundo do cabeçalho"
+            field="headerBackground"
+            state={state}
+          />
+          <ThemeColor
+            label="Texto do cabeçalho"
+            field="headerTextColor"
+            state={state}
+          />
+          <ThemeColor
+            label="Fundo do rodapé"
+            field="footerBackground"
+            state={state}
+          />
+          <ThemeColor
+            label="Texto do rodapé"
+            field="footerTextColor"
+            state={state}
+          />
           <ThemeColor
             label="Variação selecionada"
             field="variantSelectedColor"
@@ -116,7 +152,9 @@ export function DesignPanel({ state }: { state: BuilderState }) {
               id="heading-font"
               className={selectClass}
               value={theme.headingFont}
-              onChange={(event) => state.setTheme({ headingFont: event.target.value })}
+              onChange={(event) =>
+                state.setTheme({ headingFont: event.target.value })
+              }
             >
               {FONT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -131,7 +169,9 @@ export function DesignPanel({ state }: { state: BuilderState }) {
               id="body-font"
               className={selectClass}
               value={theme.bodyFont}
-              onChange={(event) => state.setTheme({ bodyFont: event.target.value })}
+              onChange={(event) =>
+                state.setTheme({ bodyFont: event.target.value })
+              }
             >
               {FONT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -153,13 +193,17 @@ export function DesignPanel({ state }: { state: BuilderState }) {
               min={0}
               max={32}
               value={theme.radius}
-              onChange={(event) => state.setTheme({ radius: Number(event.target.value) })}
+              onChange={(event) =>
+                state.setTheme({ radius: Number(event.target.value) })
+              }
               className="accent-primary w-full"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="max-width">Largura máxima: {theme.maxWidth}px</Label>
+            <Label htmlFor="max-width">
+              Largura máxima: {theme.maxWidth}px
+            </Label>
             <input
               id="max-width"
               type="range"
@@ -167,7 +211,9 @@ export function DesignPanel({ state }: { state: BuilderState }) {
               max={1600}
               step={20}
               value={theme.maxWidth}
-              onChange={(event) => state.setTheme({ maxWidth: Number(event.target.value) })}
+              onChange={(event) =>
+                state.setTheme({ maxWidth: Number(event.target.value) })
+              }
               className="accent-primary w-full"
             />
           </div>
@@ -179,7 +225,9 @@ export function DesignPanel({ state }: { state: BuilderState }) {
               className={selectClass}
               value={theme.shadow}
               onChange={(event) =>
-                state.setTheme({ shadow: event.target.value as LandingTheme["shadow"] })
+                state.setTheme({
+                  shadow: event.target.value as LandingTheme["shadow"],
+                })
               }
             >
               {SHADOW_OPTIONS.map((option) => (
@@ -198,7 +246,8 @@ export function DesignPanel({ state }: { state: BuilderState }) {
               value={theme.buttonStyle}
               onChange={(event) =>
                 state.setTheme({
-                  buttonStyle: event.target.value as LandingTheme["buttonStyle"],
+                  buttonStyle: event.target
+                    .value as LandingTheme["buttonStyle"],
                 })
               }
             >
@@ -265,7 +314,9 @@ export function SeoPanel({
             id="seo-description"
             value={seo.description}
             maxLength={320}
-            onChange={(event) => state.setSeo({ description: event.target.value })}
+            onChange={(event) =>
+              state.setSeo({ description: event.target.value })
+            }
             className={`${textareaClass} min-h-20 font-sans text-sm`}
           />
           <p className="text-muted-foreground text-xs">
@@ -303,7 +354,9 @@ export function SeoPanel({
             id="seo-canonical"
             value={seo.canonicalUrl}
             placeholder={publicUrl}
-            onChange={(event) => state.setSeo({ canonicalUrl: event.target.value })}
+            onChange={(event) =>
+              state.setSeo({ canonicalUrl: event.target.value })
+            }
           />
           <p className="text-muted-foreground text-xs">
             Vazio = usa o próprio endereço da página.
@@ -318,7 +371,9 @@ export function SeoPanel({
             id="seo-share-image"
             value={seo.shareImageUrl}
             placeholder="https://… (1200×630 px)"
-            onChange={(event) => state.setSeo({ shareImageUrl: event.target.value })}
+            onChange={(event) =>
+              state.setSeo({ shareImageUrl: event.target.value })
+            }
           />
           <p className="text-muted-foreground text-xs">
             Vazio = usa a imagem principal do produto.
@@ -333,7 +388,8 @@ export function SeoPanel({
             value={seo.twitterCard}
             onChange={(event) =>
               state.setSeo({
-                twitterCard: event.target.value as "summary" | "summary_large_image",
+                twitterCard: event.target.value as
+                  "summary" | "summary_large_image",
               })
             }
           >
@@ -370,7 +426,9 @@ export function SeoPanel({
           <Switch
             id="seo-schema"
             checked={seo.productSchema}
-            onCheckedChange={(checked) => state.setSeo({ productSchema: checked })}
+            onCheckedChange={(checked) =>
+              state.setSeo({ productSchema: checked })
+            }
           />
         </div>
       </PanelSection>
@@ -395,7 +453,9 @@ export function PixelsPanel({ state }: { state: BuilderState }) {
               value={tracking.metaPixelId}
               placeholder="15 ou 16 dígitos"
               inputMode="numeric"
-              onChange={(event) => state.setTracking({ metaPixelId: event.target.value })}
+              onChange={(event) =>
+                state.setTracking({ metaPixelId: event.target.value })
+              }
             />
           </div>
           <div className="space-y-1.5">
@@ -434,7 +494,9 @@ export function PixelsPanel({ state }: { state: BuilderState }) {
 
         <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
           <div>
-            <Label htmlFor="inherit-pixels">Herdar os pixels do workspace</Label>
+            <Label htmlFor="inherit-pixels">
+              Herdar os pixels do workspace
+            </Label>
             <p className="text-muted-foreground text-xs">
               Mantém os pixels globais a funcionar nesta página, além dos acima.
             </p>
@@ -468,7 +530,9 @@ export function PixelsPanel({ state }: { state: BuilderState }) {
             id="default-utm"
             value={tracking.defaultUtm}
             placeholder="utm_source=meta&utm_medium=cpc"
-            onChange={(event) => state.setTracking({ defaultUtm: event.target.value })}
+            onChange={(event) =>
+              state.setTracking({ defaultUtm: event.target.value })
+            }
           />
           <p className="text-muted-foreground text-xs">
             O que vier na URL do anúncio tem sempre prioridade. As UTMs,
@@ -598,7 +662,9 @@ export function CodePanel({
           id="custom-js"
           value={code.javascript}
           spellCheck={false}
-          onChange={(event) => state.setCustomCode({ javascript: event.target.value })}
+          onChange={(event) =>
+            state.setCustomCode({ javascript: event.target.value })
+          }
           className={`${textareaClass} min-h-40`}
           aria-label="JavaScript personalizado"
         />
@@ -627,8 +693,8 @@ export function CodePanel({
         </pre>
         <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
           <Check className="mt-0.5 size-3.5 shrink-0" />
-          Cada publicação guarda uma cópia imutável deste documento no
-          histórico de versões.
+          Cada publicação guarda uma cópia imutável deste documento no histórico
+          de versões.
         </p>
       </PanelSection>
     </div>

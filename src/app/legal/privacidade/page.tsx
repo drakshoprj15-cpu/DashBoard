@@ -21,7 +21,10 @@ export default function PrivacidadePage() {
       </p>
       <p>
         Para exercer os seus direitos, contacte:{" "}
-        <a href={`mailto:${company.email}`} className="text-violet-600 underline">
+        <a
+          href={`mailto:${company.email}`}
+          className="text-violet-600 underline"
+        >
           {company.email}
         </a>
       </p>

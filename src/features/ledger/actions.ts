@@ -62,7 +62,12 @@ export async function createManualLedgerEntryAction(
       action: "ledger.manual_entry_created",
       entityType: "ledger_entry",
       entityId: created.id,
-      changes: { type, description, category: category || undefined, amountCents },
+      changes: {
+        type,
+        description,
+        category: category || undefined,
+        amountCents,
+      },
     });
 
     revalidatePath("/financeiro/entradas-saidas");

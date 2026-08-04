@@ -117,13 +117,20 @@ export function ReviewForm({ products }: { products: ProductOption[] }) {
 
             <div className="space-y-2">
               <Label htmlFor="authorName">Nome do cliente</Label>
-              <Input id="authorName" name="authorName" placeholder="Ex.: Inês C." required />
+              <Input
+                id="authorName"
+                name="authorName"
+                placeholder="Ex.: Inês C."
+                required
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="location">
                 Cidade{" "}
-                <span className="text-muted-foreground font-normal">(opcional)</span>
+                <span className="text-muted-foreground font-normal">
+                  (opcional)
+                </span>
               </Label>
               <Input id="location" name="location" placeholder="Ex.: Porto" />
             </div>
@@ -131,9 +138,15 @@ export function ReviewForm({ products }: { products: ProductOption[] }) {
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="title">
                 Título{" "}
-                <span className="text-muted-foreground font-normal">(opcional)</span>
+                <span className="text-muted-foreground font-normal">
+                  (opcional)
+                </span>
               </Label>
-              <Input id="title" name="title" placeholder="Ex.: Muito confortável" />
+              <Input
+                id="title"
+                name="title"
+                placeholder="Ex.: Muito confortável"
+              />
             </div>
 
             <div className="space-y-2 sm:col-span-2">
@@ -151,7 +164,9 @@ export function ReviewForm({ products }: { products: ProductOption[] }) {
             <div className="space-y-2">
               <Label htmlFor="reviewedAt">
                 Data{" "}
-                <span className="text-muted-foreground font-normal">(opcional)</span>
+                <span className="text-muted-foreground font-normal">
+                  (opcional)
+                </span>
               </Label>
               <Input id="reviewedAt" name="reviewedAt" type="date" />
             </div>
@@ -159,7 +174,9 @@ export function ReviewForm({ products }: { products: ProductOption[] }) {
             <div className="space-y-2">
               <Label htmlFor="photoUrl">
                 Foto do cliente{" "}
-                <span className="text-muted-foreground font-normal">(URL, opcional)</span>
+                <span className="text-muted-foreground font-normal">
+                  (URL, opcional)
+                </span>
               </Label>
               <Input id="photoUrl" name="photoUrl" placeholder="https://…" />
             </div>

@@ -41,7 +41,8 @@ function parseCheckoutTheme(config: unknown): CheckoutTheme {
     typeof t.bannerColor === "string" && HEX_COLOR_REGEX.test(t.bannerColor)
       ? t.bannerColor
       : DEFAULT_CHECKOUT_THEME.bannerColor;
-  const logoUrl = typeof t.logoUrl === "string" && t.logoUrl.trim() ? t.logoUrl : null;
+  const logoUrl =
+    typeof t.logoUrl === "string" && t.logoUrl.trim() ? t.logoUrl : null;
 
   return { primaryColor, buttonColor, bannerColor, logoUrl };
 }

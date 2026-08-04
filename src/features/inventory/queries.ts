@@ -1,7 +1,12 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { inventoryMovements, orderItems, orders, products } from "@/database/schema";
+import {
+  inventoryMovements,
+  orderItems,
+  orders,
+  products,
+} from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { classifyStock, type StockStatus } from "@/features/inventory/status";
 
@@ -71,7 +76,9 @@ export async function listInventoryProducts(): Promise<InventoryProductRow[]> {
   }));
 }
 
-export function summarizeInventory(rows: InventoryProductRow[]): InventorySummary {
+export function summarizeInventory(
+  rows: InventoryProductRow[],
+): InventorySummary {
   return {
     trackedCount: rows.length,
     outOfStockCount: rows.filter((r) => r.status === "out_of_stock").length,

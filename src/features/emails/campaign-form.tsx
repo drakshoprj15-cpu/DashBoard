@@ -48,13 +48,18 @@ export function CampaignForm({
     EmailActionResult | null,
     FormData
   >(sendCampaignAction, null);
-  const hasCustomRecipients = Boolean(customRecipients && customRecipients.recipients.length > 0);
+  const hasCustomRecipients = Boolean(
+    customRecipients && customRecipients.recipients.length > 0,
+  );
   const [segment, setSegment] = React.useState<SegmentKey>(
     hasCustomRecipients ? "custom" : "pending",
   );
   const [mode, setMode] = React.useState<"test" | "send">("test");
 
-  const total = segment === "custom" ? (customRecipients?.recipients.length ?? 0) : (counts[segment] ?? 0);
+  const total =
+    segment === "custom"
+      ? (customRecipients?.recipients.length ?? 0)
+      : (counts[segment] ?? 0);
 
   return (
     <Card>
@@ -87,7 +92,11 @@ export function CampaignForm({
             <Label>Destinatários</Label>
             <input type="hidden" name="segment" value={segment} />
             {hasCustomRecipients && (
-              <input type="hidden" name="customerIds" value={customerIdsParam ?? ""} />
+              <input
+                type="hidden"
+                name="customerIds"
+                value={customerIdsParam ?? ""}
+              />
             )}
 
             {hasCustomRecipients && customRecipients && (
@@ -123,11 +132,14 @@ export function CampaignForm({
                     {customRecipients.excludedNoConsent > 0 &&
                       `${customRecipients.excludedNoConsent} sem consentimento`}
                     {customRecipients.excludedNoConsent > 0 &&
-                      (customRecipients.excludedSuppressed > 0 || customRecipients.notFoundCount > 0) &&
+                      (customRecipients.excludedSuppressed > 0 ||
+                        customRecipients.notFoundCount > 0) &&
                       ", "}
                     {customRecipients.excludedSuppressed > 0 &&
                       `${customRecipients.excludedSuppressed} suprimidos/descadastrados`}
-                    {customRecipients.excludedSuppressed > 0 && customRecipients.notFoundCount > 0 && ", "}
+                    {customRecipients.excludedSuppressed > 0 &&
+                      customRecipients.notFoundCount > 0 &&
+                      ", "}
                     {customRecipients.notFoundCount > 0 &&
                       `${customRecipients.notFoundCount} não encontrados`}{" "}
                     foram excluídos automaticamente.
@@ -180,9 +192,7 @@ export function CampaignForm({
               name="body"
               rows={8}
               required
-              defaultValue={
-                "Olá {{PRIMEIRO_NOME}},\n\n"
-              }
+              defaultValue={"Olá {{PRIMEIRO_NOME}},\n\n"}
               className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             />
             <p className="text-muted-foreground text-xs">

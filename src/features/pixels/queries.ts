@@ -7,7 +7,11 @@ import type { PixelRow, PixelType } from "@/features/pixels/types";
 
 // Reexportados para não quebrar quem já importa tipos/labels daqui —
 // mas o conteúdo client-safe vive em `./types` (sem tocar em `postgres`).
-export { PIXEL_TYPE_INFO, type PixelType, type PixelRow } from "@/features/pixels/types";
+export {
+  PIXEL_TYPE_INFO,
+  type PixelType,
+  type PixelRow,
+} from "@/features/pixels/types";
 
 /** Pixels do workspace (painel). */
 export async function listPixels(): Promise<PixelRow[]> {

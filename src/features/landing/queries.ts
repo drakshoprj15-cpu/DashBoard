@@ -42,7 +42,8 @@ export const getProductBySlug = cache(async function getProductBySlug(
           compareAtPriceCents: content.compareAtPriceCents ?? null,
           currency: row.currency,
           mainImage: row.mainImageUrl ?? content.mainImage ?? "",
-          gallery: content.gallery ?? (row.mainImageUrl ? [row.mainImageUrl] : []),
+          gallery:
+            content.gallery ?? (row.mainImageUrl ? [row.mainImageUrl] : []),
           rating: content.rating ?? null,
           stockRemaining: row.trackInventory ? row.stockQuantity : null,
           stockTotal: content.stockTotal ?? row.stockQuantity,

@@ -1,6 +1,9 @@
 "use client";
 
-import { DASHBOARD_PERIODS, type DashboardPeriod } from "@/features/dashboard/period";
+import {
+  DASHBOARD_PERIODS,
+  type DashboardPeriod,
+} from "@/features/dashboard/period";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 

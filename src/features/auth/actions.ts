@@ -95,7 +95,10 @@ export async function forgotPasswordAction(
   );
 
   if (error) {
-    return { ok: false, error: "Não foi possível enviar o e-mail. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível enviar o e-mail. Tente novamente.",
+    };
   }
 
   return {

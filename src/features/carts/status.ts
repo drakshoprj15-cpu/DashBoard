@@ -202,7 +202,12 @@ export function isCartTab(value: string | null | undefined): value is CartTab {
  * Reexportado aqui para Carrinhos nunca precisar importar de `features/orders`
  * só por isto.
  */
-export const PAID_ORDER_STATUSES = ["paid", "preparing", "shipped", "delivered"];
+export const PAID_ORDER_STATUSES = [
+  "paid",
+  "preparing",
+  "shipped",
+  "delivered",
+];
 
 /**
  * Peso de progressão do status de pedido — usado para nunca deixar uma

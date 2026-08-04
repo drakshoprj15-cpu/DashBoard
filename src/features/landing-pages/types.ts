@@ -202,7 +202,8 @@ export interface LandingSnapshot {
   publishedAt: string;
 }
 
-export type LandingStatus = "draft" | "published" | "paused" | "scheduled" | "error";
+export type LandingStatus =
+  "draft" | "published" | "paused" | "scheduled" | "error";
 
 // ---------------------------------------------------------------------------
 // Leitura segura de `props`

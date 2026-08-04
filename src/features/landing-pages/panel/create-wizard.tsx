@@ -29,10 +29,7 @@ import {
 import { LogoDropzone } from "@/components/logo-dropzone";
 import type { ProductOption } from "@/features/products/queries";
 
-import {
-  createLandingPageAction,
-  type LandingActionResult,
-} from "../actions";
+import { createLandingPageAction, type LandingActionResult } from "../actions";
 import { LANDING_TEMPLATES } from "../templates";
 import {
   COUNTRY_OPTIONS,
@@ -97,7 +94,9 @@ export function CreateLandingWizard({
     FormData
   >(createLandingPageAction, null);
 
-  const effectiveSlug = slugTouched ? slugifyLanding(slug) : slugifyLanding(name);
+  const effectiveSlug = slugTouched
+    ? slugifyLanding(slug)
+    : slugifyLanding(name);
 
   const createdId = state?.ok ? state.id : undefined;
 
@@ -164,7 +163,11 @@ export function CreateLandingWizard({
                     !current && !done && "text-muted-foreground",
                   )}
                 >
-                  {done ? <Check className="size-3.5" /> : <item.icon className="size-3.5" />}
+                  {done ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <item.icon className="size-3.5" />
+                  )}
                   {item.label}
                 </button>
               </li>
@@ -241,7 +244,11 @@ export function CreateLandingWizard({
 
                 <div className="space-y-2">
                   <Label htmlFor="lp-language">Idioma</Label>
-                  <select id="lp-language" name="language" className={selectClass}>
+                  <select
+                    id="lp-language"
+                    name="language"
+                    className={selectClass}
+                  >
                     {LANGUAGE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -252,7 +259,11 @@ export function CreateLandingWizard({
 
                 <div className="space-y-2">
                   <Label htmlFor="lp-country">País</Label>
-                  <select id="lp-country" name="country" className={selectClass}>
+                  <select
+                    id="lp-country"
+                    name="country"
+                    className={selectClass}
+                  >
                     {COUNTRY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -263,7 +274,11 @@ export function CreateLandingWizard({
 
                 <div className="space-y-2">
                   <Label htmlFor="lp-currency">Moeda</Label>
-                  <select id="lp-currency" name="currency" className={selectClass}>
+                  <select
+                    id="lp-currency"
+                    name="currency"
+                    className={selectClass}
+                  >
                     {CURRENCY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -307,9 +322,9 @@ export function CreateLandingWizard({
                   <Alert>
                     <AlertCircle />
                     <AlertDescription>
-                      Nenhum produto cadastrado. Pode criar a página sem produto,
-                      mas o botão de compra só funciona depois de vincular um
-                      produto em Catálogo → Produtos.
+                      Nenhum produto cadastrado. Pode criar a página sem
+                      produto, mas o botão de compra só funciona depois de
+                      vincular um produto em Catálogo → Produtos.
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -381,7 +396,9 @@ export function CreateLandingWizard({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {THEME_FIELDS.map((field) => (
                     <div key={field.key} className="space-y-2">
-                      <Label htmlFor={`color-${field.key}`}>{field.label}</Label>
+                      <Label htmlFor={`color-${field.key}`}>
+                        {field.label}
+                      </Label>
                       <div className="flex items-center gap-2">
                         <input
                           id={`color-${field.key}`}

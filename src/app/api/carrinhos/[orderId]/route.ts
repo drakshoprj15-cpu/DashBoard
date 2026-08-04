@@ -20,7 +20,10 @@ export async function GET(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   const { orderId } = await ctx.params;

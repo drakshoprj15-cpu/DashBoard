@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth/session";
-import { listWebhookDeliveries, listWebhookEndpoints } from "@/features/webhooks/queries";
+import {
+  listWebhookDeliveries,
+  listWebhookEndpoints,
+} from "@/features/webhooks/queries";
 import { listReceivedWebhooks } from "@/features/audit/queries";
 
 export const dynamic = "force-dynamic";

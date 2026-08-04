@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { AlertCircle, CheckCircle2, Plus, Webhook as WebhookIcon } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Plus,
+  Webhook as WebhookIcon,
+} from "lucide-react";
 
 import {
   createWebhookEndpointAction,
@@ -32,17 +37,22 @@ export interface WebhookEndpointSheetProps {
   trigger?: React.ReactNode;
 }
 
-export function WebhookEndpointSheet({ endpoint, trigger }: WebhookEndpointSheetProps) {
+export function WebhookEndpointSheet({
+  endpoint,
+  trigger,
+}: WebhookEndpointSheetProps) {
   const isEdit = Boolean(endpoint);
   const [open, setOpen] = React.useState(false);
   const [events, setEvents] = React.useState<string[]>(endpoint?.events ?? []);
   const [isActive, setIsActive] = React.useState(endpoint?.isActive ?? true);
 
-  const action = isEdit ? updateWebhookEndpointAction : createWebhookEndpointAction;
-  const [state, formAction, pending] = useActionState<WebhookActionResult | null, FormData>(
-    action,
-    null,
-  );
+  const action = isEdit
+    ? updateWebhookEndpointAction
+    : createWebhookEndpointAction;
+  const [state, formAction, pending] = useActionState<
+    WebhookActionResult | null,
+    FormData
+  >(action, null);
 
   const [handledState, setHandledState] = React.useState(state);
   if (state !== handledState) {

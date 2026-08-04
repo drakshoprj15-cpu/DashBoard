@@ -5,7 +5,10 @@ import * as React from "react";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { eventLabel } from "@/features/webhooks/events-catalog";
 import { DeliveryStatusBadge } from "@/features/webhooks/webhook-status-badge";
-import type { WebhookDeliveryRow, WebhookEndpointRow } from "@/features/webhooks/queries";
+import type {
+  WebhookDeliveryRow,
+  WebhookEndpointRow,
+} from "@/features/webhooks/queries";
 import {
   Sheet,
   SheetContent,
@@ -23,12 +26,17 @@ function LogDetail({ delivery }: { delivery: WebhookDeliveryRow }) {
         <DeliveryStatusBadge status={delivery.status} />
       </div>
       <p className="text-muted-foreground text-xs">
-        {formatDateTime(delivery.createdAt, "pt-PT")} · {delivery.attempts} tentativa(s) ·{" "}
-        {delivery.durationMs !== null ? `${formatNumber(delivery.durationMs)}ms` : "—"} · HTTP{" "}
-        {delivery.httpStatus ?? "—"}
+        {formatDateTime(delivery.createdAt, "pt-PT")} · {delivery.attempts}{" "}
+        tentativa(s) ·{" "}
+        {delivery.durationMs !== null
+          ? `${formatNumber(delivery.durationMs)}ms`
+          : "—"}{" "}
+        · HTTP {delivery.httpStatus ?? "—"}
       </p>
       <details className="text-xs">
-        <summary className="text-primary cursor-pointer">Ver payload e resposta</summary>
+        <summary className="text-primary cursor-pointer">
+          Ver payload e resposta
+        </summary>
         <div className="mt-2 space-y-2">
           <div>
             <p className="text-muted-foreground mb-1 font-medium">Payload</p>
@@ -58,7 +66,9 @@ export function WebhookLogsSheet({
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [deliveries, setDeliveries] = React.useState<WebhookDeliveryRow[] | null>(null);
+  const [deliveries, setDeliveries] = React.useState<
+    WebhookDeliveryRow[] | null
+  >(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -67,9 +77,12 @@ export function WebhookLogsSheet({
     async function fetchDeliveries() {
       if (active) setDeliveries(null);
       try {
-        const res = await fetch(`/api/webhooks-config?endpointId=${endpoint.id}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/webhooks-config?endpointId=${endpoint.id}`,
+          {
+            cache: "no-store",
+          },
+        );
         const json = (await res.json()) as { deliveries: WebhookDeliveryRow[] };
         if (active) setDeliveries(json.deliveries);
       } catch {
@@ -94,7 +107,9 @@ export function WebhookLogsSheet({
 
         <div className="flex-1 overflow-y-auto px-4">
           {deliveries === null ? (
-            <p className="text-muted-foreground py-6 text-center text-xs">A carregar…</p>
+            <p className="text-muted-foreground py-6 text-center text-xs">
+              A carregar…
+            </p>
           ) : deliveries.length === 0 ? (
             <p className="text-muted-foreground py-6 text-center text-xs">
               Sem entregas registadas ainda.

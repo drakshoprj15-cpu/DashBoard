@@ -5,7 +5,10 @@ import { getSession } from "@/lib/auth/session";
 import { isDatabaseConfigured } from "@/database/client";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { recordAuditLog } from "@/features/audit/log";
-import { MAX_IMPORT_BATCH, importCartRows } from "@/features/carts/import/service";
+import {
+  MAX_IMPORT_BATCH,
+  importCartRows,
+} from "@/features/carts/import/service";
 import { validateRows } from "@/features/carts/import/validate";
 import type { RawRow } from "@/features/carts/import/parse";
 
@@ -50,7 +53,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   const json = await request.json().catch(() => null);
@@ -76,7 +82,10 @@ export async function POST(request: Request) {
         imported: 0,
         duplicated: 0,
         failed: invalid.length,
-        errors: invalid.map((row) => ({ line: row.line, message: row.errors.join(" ") })),
+        errors: invalid.map((row) => ({
+          line: row.line,
+          message: row.errors.join(" "),
+        })),
         warnings,
       },
       { status: 422 },
@@ -102,7 +111,10 @@ export async function POST(request: Request) {
     failed: outcome.failed + invalid.length,
     errors: [
       ...outcome.errors,
-      ...invalid.map((row) => ({ line: row.line, message: row.errors.join(" ") })),
+      ...invalid.map((row) => ({
+        line: row.line,
+        message: row.errors.join(" "),
+      })),
     ],
     warnings,
   });

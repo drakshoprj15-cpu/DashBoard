@@ -91,13 +91,22 @@ export function WebhookCard({ endpoint }: { endpoint: WebhookEndpointRow }) {
             />
             <form action={duplicateWebhookEndpointAction}>
               <input type="hidden" name="id" value={endpoint.id} />
-              <Button size="sm" variant="ghost" type="submit" aria-label="Duplicar">
+              <Button
+                size="sm"
+                variant="ghost"
+                type="submit"
+                aria-label="Duplicar"
+              >
                 <Files />
               </Button>
             </form>
             <form action={toggleWebhookEndpointAction}>
               <input type="hidden" name="id" value={endpoint.id} />
-              <input type="hidden" name="activate" value={(!endpoint.isActive).toString()} />
+              <input
+                type="hidden"
+                name="activate"
+                value={(!endpoint.isActive).toString()}
+              />
               <Button size="sm" variant="ghost" type="submit">
                 {endpoint.isActive ? "Pausar" : "Ativar"}
               </Button>
@@ -122,13 +131,19 @@ export function WebhookCard({ endpoint }: { endpoint: WebhookEndpointRow }) {
             <FlaskConical className="size-3.5" aria-hidden="true" />
             {formatNumber(endpoint.deliveriesCount)} chamada(s)
           </span>
-          <span className="text-success">{formatNumber(endpoint.successCount)} com sucesso</span>
+          <span className="text-success">
+            {formatNumber(endpoint.successCount)} com sucesso
+          </span>
           {endpoint.failureCount > 0 && (
-            <span className="text-destructive">{formatNumber(endpoint.failureCount)} com falha</span>
+            <span className="text-destructive">
+              {formatNumber(endpoint.failureCount)} com falha
+            </span>
           )}
           <span>
             Última execução:{" "}
-            {endpoint.lastDeliveryAt ? formatDateTime(endpoint.lastDeliveryAt, "pt-PT") : "nunca"}
+            {endpoint.lastDeliveryAt
+              ? formatDateTime(endpoint.lastDeliveryAt, "pt-PT")
+              : "nunca"}
           </span>
         </div>
       </CardContent>

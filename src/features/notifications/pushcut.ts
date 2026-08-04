@@ -89,7 +89,10 @@ export function validatePushcutWebhookUrl(
   }
 
   if (parsedUrl.protocol !== "https:") {
-    return { ok: false, error: "A URL do webhook tem de começar por https://." };
+    return {
+      ok: false,
+      error: "A URL do webhook tem de começar por https://.",
+    };
   }
 
   if (parsedUrl.username || parsedUrl.password) {
@@ -141,11 +144,17 @@ export function validatePushcutWebhookUrl(
   try {
     notificationName = decodeURIComponent(encodedName);
   } catch {
-    return { ok: false, error: "O nome da notificação na URL está mal formatado." };
+    return {
+      ok: false,
+      error: "O nome da notificação na URL está mal formatado.",
+    };
   }
 
   if (!notificationName.trim()) {
-    return { ok: false, error: "A URL do webhook não contém o nome da notificação." };
+    return {
+      ok: false,
+      error: "A URL do webhook não contém o nome da notificação.",
+    };
   }
 
   // Espaço sobrando no nome não invalida a URL — é o nome real cadastrado no
@@ -267,7 +276,9 @@ export async function getPushcutStatus(): Promise<PushcutStatus> {
         // Formato antigo: o canal de venda aprovada herda os eventos únicos
         // que existiam antes de haver dois canais.
         const legacyEvents =
-          slot.key === "sale_approved" && !config.slots ? config.events : undefined;
+          slot.key === "sale_approved" && !config.slots
+            ? config.events
+            : undefined;
 
         return [
           slot.key,
@@ -433,7 +444,8 @@ export async function sendPushcutNotification(
     if (!validation.ok) {
       return {
         ok: false,
-        error: "O webhook guardado para este canal está inválido. Recole a URL.",
+        error:
+          "O webhook guardado para este canal está inválido. Recole a URL.",
       };
     }
 
@@ -501,7 +513,10 @@ export async function sendPushcutNotification(
         ? redactForLog(error.message)
         : "Falha ao contactar o Pushcut.";
     console.error("[pushcut] erro ao enviar:", message);
-    return { ok: false, error: "Não foi possível enviar a notificação de teste." };
+    return {
+      ok: false,
+      error: "Não foi possível enviar a notificação de teste.",
+    };
   }
 }
 

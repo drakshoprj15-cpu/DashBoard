@@ -91,13 +91,18 @@ export function ReminderDialog({
 
   const optedOut = targets.filter((t) => t.marketingOptOut).length;
   const withoutEmail = targets.filter((t) => !t.customerEmail).length;
-  const withoutPhone = targets.filter((t) => !whatsAppUrl(t.customerPhone)).length;
-  const blocked = channel === "email" ? optedOut + withoutEmail : optedOut + withoutPhone;
+  const withoutPhone = targets.filter(
+    (t) => !whatsAppUrl(t.customerPhone),
+  ).length;
+  const blocked =
+    channel === "email" ? optedOut + withoutEmail : optedOut + withoutPhone;
   const deliverable = Math.max(0, targets.length - blocked);
 
   async function copyPreview() {
     try {
-      await navigator.clipboard.writeText(channel === "email" ? `${subject}\n\n${preview}` : preview);
+      await navigator.clipboard.writeText(
+        channel === "email" ? `${subject}\n\n${preview}` : preview,
+      );
       toast.success("Mensagem copiada.");
     } catch {
       toast.error("Não foi possível copiar a mensagem.");
@@ -119,7 +124,9 @@ export function ReminderDialog({
 
         <div className="flex-1 space-y-5 px-4 pb-6">
           <div>
-            <Label className="text-muted-foreground text-xs font-normal">Canal</Label>
+            <Label className="text-muted-foreground text-xs font-normal">
+              Canal
+            </Label>
             <div className="mt-1.5 flex gap-2">
               <Button
                 type="button"
@@ -141,7 +148,9 @@ export function ReminderDialog({
           </div>
 
           <div>
-            <Label className="text-muted-foreground text-xs font-normal">Modelo</Label>
+            <Label className="text-muted-foreground text-xs font-normal">
+              Modelo
+            </Label>
             <div className="mt-1.5 grid gap-2">
               {CART_TEMPLATE_LIST.map((t) => (
                 <button
@@ -157,7 +166,9 @@ export function ReminderDialog({
                   )}
                 >
                   <span className="font-medium">{t.label}</span>
-                  <span className="text-muted-foreground block text-xs">{t.subject}</span>
+                  <span className="text-muted-foreground block text-xs">
+                    {t.subject}
+                  </span>
                 </button>
               ))}
             </div>
@@ -165,13 +176,16 @@ export function ReminderDialog({
 
           <div>
             <Label className="text-muted-foreground text-xs font-normal">
-              Pré-visualização {first ? `— ${first.customerName ?? first.reference}` : ""}
+              Pré-visualização{" "}
+              {first ? `— ${first.customerName ?? first.reference}` : ""}
             </Label>
             <div className="bg-muted/40 mt-1.5 space-y-2 rounded-lg border p-3 text-sm">
               {channel === "email" && (
                 <>
                   <p className="font-medium">
-                    <span className="text-muted-foreground text-xs">Assunto: </span>
+                    <span className="text-muted-foreground text-xs">
+                      Assunto:{" "}
+                    </span>
                     {subject}
                   </p>
                   <p className="text-muted-foreground text-xs">
@@ -183,7 +197,12 @@ export function ReminderDialog({
               <p className="leading-relaxed whitespace-pre-wrap">{preview}</p>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={copyPreview}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={copyPreview}
+              >
                 <Copy /> Copiar mensagem
               </Button>
               {missing.length > 0 && (
@@ -193,21 +212,24 @@ export function ReminderDialog({
               )}
             </div>
             <p className="text-muted-foreground mt-2 text-xs">
-              Variáveis disponíveis: {TEMPLATE_VARIABLES.map((v) => `{{${v}}}`).join(" · ")}
+              Variáveis disponíveis:{" "}
+              {TEMPLATE_VARIABLES.map((v) => `{{${v}}}`).join(" · ")}
             </p>
           </div>
 
           <div className="bg-muted/50 space-y-1.5 rounded-lg border p-3 text-sm">
             <p>
-              <span className="font-semibold">{deliverable}</span> de {targets.length} destinatário
+              <span className="font-semibold">{deliverable}</span> de{" "}
+              {targets.length} destinatário
               {targets.length === 1 ? "" : "s"} devem receber.
             </p>
-            {typeof matchedTotal === "number" && matchedTotal > targets.length && (
-              <p className="text-muted-foreground text-xs">
-                {matchedTotal} carrinhos correspondem ao filtro; o envio foi limitado a {targets.length} por
-                disparo.
-              </p>
-            )}
+            {typeof matchedTotal === "number" &&
+              matchedTotal > targets.length && (
+                <p className="text-muted-foreground text-xs">
+                  {matchedTotal} carrinhos correspondem ao filtro; o envio foi
+                  limitado a {targets.length} por disparo.
+                </p>
+              )}
             {blocked > 0 && (
               <p className="text-muted-foreground text-xs">
                 {blocked} fora do envio:{" "}
@@ -218,13 +240,13 @@ export function ReminderDialog({
               </p>
             )}
             <p className="text-muted-foreground text-xs">
-              Clientes bloqueados, suprimidos ou lembrados nas últimas 20 horas são excluídos
-              automaticamente.
+              Clientes bloqueados, suprimidos ou lembrados nas últimas 20 horas
+              são excluídos automaticamente.
             </p>
             {channel === "whatsapp" && (
               <p className="text-muted-foreground text-xs">
-                O WhatsApp abre no seu aplicativo com a mensagem pronta — o envio é feito por si, uma
-                conversa de cada vez.
+                O WhatsApp abre no seu aplicativo com a mensagem pronta — o
+                envio é feito por si, uma conversa de cada vez.
               </p>
             )}
           </div>
@@ -239,7 +261,11 @@ export function ReminderDialog({
           >
             {channel === "email" ? <Mail /> : <MessageCircle />} Enviar agora
           </Button>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Cancelar
           </Button>
         </SheetFooter>

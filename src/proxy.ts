@@ -23,7 +23,8 @@ const PUBLIC_PREFIXES = [
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return false; // raiz redireciona para o painel
   return PUBLIC_PREFIXES.some(
-    (prefix) => pathname === prefix.replace(/\/$/, "") || pathname.startsWith(prefix),
+    (prefix) =>
+      pathname === prefix.replace(/\/$/, "") || pathname.startsWith(prefix),
   );
 }
 

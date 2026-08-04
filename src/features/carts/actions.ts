@@ -3,10 +3,19 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured, type Database } from "@/database/client";
-import { customers, emailSuppressions, orderItems, orders, orderStatusHistory } from "@/database/schema";
+import {
+  customers,
+  emailSuppressions,
+  orderItems,
+  orders,
+  orderStatusHistory,
+} from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { getSession } from "@/lib/auth/session";
-import { isResendConfigured, sendEmail } from "@/features/emails/resend-provider";
+import {
+  isResendConfigured,
+  sendEmail,
+} from "@/features/emails/resend-provider";
 import { company } from "@/lib/company";
 import { formatMoney } from "@/lib/format";
 import { recordAuditLog } from "@/features/audit/log";
@@ -107,10 +116,17 @@ async function checkReminderEligibility(
   workspaceId: string,
   customerId: string,
 ): Promise<ReminderEligibility> {
-  const [customer] = await db.select().from(customers).where(eq(customers.id, customerId)).limit(1);
+  const [customer] = await db
+    .select()
+    .from(customers)
+    .where(eq(customers.id, customerId))
+    .limit(1);
   if (!customer) return { eligible: false, reason: "Cliente não encontrado." };
   if (customer.marketingOptOut) {
-    return { eligible: false, reason: "O cliente pediu para não receber comunicações." };
+    return {
+      eligible: false,
+      reason: "O cliente pediu para não receber comunicações.",
+    };
   }
   if (customer.isBlocked) {
     return { eligible: false, reason: "O cliente está bloqueado." };
@@ -119,7 +135,12 @@ async function checkReminderEligibility(
   const [suppressed] = await db
     .select({ email: emailSuppressions.email })
     .from(emailSuppressions)
-    .where(and(eq(emailSuppressions.workspaceId, workspaceId), eq(emailSuppressions.email, customer.email)))
+    .where(
+      and(
+        eq(emailSuppressions.workspaceId, workspaceId),
+        eq(emailSuppressions.email, customer.email),
+      ),
+    )
     .limit(1);
   if (suppressed) {
     return { eligible: false, reason: "O e-mail está na lista de supressão." };
@@ -128,7 +149,9 @@ async function checkReminderEligibility(
   return {
     eligible: true,
     email: customer.email,
-    name: [customer.firstName, customer.lastName].filter(Boolean).join(" ") || customer.email,
+    name:
+      [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
+      customer.email,
     phone: customer.phone,
   };
 }
@@ -152,7 +175,8 @@ export async function sendCartReminderAction(
   if (!isResendConfigured()) {
     return {
       ok: false,
-      error: "Envio de e-mails ainda não está ativo (configure RESEND_API_KEY e RESEND_FROM_EMAIL).",
+      error:
+        "Envio de e-mails ainda não está ativo (configure RESEND_API_KEY e RESEND_FROM_EMAIL).",
     };
   }
 
@@ -165,21 +189,31 @@ export async function sendCartReminderAction(
     .where(and(eq(orders.id, orderId), eq(orders.workspaceId, workspaceId)))
     .limit(1);
   if (!order) return { ok: false, error: "Carrinho não encontrado." };
-  if (!order.customerId) return { ok: false, error: "Este pedido não tem cliente associado." };
+  if (!order.customerId)
+    return { ok: false, error: "Este pedido não tem cliente associado." };
 
   if (
     order.lastReminderSentAt &&
-    Date.now() - new Date(order.lastReminderSentAt).getTime() < REMINDER_COOLDOWN_MS
+    Date.now() - new Date(order.lastReminderSentAt).getTime() <
+      REMINDER_COOLDOWN_MS
   ) {
     return {
       ok: false,
-      error: "Já foi enviado um lembrete recentemente para este pedido. Aguarde antes de reenviar.",
+      error:
+        "Já foi enviado um lembrete recentemente para este pedido. Aguarde antes de reenviar.",
     };
   }
 
-  const eligibility = await checkReminderEligibility(db, workspaceId, order.customerId);
+  const eligibility = await checkReminderEligibility(
+    db,
+    workspaceId,
+    order.customerId,
+  );
   if (!eligibility.eligible || !eligibility.email || !eligibility.name) {
-    return { ok: false, error: eligibility.reason ?? "Cliente não elegível para lembrete." };
+    return {
+      ok: false,
+      error: eligibility.reason ?? "Cliente não elegível para lembrete.",
+    };
   }
 
   const [item] = await db
@@ -274,7 +308,9 @@ export async function sendCartReminderAction(
  * via link `wa.me`. Ver `whatsapp-provider.ts` para o porquê de não haver
  * disparo automático.
  */
-export async function logWhatsAppReminderAction(orderId: string): Promise<CartActionResult> {
+export async function logWhatsAppReminderAction(
+  orderId: string,
+): Promise<CartActionResult> {
   const session = await getSession();
   if (!session || session.demoMode) {
     return { ok: false, error: "Não autenticado." };
@@ -295,12 +331,18 @@ export async function logWhatsAppReminderAction(orderId: string): Promise<CartAc
 
   if (order.customerId) {
     const [customer] = await db
-      .select({ marketingOptOut: customers.marketingOptOut, isBlocked: customers.isBlocked })
+      .select({
+        marketingOptOut: customers.marketingOptOut,
+        isBlocked: customers.isBlocked,
+      })
       .from(customers)
       .where(eq(customers.id, order.customerId))
       .limit(1);
     if (customer?.marketingOptOut) {
-      return { ok: false, error: "O cliente pediu para não receber comunicações." };
+      return {
+        ok: false,
+        error: "O cliente pediu para não receber comunicações.",
+      };
     }
     if (customer?.isBlocked) {
       return { ok: false, error: "O cliente está bloqueado." };
@@ -372,10 +414,16 @@ export async function markCartStatusAction(
 
   if (mark === "recovered") {
     if (PAID_STATUSES.includes(order.status)) {
-      return { ok: false, error: "Este pedido já foi pago e confirmado pelo gateway." };
+      return {
+        ok: false,
+        error: "Este pedido já foi pago e confirmado pelo gateway.",
+      };
     }
     if (order.recoveredManuallyAt) {
-      return { ok: false, error: "Este carrinho já está marcado como recuperado." };
+      return {
+        ok: false,
+        error: "Este carrinho já está marcado como recuperado.",
+      };
     }
     await db
       .update(orders)
@@ -402,7 +450,8 @@ export async function markCartStatusAction(
   if (!canTransitionOrderStatus(order.status, nextStatus)) {
     return {
       ok: false,
-      error: "Este pedido já está num estado mais avançado — a marcação não pode retroceder o status.",
+      error:
+        "Este pedido já está num estado mais avançado — a marcação não pode retroceder o status.",
     };
   }
 
@@ -417,8 +466,10 @@ export async function markCartStatusAction(
   await db.insert(orderStatusHistory).values({
     workspaceId,
     orderId,
-    fromStatus: order.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
-    toStatus: nextStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
+    fromStatus:
+      order.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+    toStatus:
+      nextStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
     reason: "Marcação manual na central de recuperação",
     changedBy: session.user.id,
     metadata: { source: "admin_override" },
@@ -440,7 +491,11 @@ export async function markCartStatusAction(
     changes: { from: order.status, to: nextStatus },
   });
 
-  return { ok: true, message: mark === "refused" ? "Marcado como recusado." : "Marcado como pendente." };
+  return {
+    ok: true,
+    message:
+      mark === "refused" ? "Marcado como recusado." : "Marcado como pendente.",
+  };
 }
 
 /** Arquiva (ou desarquiva) carrinhos — some da listagem sem perder o histórico. */
@@ -452,9 +507,13 @@ export async function archiveCartsAction(
   if (!session || session.demoMode) {
     return { ok: false, error: "Não autenticado." };
   }
-  if (orderIds.length === 0) return { ok: false, error: "Nenhum carrinho selecionado." };
+  if (orderIds.length === 0)
+    return { ok: false, error: "Nenhum carrinho selecionado." };
   if (orderIds.length > MAX_BULK_ORDERS) {
-    return { ok: false, error: `Selecione no máximo ${MAX_BULK_ORDERS} carrinhos por vez.` };
+    return {
+      ok: false,
+      error: `Selecione no máximo ${MAX_BULK_ORDERS} carrinhos por vez.`,
+    };
   }
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Banco de dados não configurado." };
@@ -467,7 +526,9 @@ export async function archiveCartsAction(
   const updated = await db
     .update(orders)
     .set({ archivedAt: archived ? now : null, updatedAt: now })
-    .where(and(eq(orders.workspaceId, workspaceId), inArray(orders.id, orderIds)))
+    .where(
+      and(eq(orders.workspaceId, workspaceId), inArray(orders.id, orderIds)),
+    )
     .returning({ id: orders.id });
 
   for (const row of updated) {
@@ -508,10 +569,20 @@ export async function bulkSendReminderAction(
 ): Promise<BulkReminderResult> {
   const session = await getSession();
   if (!session || session.demoMode) {
-    return { ok: false, sent: 0, skipped: orderIds.length, errors: ["Não autenticado."] };
+    return {
+      ok: false,
+      sent: 0,
+      skipped: orderIds.length,
+      errors: ["Não autenticado."],
+    };
   }
   if (orderIds.length === 0) {
-    return { ok: false, sent: 0, skipped: 0, errors: ["Nenhum carrinho selecionado."] };
+    return {
+      ok: false,
+      sent: 0,
+      skipped: 0,
+      errors: ["Nenhum carrinho selecionado."],
+    };
   }
   if (orderIds.length > MAX_BULK_ORDERS) {
     return {
@@ -536,7 +607,12 @@ export async function bulkSendReminderAction(
     }
   }
 
-  return { ok: sent > 0, sent, skipped, errors: Array.from(new Set(errors)).slice(0, 10) };
+  return {
+    ok: sent > 0,
+    sent,
+    skipped,
+    errors: Array.from(new Set(errors)).slice(0, 10),
+  };
 }
 
 /**
@@ -546,14 +622,20 @@ export async function bulkSendReminderAction(
  * pedido. "Pago" nunca é alcançável por aqui — só pela confirmação real do
  * gateway (webhook/sincronização).
  */
-export async function cancelCartOrderAction(orderId: string, reason: string): Promise<CartActionResult> {
+export async function cancelCartOrderAction(
+  orderId: string,
+  reason: string,
+): Promise<CartActionResult> {
   const session = await getSession();
   if (!session || session.demoMode) {
     return { ok: false, error: "Não autenticado." };
   }
   const trimmedReason = reason.trim();
   if (trimmedReason.length < 5) {
-    return { ok: false, error: "Informe um motivo para o cancelamento (mínimo 5 caracteres)." };
+    return {
+      ok: false,
+      error: "Informe um motivo para o cancelamento (mínimo 5 caracteres).",
+    };
   }
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Banco de dados não configurado." };
@@ -569,10 +651,14 @@ export async function cancelCartOrderAction(orderId: string, reason: string): Pr
     .limit(1);
   if (!order) return { ok: false, error: "Carrinho não encontrado." };
 
-  if (!CANCELLABLE_STATUSES.includes(order.status) || !canTransitionOrderStatus(order.status, "cancelled")) {
+  if (
+    !CANCELLABLE_STATUSES.includes(order.status) ||
+    !canTransitionOrderStatus(order.status, "cancelled")
+  ) {
     return {
       ok: false,
-      error: "Este pedido não pode ser cancelado manualmente — só pedidos ainda não pagos e não resolvidos.",
+      error:
+        "Este pedido não pode ser cancelado manualmente — só pedidos ainda não pagos e não resolvidos.",
     };
   }
 
@@ -583,14 +669,17 @@ export async function cancelCartOrderAction(orderId: string, reason: string): Pr
       status: "cancelled",
       cancelledAt: now,
       updatedAt: now,
-      internalNotes: order.internalNotes ? `${order.internalNotes}\n${trimmedReason}` : trimmedReason,
+      internalNotes: order.internalNotes
+        ? `${order.internalNotes}\n${trimmedReason}`
+        : trimmedReason,
     })
     .where(eq(orders.id, orderId));
 
   await db.insert(orderStatusHistory).values({
     workspaceId,
     orderId,
-    fromStatus: order.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+    fromStatus:
+      order.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
     toStatus: "cancelled",
     reason: trimmedReason,
     changedBy: session.user.id,

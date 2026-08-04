@@ -31,7 +31,9 @@ export function isResendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 }
 
-export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail(
+  input: SendEmailInput,
+): Promise<SendEmailResult> {
   if (!isResendConfigured()) {
     return {
       ok: false,
@@ -106,7 +108,10 @@ export async function testResendConnection(): Promise<{
       return { ok: false, message: "Chave de API inválida." };
     }
     if (!res.ok) {
-      return { ok: false, message: `Resposta inesperada (HTTP ${res.status}).` };
+      return {
+        ok: false,
+        message: `Resposta inesperada (HTTP ${res.status}).`,
+      };
     }
     return { ok: true, message: "Ligação ao Resend validada." };
   } catch (error) {

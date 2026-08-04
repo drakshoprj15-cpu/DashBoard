@@ -8,10 +8,15 @@ export interface WebhookEventsGridProps {
   onChange: (next: string[]) => void;
 }
 
-export function WebhookEventsGrid({ selected, onChange }: WebhookEventsGridProps) {
+export function WebhookEventsGrid({
+  selected,
+  onChange,
+}: WebhookEventsGridProps) {
   function toggle(key: string) {
     onChange(
-      selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key],
+      selected.includes(key)
+        ? selected.filter((k) => k !== key)
+        : [...selected, key],
     );
   }
 
@@ -36,10 +41,15 @@ export function WebhookEventsGrid({ selected, onChange }: WebhookEventsGridProps
               onChange={() => toggle(event.key)}
               className="accent-primary mt-0.5 size-4 shrink-0"
             />
-            <Icon className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <Icon
+              className="text-muted-foreground mt-0.5 size-4 shrink-0"
+              aria-hidden="true"
+            />
             <div className="min-w-0">
               <p className="font-medium">{event.label}</p>
-              <p className="text-muted-foreground text-xs">{event.description}</p>
+              <p className="text-muted-foreground text-xs">
+                {event.description}
+              </p>
             </div>
           </label>
         );

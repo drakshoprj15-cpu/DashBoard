@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Database, Eye, EyeOff, MessageSquareQuote, Star, Trash2, TriangleAlert } from "lucide-react";
+import {
+  Database,
+  Eye,
+  EyeOff,
+  MessageSquareQuote,
+  Star,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
 import { listReviews } from "@/features/reviews/queries";
 import { listProductOptions } from "@/features/products/queries";
-import { deleteReviewAction, toggleReviewAction } from "@/features/reviews/actions";
+import {
+  deleteReviewAction,
+  toggleReviewAction,
+} from "@/features/reviews/actions";
 import { ReviewForm } from "@/features/reviews/review-form";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -115,7 +126,9 @@ export default async function ProvasSociaisPage() {
                           />
                         ))}
                       </span>
-                      <span className="text-sm font-semibold">{r.authorName}</span>
+                      <span className="text-sm font-semibold">
+                        {r.authorName}
+                      </span>
                       {r.location && (
                         <span className="text-muted-foreground text-xs">
                           {r.location}
@@ -131,11 +144,13 @@ export default async function ProvasSociaisPage() {
                     {r.title && (
                       <p className="mt-1.5 text-sm font-bold">{r.title}</p>
                     )}
-                    <p className="text-muted-foreground mt-1 text-sm">{r.body}</p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {r.body}
+                    </p>
                     <p className="text-muted-foreground mt-1.5 text-xs">
                       {r.productName} ·{" "}
-                      {r.reviewedAt.toLocaleDateString("pt-PT")} · {r.helpfulCount}{" "}
-                      acharam útil
+                      {r.reviewedAt.toLocaleDateString("pt-PT")} ·{" "}
+                      {r.helpfulCount} acharam útil
                     </p>
                   </div>
 

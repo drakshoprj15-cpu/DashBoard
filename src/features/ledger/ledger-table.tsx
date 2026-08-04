@@ -44,11 +44,12 @@ interface LedgerResponse {
 
 export function LedgerView() {
   const [period, setPeriod] = React.useState<DashboardPeriod>("30d");
-  const [direction, setDirection] = React.useState<LedgerDirectionFilter>("all");
+  const [direction, setDirection] =
+    React.useState<LedgerDirectionFilter>("all");
   const [data, setData] = React.useState<LedgerResponse | null>(null);
-  const [status, setStatus] = React.useState<"loading" | "success" | "error" | "empty">(
-    "loading",
-  );
+  const [status, setStatus] = React.useState<
+    "loading" | "success" | "error" | "empty"
+  >("loading");
 
   React.useEffect(() => {
     let active = true;
@@ -56,9 +57,12 @@ export function LedgerView() {
     async function fetchData() {
       if (active) setStatus("loading");
       try {
-        const res = await fetch(`/api/ledger?period=${period}&direction=${direction}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/ledger?period=${period}&direction=${direction}`,
+          {
+            cache: "no-store",
+          },
+        );
         if (!active) return;
         if (res.status === 503) {
           setData(null);
@@ -191,13 +195,17 @@ export function LedgerView() {
             </Card>
             <Card className="gap-2 py-4">
               <CardHeader className="px-4">
-                <CardDescription className="text-xs">Saldo do período</CardDescription>
+                <CardDescription className="text-xs">
+                  Saldo do período
+                </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
                 <p
                   className={cn(
                     "text-xl font-bold tracking-tight",
-                    data.summary.balanceCents >= 0 ? "text-foreground" : "text-destructive",
+                    data.summary.balanceCents >= 0
+                      ? "text-foreground"
+                      : "text-destructive",
                   )}
                 >
                   {formatMoney(data.summary.balanceCents, "EUR", "pt-PT")}
@@ -207,7 +215,11 @@ export function LedgerView() {
           </div>
 
           <Card>
-            <CardContent className={data.entries.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"}>
+            <CardContent
+              className={
+                data.entries.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"
+              }
+            >
               {data.entries.length === 0 ? (
                 <EmptyState
                   icon={Receipt}
@@ -229,7 +241,10 @@ export function LedgerView() {
                         <th scope="col" className="pr-3 pb-2.5 font-medium">
                           Categoria
                         </th>
-                        <th scope="col" className="pr-3 pb-2.5 text-right font-medium">
+                        <th
+                          scope="col"
+                          className="pr-3 pb-2.5 text-right font-medium"
+                        >
                           Valor
                         </th>
                         <th scope="col" className="pb-2.5 font-medium">
@@ -257,11 +272,17 @@ export function LedgerView() {
                           <td
                             className={cn(
                               "py-3 pr-3 text-right font-semibold whitespace-nowrap",
-                              entry.direction === "in" ? "text-success" : "text-destructive",
+                              entry.direction === "in"
+                                ? "text-success"
+                                : "text-destructive",
                             )}
                           >
                             {entry.direction === "in" ? "+" : "−"}
-                            {formatMoney(entry.amountCents, entry.currency, "pt-PT")}
+                            {formatMoney(
+                              entry.amountCents,
+                              entry.currency,
+                              "pt-PT",
+                            )}
                           </td>
                           <td className="text-muted-foreground py-3 text-xs whitespace-nowrap">
                             {formatDateTime(entry.occurredAt, "pt-PT")}

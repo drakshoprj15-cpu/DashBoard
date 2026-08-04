@@ -96,7 +96,12 @@ export function DomainCard({ domain }: { domain: DomainRow }) {
 
           <form action={verifyAction}>
             <input type="hidden" name="id" value={domain.id} />
-            <Button size="sm" variant="outline" type="submit" disabled={verifying}>
+            <Button
+              size="sm"
+              variant="outline"
+              type="submit"
+              disabled={verifying}
+            >
               <RefreshCw /> {verifying ? "A verificar…" : "Verificar"}
             </Button>
           </form>

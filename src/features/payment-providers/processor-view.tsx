@@ -34,9 +34,7 @@ export function ProcessorView({
   webhookUrl,
 }: ProcessorViewProps) {
   const [testing, setTesting] = React.useState(false);
-  const [result, setResult] = React.useState<ConnectionTestResult | null>(
-    null,
-  );
+  const [result, setResult] = React.useState<ConnectionTestResult | null>(null);
 
   const checks: CredentialCheck[] = [
     { label: "Chave da API (BROSKI_API_KEY) configurada", present: hasApiKey },
@@ -80,9 +78,8 @@ export function ProcessorView({
                 Broski
               </CardTitle>
               <CardDescription>
-                Gateway principal (PT). MB WAY e Multibanco via API
-                server-side — adapter implementado a partir da documentação
-                oficial.
+                Gateway principal (PT). MB WAY e Multibanco via API server-side
+                — adapter implementado a partir da documentação oficial.
               </CardDescription>
             </div>
             <Badge variant={active ? "success" : "muted"}>
@@ -93,20 +90,13 @@ export function ProcessorView({
         <CardContent className="space-y-4">
           <ul className="space-y-1.5">
             {checks.map((check) => (
-              <li
-                key={check.label}
-                className="flex items-center gap-2 text-sm"
-              >
+              <li key={check.label} className="flex items-center gap-2 text-sm">
                 {check.present ? (
                   <CheckCircle2 className="text-success size-4 shrink-0" />
                 ) : (
                   <XCircle className="text-muted-foreground size-4 shrink-0" />
                 )}
-                <span
-                  className={cn(
-                    !check.present && "text-muted-foreground",
-                  )}
-                >
+                <span className={cn(!check.present && "text-muted-foreground")}>
                   {check.label}
                 </span>
               </li>

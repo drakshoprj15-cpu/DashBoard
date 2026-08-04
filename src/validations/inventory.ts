@@ -16,7 +16,10 @@ export const adjustStockSchema = z.object({
    * Entrada/saída: sempre positivo (o sinal vem de `type`). Correção: pode
    * ser negativo, para acertar uma contagem física para menos.
    */
-  quantity: z.coerce.number().int().refine((v) => v !== 0, "Informe uma quantidade diferente de zero"),
+  quantity: z.coerce
+    .number()
+    .int()
+    .refine((v) => v !== 0, "Informe uma quantidade diferente de zero"),
   note: z.string().trim().max(280).optional(),
 });
 

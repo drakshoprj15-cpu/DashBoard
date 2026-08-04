@@ -96,9 +96,7 @@ export default async function PixelPage() {
                     <code className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
                       {p.pixelId}
                     </code>
-                    {p.hasToken && (
-                      <Badge variant="info">Token guardado</Badge>
-                    )}
+                    {p.hasToken && <Badge variant="info">Token guardado</Badge>}
                   </div>
                   <div className="flex gap-2">
                     <form action={togglePixelAction}>
@@ -137,8 +135,14 @@ export default async function PixelPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {[
-            { label: "Landing page", url: `${appUrl}/p/${alphaGamerNebula.slug}` },
-            { label: "Checkout", url: `${appUrl}/checkout/${alphaGamerNebula.slug}` },
+            {
+              label: "Landing page",
+              url: `${appUrl}/p/${alphaGamerNebula.slug}`,
+            },
+            {
+              label: "Checkout",
+              url: `${appUrl}/checkout/${alphaGamerNebula.slug}`,
+            },
           ].map((p) => (
             <div
               key={p.url}

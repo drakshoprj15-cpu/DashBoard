@@ -52,9 +52,10 @@ const NO_DB: LandingActionResult = {
  * resolvido é o filtro de propriedade — nenhuma consulta abaixo toca numa
  * linha de outro workspace.
  */
-async function requireWorkspace(): Promise<
-  { workspaceId: string; userId: string | null } | null
-> {
+async function requireWorkspace(): Promise<{
+  workspaceId: string;
+  userId: string | null;
+} | null> {
   const session = await getSession();
   if (!session) return null;
   const workspaceId = await getOrCreateDefaultWorkspace();
@@ -124,7 +125,8 @@ export async function createLandingPageAction(
   if (!isDatabaseConfigured()) return NO_DB;
 
   const context = await requireWorkspace();
-  if (!context) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  if (!context)
+    return { ok: false, error: "Sessão expirada. Entre novamente." };
 
   const data = parsed.data;
 
@@ -216,7 +218,8 @@ function readThemeOverrides(formData: FormData) {
   const overrides: Record<string, string> = {};
   for (const key of keys) {
     const value = formData.get(key);
-    if (typeof value === "string" && value.trim()) overrides[key] = value.trim();
+    if (typeof value === "string" && value.trim())
+      overrides[key] = value.trim();
   }
   return Object.keys(overrides).length > 0 ? overrides : undefined;
 }
@@ -239,7 +242,8 @@ export async function saveLandingDraftAction(
   if (!isDatabaseConfigured()) return NO_DB;
 
   const context = await requireWorkspace();
-  if (!context) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  if (!context)
+    return { ok: false, error: "Sessão expirada. Entre novamente." };
 
   const { id, content, theme, seo, tracking, customCode } = parsed.data;
 
@@ -310,7 +314,8 @@ export async function updateLandingSettingsAction(
   if (!isDatabaseConfigured()) return NO_DB;
 
   const context = await requireWorkspace();
-  if (!context) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  if (!context)
+    return { ok: false, error: "Sessão expirada. Entre novamente." };
 
   const data = parsed.data;
 
@@ -402,7 +407,10 @@ export async function detachProductAction(
     return { ok: false, error: "A página não tem produto vinculado." };
   }
 
-  const productData = await loadProductData(page.productId, context.workspaceId);
+  const productData = await loadProductData(
+    page.productId,
+    context.workspaceId,
+  );
   if (!productData) return { ok: false, error: "Produto não encontrado." };
 
   await db
@@ -446,7 +454,8 @@ export async function publishLandingPageAction(
   if (!isDatabaseConfigured()) return NO_DB;
 
   const context = await requireWorkspace();
-  if (!context) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  if (!context)
+    return { ok: false, error: "Sessão expirada. Entre novamente." };
 
   const { id, scheduledPublishAt } = parsed.data;
 
@@ -660,7 +669,8 @@ export async function duplicateLandingPageAction(
   while (!(await isSlugAvailable(context.workspaceId, slug))) {
     slug = `${row.slug}-copia-${attempt}`.slice(0, 60);
     attempt += 1;
-    if (attempt > 50) return { ok: false, error: "Não foi possível gerar um endereço livre." };
+    if (attempt > 50)
+      return { ok: false, error: "Não foi possível gerar um endereço livre." };
   }
 
   const [created] = await db

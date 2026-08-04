@@ -12,7 +12,11 @@
 /** Minúsculas, sem porta e sem o prefixo `www.` */
 export function normalizeHost(raw: string | null | undefined): string {
   if (!raw) return "";
-  return raw.trim().toLowerCase().split(":")[0].replace(/^www\./, "");
+  return raw
+    .trim()
+    .toLowerCase()
+    .split(":")[0]
+    .replace(/^www\./, "");
 }
 
 /**

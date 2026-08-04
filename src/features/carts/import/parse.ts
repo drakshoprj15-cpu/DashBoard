@@ -45,22 +45,72 @@ export type RawRow = Partial<Record<ImportColumn, string>> & {
  * de nome evita obrigar o usuário a reescrever o cabeçalho.
  */
 const HEADER_ALIASES: Record<ImportColumn, string[]> = {
-  nome: ["nome", "name", "cliente", "nome do cliente", "customer", "customer name", "comprador"],
+  nome: [
+    "nome",
+    "name",
+    "cliente",
+    "nome do cliente",
+    "customer",
+    "customer name",
+    "comprador",
+  ],
   email: ["email", "e-mail", "mail", "email do cliente", "customer email"],
-  telefone: ["telefone", "phone", "celular", "telemovel", "whatsapp", "contato", "contacto"],
+  telefone: [
+    "telefone",
+    "phone",
+    "celular",
+    "telemovel",
+    "whatsapp",
+    "contato",
+    "contacto",
+  ],
   cpf: ["cpf", "documento", "nif", "doc", "cpf/cnpj", "cpf cnpj"],
-  produto: ["produto", "product", "item", "nome do produto", "product name", "oferta"],
+  produto: [
+    "produto",
+    "product",
+    "item",
+    "nome do produto",
+    "product name",
+    "oferta",
+  ],
   quantidade: ["quantidade", "qtd", "qty", "quantity", "artigos"],
   valor: ["valor", "preco", "price", "amount", "total", "valor total", "vlr"],
   status: ["status", "situacao", "estado", "state"],
-  checkout_url: ["checkout_url", "checkout url", "link", "url", "link do checkout", "link de pagamento"],
-  data_criacao: ["data_criacao", "data criacao", "criado em", "created_at", "data", "data do pedido"],
-  data_atualizacao: ["data_atualizacao", "data atualizacao", "atualizado em", "updated_at"],
+  checkout_url: [
+    "checkout_url",
+    "checkout url",
+    "link",
+    "url",
+    "link do checkout",
+    "link de pagamento",
+  ],
+  data_criacao: [
+    "data_criacao",
+    "data criacao",
+    "criado em",
+    "created_at",
+    "data",
+    "data do pedido",
+  ],
+  data_atualizacao: [
+    "data_atualizacao",
+    "data atualizacao",
+    "atualizado em",
+    "updated_at",
+  ],
   origem: ["origem", "source", "origin", "canal"],
   utm_source: ["utm_source", "utm source"],
   utm_campaign: ["utm_campaign", "utm campaign", "campanha"],
   utm_medium: ["utm_medium", "utm medium"],
-  observacao: ["observacao", "observacoes", "obs", "notes", "nota", "notas", "comentario"],
+  observacao: [
+    "observacao",
+    "observacoes",
+    "obs",
+    "notes",
+    "nota",
+    "notas",
+    "comentario",
+  ],
 };
 
 /** Minúsculas, sem acentos, sem espaços duplicados — chave de comparação. */
@@ -75,8 +125,12 @@ export function normalizeHeader(value: string): string {
 }
 
 const COLUMN_BY_ALIAS = new Map<string, ImportColumn>();
-for (const [column, aliases] of Object.entries(HEADER_ALIASES) as [ImportColumn, string[]][]) {
-  for (const alias of aliases) COLUMN_BY_ALIAS.set(normalizeHeader(alias), column);
+for (const [column, aliases] of Object.entries(HEADER_ALIASES) as [
+  ImportColumn,
+  string[],
+][]) {
+  for (const alias of aliases)
+    COLUMN_BY_ALIAS.set(normalizeHeader(alias), column);
 }
 
 /** Resolve um cabeçalho da planilha para uma coluna conhecida (ou null). */
@@ -93,7 +147,8 @@ export function detectDelimiter(firstLine: string): "," | ";" | "\t" {
   const counts = { ",": 0, ";": 0, "\t": 0 };
   for (const char of firstLine) {
     if (char === '"') inQuotes = !inQuotes;
-    else if (!inQuotes && (char === "," || char === ";" || char === "\t")) counts[char] += 1;
+    else if (!inQuotes && (char === "," || char === ";" || char === "\t"))
+      counts[char] += 1;
   }
   if (counts[";"] >= counts[","] && counts[";"] >= counts["\t"]) return ";";
   if (counts["\t"] > counts[","]) return "\t";
@@ -157,7 +212,10 @@ export function parseCsv(text: string, delimiter?: string): string[][] {
 }
 
 /** Converte a matriz da planilha em linhas com colunas resolvidas. */
-export function toRawRows(matrix: string[][]): { rows: RawRow[]; unknownHeaders: string[] } {
+export function toRawRows(matrix: string[][]): {
+  rows: RawRow[];
+  unknownHeaders: string[];
+} {
   if (matrix.length === 0) return { rows: [], unknownHeaders: [] };
 
   const [headerRow, ...dataRows] = matrix;
@@ -236,7 +294,9 @@ export class ImportFileError extends Error {}
 /** Ponto de entrada: decide o parser pela extensão do arquivo. */
 export async function parseSheetFile(file: File): Promise<ParsedSheet> {
   if (file.size > MAX_FILE_BYTES) {
-    throw new ImportFileError("Arquivo acima de 5 MB. Divida a planilha em partes menores.");
+    throw new ImportFileError(
+      "Arquivo acima de 5 MB. Divida a planilha em partes menores.",
+    );
   }
 
   const name = file.name.toLowerCase();
@@ -247,11 +307,15 @@ export async function parseSheetFile(file: File): Promise<ParsedSheet> {
   } else if (name.endsWith(".csv") || name.endsWith(".txt")) {
     sheet = parseCsvFile(await file.text());
   } else {
-    throw new ImportFileError("Formato não suportado. Envie um arquivo .csv ou .xlsx.");
+    throw new ImportFileError(
+      "Formato não suportado. Envie um arquivo .csv ou .xlsx.",
+    );
   }
 
   if (sheet.rows.length === 0) {
-    throw new ImportFileError("A planilha não tem nenhuma linha de dados além do cabeçalho.");
+    throw new ImportFileError(
+      "A planilha não tem nenhuma linha de dados além do cabeçalho.",
+    );
   }
   if (sheet.rows.length > MAX_ROWS) {
     throw new ImportFileError(

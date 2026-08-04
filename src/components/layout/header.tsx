@@ -5,11 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Menu, Search } from "lucide-react";
 
-import {
-  findActiveSubItem,
-  isHrefActive,
-  navigation,
-} from "@/lib/navigation";
+import { findActiveSubItem, isHrefActive, navigation } from "@/lib/navigation";
 import type { SessionUser } from "@/lib/auth/session";
 import { logoutAction } from "@/features/auth/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,7 +19,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 

@@ -121,7 +121,11 @@ export function ProductLandingForm({
                   (opcional)
                 </span>
               </Label>
-              <Input id="brand" name="brand" defaultValue={str(content.brand)} />
+              <Input
+                id="brand"
+                name="brand"
+                defaultValue={str(content.brand)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -220,8 +224,8 @@ export function ProductLandingForm({
             <Label htmlFor="description">
               Descrição{" "}
               <span className="text-muted-foreground font-normal">
-                (parágrafos separados por linha em branco — fique à vontade
-                para escrever bastante, é o texto principal da página)
+                (parágrafos separados por linha em branco — fique à vontade para
+                escrever bastante, é o texto principal da página)
               </span>
             </Label>
             <textarea

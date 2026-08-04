@@ -22,38 +22,38 @@ conexão" da página Processador (Fase 4) fará a validação real.
 
 ### Fatos da API (da documentação oficial — nada inventado)
 
-| Item | Valor |
-|---|---|
-| Base URL | `https://api.broski.pt` |
-| Autenticação | `Authorization: Bearer sk_live_…` (server-to-server; CORS bloqueia browser) |
-| Métodos | `mbway` (confirmação no telemóvel; €0,50–€5.000) e `multibanco` (voucher entidade/referência) |
-| Moeda | apenas `EUR`, valores em cêntimos |
-| Criar pedido | `POST /v1/orders` (header `Idempotency-Key` obrigatório; `customer.email` obrigatório; `checkout_url` recomendado sempre) |
-| Consultar | `GET /v1/orders/{id}` · Listar: `GET /v1/orders` (paginação por cursor) |
-| Estorno | `POST /v1/orders/{id}/refunds` (corpo `{}` = total; `{amount}` = parcial; `Idempotency-Key` obrigatória; só pedidos pagos) |
-| Cancelamento | **não existe na API** — pedidos expiram sozinhos |
-| Clientes | **sem endpoint** — criados automaticamente pelo e-mail no pedido |
-| Status | `pending`, `awaiting_payment`, `paid`, `expired`, `failed`, `refunded` |
-| Webhooks | `order.awaiting_payment`, `order.paid`, `order.failed`, `order.expired`, `order.refunded`, `payout.paid`, `dispute.created` |
+| Item               | Valor                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Base URL           | `https://api.broski.pt`                                                                                                                          |
+| Autenticação       | `Authorization: Bearer sk_live_…` (server-to-server; CORS bloqueia browser)                                                                      |
+| Métodos            | `mbway` (confirmação no telemóvel; €0,50–€5.000) e `multibanco` (voucher entidade/referência)                                                    |
+| Moeda              | apenas `EUR`, valores em cêntimos                                                                                                                |
+| Criar pedido       | `POST /v1/orders` (header `Idempotency-Key` obrigatório; `customer.email` obrigatório; `checkout_url` recomendado sempre)                        |
+| Consultar          | `GET /v1/orders/{id}` · Listar: `GET /v1/orders` (paginação por cursor)                                                                          |
+| Estorno            | `POST /v1/orders/{id}/refunds` (corpo `{}` = total; `{amount}` = parcial; `Idempotency-Key` obrigatória; só pedidos pagos)                       |
+| Cancelamento       | **não existe na API** — pedidos expiram sozinhos                                                                                                 |
+| Clientes           | **sem endpoint** — criados automaticamente pelo e-mail no pedido                                                                                 |
+| Status             | `pending`, `awaiting_payment`, `paid`, `expired`, `failed`, `refunded`                                                                           |
+| Webhooks           | `order.awaiting_payment`, `order.paid`, `order.failed`, `order.expired`, `order.refunded`, `payout.paid`, `dispute.created`                      |
 | Assinatura webhook | Header `Broski-Signature: t=<unix>,v1=<hex>` — `v1 = HMAC-SHA256(secret, t + "." + corpo_cru)`, tolerância ±5 min, deduplicar por `id` do evento |
-| Rate limit | 120 req/min por chave · corpo máx. 64 KB |
+| Rate limit         | 120 req/min por chave · corpo máx. 64 KB                                                                                                         |
 
 ### Mapeamento de status Broski → plataforma
 
-| Broski | Infinity (`payment_status`) |
-|---|---|
-| `pending` | `processing` |
-| `awaiting_payment` | `pending` |
-| `paid` | `approved` |
-| `expired` | `expired` |
-| `failed` | `refused` |
-| `refunded` | `refunded` |
+| Broski             | Infinity (`payment_status`) |
+| ------------------ | --------------------------- |
+| `pending`          | `processing`                |
+| `awaiting_payment` | `pending`                   |
+| `paid`             | `approved`                  |
+| `expired`          | `expired`                   |
+| `failed`           | `refused`                   |
+| `refunded`         | `refunded`                  |
 
 ### Regras de integração
 
 1. Produto só é liberado no webhook **`order.paid`** com assinatura válida (nunca no retorno do checkout).
 2. Multibanco pode confirmar **dias depois** — o pedido fica `awaiting_payment` exibindo entidade/referência/valor.
-3. Webhooks são entregues *at-least-once* e sem ordem — deduplicação por `evt_…` (tabela `payment_webhooks`, unique em `provider_key + external_event_id`).
+3. Webhooks são entregues _at-least-once_ e sem ordem — deduplicação por `evt_…` (tabela `payment_webhooks`, unique em `provider_key + external_event_id`).
 4. A chave `sk_live_…` vive apenas no servidor (variável `BROSKI_API_KEY`), criptografada quando salva no banco.
 5. MB WAY exige telemóvel PT (`+3519XXXXXXXX`) — o checkout valida antes de criar o pedido.
 

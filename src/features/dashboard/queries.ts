@@ -159,7 +159,9 @@ async function getNetRevenue(
     );
 
   const [refunded] = await db
-    .select({ refundedCents: sql<number>`coalesce(sum(${refunds.amountCents}), 0)::int` })
+    .select({
+      refundedCents: sql<number>`coalesce(sum(${refunds.amountCents}), 0)::int`,
+    })
     .from(refunds)
     .where(
       and(
@@ -269,7 +271,12 @@ export async function getDashboardSnapshot(
       : null;
 
   // Série do gráfico: agregada no fuso America/Sao_Paulo pelo bucket certo.
-  const truncUnit = range.granularity === "hour" ? "hour" : range.granularity === "week" ? "week" : "day";
+  const truncUnit =
+    range.granularity === "hour"
+      ? "hour"
+      : range.granularity === "week"
+        ? "week"
+        : "day";
   const seriesRows = await db
     .select({
       bucket: sql<Date>`date_trunc(${truncUnit}, ${orders.createdAt} at time zone 'America/Sao_Paulo')`,
@@ -278,7 +285,11 @@ export async function getDashboardSnapshot(
     })
     .from(orders)
     .where(
-      and(ws, gte(orders.createdAt, range.start), lt(orders.createdAt, range.end)),
+      and(
+        ws,
+        gte(orders.createdAt, range.start),
+        lt(orders.createdAt, range.end),
+      ),
     )
     .groupBy(sql`1`)
     .orderBy(sql`1`);
@@ -310,7 +321,11 @@ export async function getDashboardSnapshot(
         lt(orders.createdAt, range.end),
       ),
     )
-    .groupBy(orderItems.productId, orderItems.productName, products.mainImageUrl)
+    .groupBy(
+      orderItems.productId,
+      orderItems.productName,
+      products.mainImageUrl,
+    )
     .orderBy(desc(sql`sum(${orderItems.totalCents})`))
     .limit(5);
 
@@ -413,9 +428,21 @@ export async function getDashboardSnapshot(
 
   const funnel: FunnelStepRow[] = [
     { label: "Visitantes", event: "page_view", count: countOf("page_view") },
-    { label: "Produto visualizado", event: "view_content", count: countOf("view_content") },
-    { label: "Checkout iniciado", event: "checkout_opened", count: countOf("checkout_opened") },
-    { label: "Pagamento aprovado", event: "payment_created", count: countOf("payment_created") },
+    {
+      label: "Produto visualizado",
+      event: "view_content",
+      count: countOf("view_content"),
+    },
+    {
+      label: "Checkout iniciado",
+      event: "checkout_opened",
+      count: countOf("checkout_opened"),
+    },
+    {
+      label: "Pagamento aprovado",
+      event: "payment_created",
+      count: countOf("payment_created"),
+    },
   ];
 
   // Formas de pagamento: participação por método no período.
@@ -533,7 +560,10 @@ export async function getDashboardSnapshot(
     revenueChangePercent: percentChange(revenueCents, previousRevenueCents),
 
     ordersCount: current.ordersCount,
-    ordersChangePercent: percentChange(current.ordersCount, previous.ordersCount),
+    ordersChangePercent: percentChange(
+      current.ordersCount,
+      previous.ordersCount,
+    ),
     paidOrdersCount,
 
     averageTicketCents,

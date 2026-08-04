@@ -45,7 +45,11 @@ export async function adjustStockAction(
   const { productId, type, quantity, note } = parsed.data;
   // Entrada soma, saída subtrai; correção usa o sinal informado pelo usuário.
   const delta =
-    type === "restock" ? Math.abs(quantity) : type === "adjustment" ? -Math.abs(quantity) : quantity;
+    type === "restock"
+      ? Math.abs(quantity)
+      : type === "adjustment"
+        ? -Math.abs(quantity)
+        : quantity;
 
   try {
     const db = getDb();
@@ -53,9 +57,17 @@ export async function adjustStockAction(
 
     const result = await db.transaction(async (tx) => {
       const [product] = await tx
-        .select({ stockQuantity: products.stockQuantity, trackInventory: products.trackInventory })
+        .select({
+          stockQuantity: products.stockQuantity,
+          trackInventory: products.trackInventory,
+        })
         .from(products)
-        .where(and(eq(products.id, productId), eq(products.workspaceId, workspaceId)))
+        .where(
+          and(
+            eq(products.id, productId),
+            eq(products.workspaceId, workspaceId),
+          ),
+        )
         .limit(1)
         .for("update");
 
@@ -63,7 +75,10 @@ export async function adjustStockAction(
         return { ok: false as const, error: "Produto não encontrado." };
       }
       if (!product.trackInventory) {
-        return { ok: false as const, error: "Este produto não tem controle de estoque ativado." };
+        return {
+          ok: false as const,
+          error: "Este produto não tem controle de estoque ativado.",
+        };
       }
 
       const newQuantity = product.stockQuantity + delta;
@@ -96,7 +111,12 @@ export async function adjustStockAction(
       action: "inventory.adjusted",
       entityType: "inventory",
       entityId: productId,
-      changes: { type, delta, newQuantity: result.newQuantity, note: note || undefined },
+      changes: {
+        type,
+        delta,
+        newQuantity: result.newQuantity,
+        note: note || undefined,
+      },
     });
 
     revalidatePath("/catalogo/estoque");
@@ -137,7 +157,9 @@ export async function updateMinStockAction(
         minStockAlert: rawMin === "" ? null : (minStockAlert ?? null),
         updatedAt: new Date(),
       })
-      .where(and(eq(products.id, productId), eq(products.workspaceId, workspaceId)))
+      .where(
+        and(eq(products.id, productId), eq(products.workspaceId, workspaceId)),
+      )
       .returning({ id: products.id });
 
     if (!row) return { ok: false, error: "Produto não encontrado." };
@@ -146,7 +168,9 @@ export async function updateMinStockAction(
       action: "inventory.min_stock_updated",
       entityType: "inventory",
       entityId: productId,
-      changes: { minStockAlert: rawMin === "" ? null : (minStockAlert ?? null) },
+      changes: {
+        minStockAlert: rawMin === "" ? null : (minStockAlert ?? null),
+      },
     });
 
     revalidatePath("/catalogo/estoque");
@@ -156,4 +180,3 @@ export async function updateMinStockAction(
     return { ok: false, error: "Não foi possível atualizar o alerta." };
   }
 }
-

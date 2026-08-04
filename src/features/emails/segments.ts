@@ -8,7 +8,11 @@ import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
 
 // Reexporta para quem já importava daqui — o conteúdo client-safe vive
 // em `./types` (sem tocar no cliente do banco).
-export { SEGMENTS, type SegmentKey, type SegmentDefinition } from "@/features/emails/types";
+export {
+  SEGMENTS,
+  type SegmentKey,
+  type SegmentDefinition,
+} from "@/features/emails/types";
 
 const STATUS_BY_SEGMENT: Record<string, string[]> = {
   paid: ["paid", "shipped", "delivered"],
@@ -67,7 +71,12 @@ export async function getSegmentRecipients(
         statuses ? inArray(orders.status, statuses as never) : undefined,
       ),
     )
-    .groupBy(customers.id, customers.email, customers.firstName, customers.lastName);
+    .groupBy(
+      customers.id,
+      customers.email,
+      customers.firstName,
+      customers.lastName,
+    );
 
   const filtered =
     segment === "no_orders" ? rows.filter((r) => r.orderCount === 0) : rows;
@@ -112,11 +121,19 @@ export interface CustomRecipientsResult {
  * fixos e nunca duplica por e-mail, mesmo que o mesmo cliente apareça mais
  * de uma vez na seleção original.
  */
-export async function getCustomRecipients(customerIds: string[]): Promise<CustomRecipientsResult> {
+export async function getCustomRecipients(
+  customerIds: string[],
+): Promise<CustomRecipientsResult> {
   const totalSelected = customerIds.length;
 
   if (!isDatabaseConfigured() || totalSelected === 0) {
-    return { recipients: [], totalSelected, excludedNoConsent: 0, excludedSuppressed: 0, notFoundCount: totalSelected };
+    return {
+      recipients: [],
+      totalSelected,
+      excludedNoConsent: 0,
+      excludedSuppressed: 0,
+      notFoundCount: totalSelected,
+    };
   }
 
   const db = getDb();
@@ -126,7 +143,9 @@ export async function getCustomRecipients(customerIds: string[]): Promise<Custom
     .select({ email: emailSuppressions.email })
     .from(emailSuppressions)
     .where(eq(emailSuppressions.workspaceId, workspaceId));
-  const suppressedEmails = new Set(suppressed.map((s) => s.email.toLowerCase()));
+  const suppressedEmails = new Set(
+    suppressed.map((s) => s.email.toLowerCase()),
+  );
 
   const rows = await db
     .select({
@@ -186,5 +205,11 @@ export async function getCustomRecipients(customerIds: string[]): Promise<Custom
     });
   }
 
-  return { recipients, totalSelected, excludedNoConsent, excludedSuppressed, notFoundCount };
+  return {
+    recipients,
+    totalSelected,
+    excludedNoConsent,
+    excludedSuppressed,
+    notFoundCount,
+  };
 }

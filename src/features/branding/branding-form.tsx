@@ -33,8 +33,8 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
       <CardHeader>
         <CardTitle className="text-base">Dados da loja</CardTitle>
         <CardDescription>
-          Nome, logo e contacto exibidos no cabeçalho e rodapé do checkout e
-          das landing pages públicas.
+          Nome, logo e contacto exibidos no cabeçalho e rodapé do checkout e das
+          landing pages públicas.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -61,8 +61,8 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
             onChange={setLogoUrl}
           />
           <p className="text-muted-foreground -mt-2 text-xs">
-            Aparece centralizada no banner das landing pages e do checkout.
-            Sem logo, mostra o nome da loja.
+            Aparece centralizada no banner das landing pages e do checkout. Sem
+            logo, mostra o nome da loja.
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">

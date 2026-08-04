@@ -52,7 +52,8 @@ async function fetchRenderedHtml(productId: string): Promise<FetchState> {
   } catch {
     return {
       status: "error",
-      error: "Não foi possível carregar o código. Verifique a conexão e tente novamente.",
+      error:
+        "Não foi possível carregar o código. Verifique a conexão e tente novamente.",
     };
   }
 }
@@ -116,7 +117,9 @@ export function RenderedCodeViewer({
             onClick={reload}
             disabled={state.status === "loading"}
           >
-            <RefreshCw className={state.status === "loading" ? "animate-spin" : ""} />
+            <RefreshCw
+              className={state.status === "loading" ? "animate-spin" : ""}
+            />
             Atualizar
           </Button>
           <Button
@@ -146,7 +149,9 @@ export function RenderedCodeViewer({
         <Alert variant={state.notPublished ? "info" : "destructive"}>
           <AlertTriangle />
           <AlertTitle>
-            {state.notPublished ? "Landing page não publicada" : "Não foi possível carregar"}
+            {state.notPublished
+              ? "Landing page não publicada"
+              : "Não foi possível carregar"}
           </AlertTitle>
           <AlertDescription>
             <p>{state.error}</p>
@@ -166,7 +171,12 @@ export function RenderedCodeViewer({
       )}
 
       {state.status === "ok" && (
-        <CodeEditor language="html" value={state.html ?? ""} readOnly height={420} />
+        <CodeEditor
+          language="html"
+          value={state.html ?? ""}
+          readOnly
+          height={420}
+        />
       )}
     </div>
   );

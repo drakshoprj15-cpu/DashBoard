@@ -164,7 +164,9 @@ function anonymousId(): string {
 }
 
 /** Converte um endereço de vídeo em URL de incorporação. */
-function toEmbedUrl(url: string): { kind: "iframe" | "video"; src: string } | null {
+function toEmbedUrl(
+  url: string,
+): { kind: "iframe" | "video"; src: string } | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
 
@@ -172,15 +174,24 @@ function toEmbedUrl(url: string): { kind: "iframe" | "video"; src: string } | nu
     /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/,
   );
   if (youtube) {
-    return { kind: "iframe", src: `https://www.youtube-nocookie.com/embed/${youtube[1]}` };
+    return {
+      kind: "iframe",
+      src: `https://www.youtube-nocookie.com/embed/${youtube[1]}`,
+    };
   }
 
   const vimeo = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vimeo) {
-    return { kind: "iframe", src: `https://player.vimeo.com/video/${vimeo[1]}` };
+    return {
+      kind: "iframe",
+      src: `https://player.vimeo.com/video/${vimeo[1]}`,
+    };
   }
 
-  if (/^https?:\/\//i.test(trimmed) && /\.(mp4|webm|ogg)(\?|$)/i.test(trimmed)) {
+  if (
+    /^https?:\/\//i.test(trimmed) &&
+    /\.(mp4|webm|ogg)(\?|$)/i.test(trimmed)
+  ) {
     return { kind: "video", src: trimmed };
   }
 
@@ -208,7 +219,11 @@ function Section({
         animationClass(block.style),
         className,
       )}
-      style={{ paddingTop: 32, paddingBottom: 32, ...blockStyleToCss(block.style) }}
+      style={{
+        paddingTop: 32,
+        paddingBottom: 32,
+        ...blockStyleToCss(block.style),
+      }}
     >
       <div
         className={cn("mx-auto w-full", fullWidth ? "max-w-none" : undefined)}
@@ -366,13 +381,19 @@ function HeaderBlock({ block }: { block: LandingBlock }) {
 
         <nav className="flex flex-wrap items-center gap-4 text-sm">
           {items.map(([label, href], index) => (
-            <a key={`${label}-${index}`} href={href || "#"} className="hover:opacity-80">
+            <a
+              key={`${label}-${index}`}
+              href={href || "#"}
+              className="hover:opacity-80"
+            >
               {label}
             </a>
           ))}
           {showCta && (
             <a
-              href={propText(block.props, "ctaTarget", "#comprar") || "#comprar"}
+              href={
+                propText(block.props, "ctaTarget", "#comprar") || "#comprar"
+              }
               className="inline-flex min-h-10 items-center px-4 text-sm font-bold"
               style={buttonStyle(snapshot.theme)}
             >
@@ -431,7 +452,11 @@ function MenuBlock({ block }: { block: LandingBlock }) {
         style={{ maxWidth: "var(--lp-max-width)" }}
       >
         {items.map(([label, href], index) => (
-          <a key={`${label}-${index}`} href={href || "#"} className="hover:opacity-70">
+          <a
+            key={`${label}-${index}`}
+            href={href || "#"}
+            className="hover:opacity-70"
+          >
             {label}
           </a>
         ))}
@@ -446,7 +471,8 @@ function HeroBlock({ block }: { block: LandingBlock }) {
   const title = propText(block.props, "title") || product?.name || "";
   const subtitle =
     propText(block.props, "subtitle") || product?.shortDescription || "";
-  const image = propText(block.props, "imageUrl") || product?.mainImageUrl || "";
+  const image =
+    propText(block.props, "imageUrl") || product?.mainImageUrl || "";
   const eyebrow = propText(block.props, "eyebrow");
   const ctaLabel = propText(block.props, "ctaLabel");
   const ctaTarget = propText(block.props, "ctaTarget", "#comprar");
@@ -457,7 +483,8 @@ function HeroBlock({ block }: { block: LandingBlock }) {
         <span
           className="inline-block rounded-full px-3 py-1 text-xs font-bold"
           style={{
-            backgroundColor: "color-mix(in srgb, var(--lp-primary) 14%, transparent)",
+            backgroundColor:
+              "color-mix(in srgb, var(--lp-primary) 14%, transparent)",
             color: "var(--lp-primary)",
           }}
         >
@@ -468,12 +495,17 @@ function HeroBlock({ block }: { block: LandingBlock }) {
         {title}
       </h1>
       {subtitle ? (
-        <p className="mt-4 text-base md:text-lg" style={{ color: "var(--lp-muted)" }}>
+        <p
+          className="mt-4 text-base md:text-lg"
+          style={{ color: "var(--lp-muted)" }}
+        >
           {subtitle}
         </p>
       ) : null}
       {ctaLabel ? (
-        <div className={cn("mt-6", layout === "centered" && "flex justify-center")}>
+        <div
+          className={cn("mt-6", layout === "centered" && "flex justify-center")}
+        >
           <a
             href={ctaTarget || "#comprar"}
             className="inline-flex min-h-12 items-center px-7 text-base"
@@ -492,7 +524,10 @@ function HeroBlock({ block }: { block: LandingBlock }) {
       alt={title}
       priority
       className="w-full object-contain"
-      style={{ borderRadius: "var(--lp-radius)", boxShadow: "var(--lp-shadow)" }}
+      style={{
+        borderRadius: "var(--lp-radius)",
+        boxShadow: "var(--lp-shadow)",
+      }}
     />
   ) : null;
 
@@ -581,7 +616,10 @@ function GalleryBlock({ block }: { block: LandingBlock }) {
               alt={`${altText} — imagem ${index + 1}`}
               priority={index === 0}
               className="aspect-square w-full bg-white object-contain"
-              style={{ borderRadius: "var(--lp-radius)", border: "1px solid var(--lp-border)" }}
+              style={{
+                borderRadius: "var(--lp-radius)",
+                border: "1px solid var(--lp-border)",
+              }}
             />
           ))}
         </div>
@@ -598,7 +636,10 @@ function GalleryBlock({ block }: { block: LandingBlock }) {
     <Section block={block}>
       <div
         className="relative overflow-hidden bg-white"
-        style={{ borderRadius: "var(--lp-radius)", border: "1px solid var(--lp-border)" }}
+        style={{
+          borderRadius: "var(--lp-radius)",
+          border: "1px solid var(--lp-border)",
+        }}
         onTouchStart={(event) => {
           touchStartX.current = event.touches[0]?.clientX ?? null;
         }}
@@ -684,7 +725,10 @@ function VideoBlock({ block }: { block: LandingBlock }) {
     <Section block={block}>
       <div
         className="overflow-hidden"
-        style={{ borderRadius: "var(--lp-radius)", boxShadow: "var(--lp-shadow)" }}
+        style={{
+          borderRadius: "var(--lp-radius)",
+          boxShadow: "var(--lp-shadow)",
+        }}
       >
         {embed.kind === "iframe" ? (
           <iframe
@@ -719,7 +763,9 @@ function HeadingBlock({ block }: { block: LandingBlock }) {
 
   return (
     <Section block={block}>
-      <Heading level={propText(block.props, "level", "h2") === "h3" ? "h3" : "h2"}>
+      <Heading
+        level={propText(block.props, "level", "h2") === "h3" ? "h3" : "h2"}
+      >
         {resolved}
       </Heading>
     </Section>
@@ -754,7 +800,8 @@ function PriceBlock({ block }: { block: LandingBlock }) {
   if (!product) return null;
 
   const price = buildPriceView(currentPriceCents, currentCompareAtCents);
-  const showCompare = propBool(block.props, "showCompare", true) && price.showCompareAt;
+  const showCompare =
+    propBool(block.props, "showCompare", true) && price.showCompareAt;
 
   return (
     <Section block={block}>
@@ -763,16 +810,21 @@ function PriceBlock({ block }: { block: LandingBlock }) {
           {money(price.priceCents)}
         </span>
         {showCompare ? (
-          <span className="text-lg line-through" style={{ color: "var(--lp-muted)" }}>
+          <span
+            className="text-lg line-through"
+            style={{ color: "var(--lp-muted)" }}
+          >
             {money(price.compareAtPriceCents as number)}
           </span>
         ) : null}
-        {propBool(block.props, "showDiscount", true) && price.discountPercent ? (
+        {propBool(block.props, "showDiscount", true) &&
+        price.discountPercent ? (
           <span
             className="px-2 py-0.5 text-sm font-bold"
             style={{
               borderRadius: "calc(var(--lp-radius) * .5)",
-              backgroundColor: "color-mix(in srgb, var(--lp-primary) 14%, transparent)",
+              backgroundColor:
+                "color-mix(in srgb, var(--lp-primary) 14%, transparent)",
               color: "var(--lp-primary)",
             }}
           >
@@ -781,12 +833,18 @@ function PriceBlock({ block }: { block: LandingBlock }) {
         ) : null}
       </div>
       {propBool(block.props, "showSavings", true) && price.savingsCents > 0 ? (
-        <p className="mt-1 font-semibold" style={{ color: "var(--lp-primary)" }}>
+        <p
+          className="mt-1 font-semibold"
+          style={{ color: "var(--lp-primary)" }}
+        >
           Está a poupar {money(price.savingsCents)}
         </p>
       ) : null}
       {propBool(block.props, "showSku", false) && variant?.sku ? (
-        <p className="mt-1 font-mono text-xs" style={{ color: "var(--lp-muted)" }}>
+        <p
+          className="mt-1 font-mono text-xs"
+          style={{ color: "var(--lp-muted)" }}
+        >
           SKU {variant.sku}
         </p>
       ) : null}
@@ -812,7 +870,8 @@ function OfferBlock({ block }: { block: LandingBlock }) {
         style={{
           borderRadius: "var(--lp-radius)",
           border: "2px dashed var(--lp-primary)",
-          backgroundColor: "color-mix(in srgb, var(--lp-primary) 6%, transparent)",
+          backgroundColor:
+            "color-mix(in srgb, var(--lp-primary) 6%, transparent)",
         }}
       >
         {badge ? (
@@ -845,17 +904,24 @@ function VariantsBlock({ block }: { block: LandingBlock }) {
   const { product, variantId, setVariantId, money } = useRuntime();
   const all = product?.variants ?? [];
   const hideSoldOut = propBool(block.props, "hideSoldOut", false);
-  const variants = hideSoldOut ? all.filter((item) => isPurchasable(item)) : all;
+  const variants = hideSoldOut
+    ? all.filter((item) => isPurchasable(item))
+    : all;
   const listRef = React.useRef<HTMLDivElement>(null);
 
   if (variants.length === 0) return null;
 
   const style = propText(block.props, "style", "cards");
   const label =
-    propText(block.props, "label") || product?.variantOptionName || "Escolha uma opção";
+    propText(block.props, "label") ||
+    product?.variantOptionName ||
+    "Escolha uma opção";
   const showPrice = propBool(block.props, "showPrice", true);
   const showThumbnail = propBool(block.props, "showThumbnail", true);
-  const columns = Math.min(6, Math.max(1, propNumber(block.props, "columns", 3)));
+  const columns = Math.min(
+    6,
+    Math.max(1, propNumber(block.props, "columns", 3)),
+  );
   const size = propText(block.props, "size", "medium");
 
   /** Setas percorrem apenas as opções que dá para escolher. */
@@ -864,7 +930,8 @@ function VariantsBlock({ block }: { block: LandingBlock }) {
     if (!keys.includes(event.key)) return;
     event.preventDefault();
 
-    const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
+    const step =
+      event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
     const total = variants.length;
 
     for (let offset = 1; offset <= total; offset += 1) {
@@ -928,7 +995,9 @@ function VariantsBlock({ block }: { block: LandingBlock }) {
               title={variant.name}
               className={cn(
                 "relative flex items-center gap-2 transition-colors",
-                isCircle ? "size-11 justify-center rounded-full p-0" : "min-h-11 px-3 py-2",
+                isCircle
+                  ? "size-11 justify-center rounded-full p-0"
+                  : "min-h-11 px-3 py-2",
                 style === "cards" && "flex-col items-start text-left",
                 style === "list" && "w-full text-left",
                 !available && "cursor-not-allowed opacity-45",
@@ -949,7 +1018,9 @@ function VariantsBlock({ block }: { block: LandingBlock }) {
                   className="size-7 rounded-full border"
                   style={{
                     backgroundColor: variant.hexColor ?? "var(--lp-border)",
-                    backgroundImage: thumbnail ? `url(${thumbnail})` : undefined,
+                    backgroundImage: thumbnail
+                      ? `url(${thumbnail})`
+                      : undefined,
                     backgroundSize: "cover",
                   }}
                 />
@@ -977,7 +1048,9 @@ function VariantsBlock({ block }: { block: LandingBlock }) {
 
               {!isCircle ? (
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{variant.name}</span>
+                  <span className="block text-sm font-semibold">
+                    {variant.name}
+                  </span>
                   {showPrice ? (
                     <span className="block text-xs opacity-75">
                       {available ? money(price) : "Esgotado"}
@@ -1032,7 +1105,11 @@ function StockBlock({ block }: { block: LandingBlock }) {
     return canBuy ? null : (
       <Section block={block}>
         <p className="text-sm font-semibold" style={{ color: "#DC2626" }}>
-          {propText(block.props, "soldOutLabel", "Opção indisponível de momento")}
+          {propText(
+            block.props,
+            "soldOutLabel",
+            "Opção indisponível de momento",
+          )}
         </p>
       </Section>
     );
@@ -1040,7 +1117,10 @@ function StockBlock({ block }: { block: LandingBlock }) {
 
   const label = propText(block.props, "label", "Em estoque");
   const showBar = propBool(block.props, "showBar", true);
-  const barBase = Math.max(currentStock, propNumber(block.props, "barBase", 20));
+  const barBase = Math.max(
+    currentStock,
+    propNumber(block.props, "barBase", 20),
+  );
   const percent = Math.min(100, Math.round((currentStock / barBase) * 100));
 
   return (
@@ -1092,7 +1172,12 @@ function QuantityBlock({ block }: { block: LandingBlock }) {
   // servidor de qualquer forma — melhor nem deixar escolher.
   const limits = [configuredMax];
   if (variant?.purchaseLimit) limits.push(variant.purchaseLimit);
-  if (variant && variant.trackInventory && !variant.allowBackorder && currentStock !== null) {
+  if (
+    variant &&
+    variant.trackInventory &&
+    !variant.allowBackorder &&
+    currentStock !== null
+  ) {
     limits.push(Math.max(min, currentStock));
   }
   const max = Math.max(min, Math.min(...limits));
@@ -1102,10 +1187,15 @@ function QuantityBlock({ block }: { block: LandingBlock }) {
 
   return (
     <Section block={block}>
-      <p className="text-sm font-semibold">{propText(block.props, "label", "Quantidade")}</p>
+      <p className="text-sm font-semibold">
+        {propText(block.props, "label", "Quantidade")}
+      </p>
       <div
         className="mt-2 inline-flex items-center"
-        style={{ borderRadius: "calc(var(--lp-radius) * .7)", border: "1px solid var(--lp-border)" }}
+        style={{
+          borderRadius: "calc(var(--lp-radius) * .7)",
+          border: "1px solid var(--lp-border)",
+        }}
       >
         <button
           type="button"
@@ -1133,7 +1223,8 @@ function QuantityBlock({ block }: { block: LandingBlock }) {
 
 function BuyButtonBlock({ block }: { block: LandingBlock }) {
   const runtime = useRuntime();
-  const { product, checkoutHref, track, mode, currentPriceCents, quantity } = runtime;
+  const { product, checkoutHref, track, mode, currentPriceCents, quantity } =
+    runtime;
   const action = propText(block.props, "action", "checkout");
   const label = propText(block.props, "label", "Comprar agora");
   const fullWidth = propBool(block.props, "fullWidth", true);
@@ -1216,12 +1307,19 @@ function BuyButtonBlock({ block }: { block: LandingBlock }) {
         {blocked ? blockedLabel : label}
       </a>
       {warning ? (
-        <p className="mt-2 text-sm font-medium" role="alert" style={{ color: "#DC2626" }}>
+        <p
+          className="mt-2 text-sm font-medium"
+          role="alert"
+          style={{ color: "#DC2626" }}
+        >
           {warning}
         </p>
       ) : null}
       {helperText ? (
-        <p className="mt-2 text-center text-xs" style={{ color: "var(--lp-muted)" }}>
+        <p
+          className="mt-2 text-center text-xs"
+          style={{ color: "var(--lp-muted)" }}
+        >
           {helperText}
         </p>
       ) : null}
@@ -1236,7 +1334,10 @@ function BuyButtonBlock({ block }: { block: LandingBlock }) {
       {sticky && mode === "public" ? (
         <div
           className="fixed inset-x-0 bottom-0 z-40 border-t p-3 md:hidden"
-          style={{ backgroundColor: "var(--lp-bg)", borderColor: "var(--lp-border)" }}
+          style={{
+            backgroundColor: "var(--lp-bg)",
+            borderColor: "var(--lp-border)",
+          }}
         >
           <a
             href={blocked ? "#" : href || "#"}
@@ -1309,7 +1410,10 @@ function WhatsappBlock({ block }: { block: LandingBlock }) {
 
 function BenefitsBlock({ block }: { block: LandingBlock }) {
   const items = propPairs(block.props, "items");
-  const columns = Math.min(4, Math.max(1, propNumber(block.props, "columns", 3)));
+  const columns = Math.min(
+    4,
+    Math.max(1, propNumber(block.props, "columns", 3)),
+  );
   const title = propText(block.props, "title");
   if (items.length === 0) return null;
 
@@ -1359,7 +1463,10 @@ function TrustBadgesBlock({ block }: { block: LandingBlock }) {
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-medium">
         {items.map((item, index) => (
           <span key={`${item}-${index}`} className="flex items-center gap-2">
-            <ShieldCheck className="size-4" style={{ color: "var(--lp-primary)" }} />
+            <ShieldCheck
+              className="size-4"
+              style={{ color: "var(--lp-primary)" }}
+            />
             {item}
           </span>
         ))}
@@ -1393,11 +1500,16 @@ function DescriptionBlock({ block }: { block: LandingBlock }) {
 
   return (
     <Section block={block}>
-      <Heading className="mb-4">{propText(block.props, "title", "Descrição")}</Heading>
+      <Heading className="mb-4">
+        {propText(block.props, "title", "Descrição")}
+      </Heading>
       <div className="space-y-4 text-base leading-relaxed">
-        {body.split(/\n{2,}|\n/).filter(Boolean).map((paragraph, index) => (
-          <p key={index}>{paragraph}</p>
-        ))}
+        {body
+          .split(/\n{2,}|\n/)
+          .filter(Boolean)
+          .map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+          ))}
       </div>
     </Section>
   );
@@ -1409,10 +1521,15 @@ function SpecsBlock({ block }: { block: LandingBlock }) {
 
   return (
     <Section block={block}>
-      <Heading className="mb-4">{propText(block.props, "title", "Especificações")}</Heading>
+      <Heading className="mb-4">
+        {propText(block.props, "title", "Especificações")}
+      </Heading>
       <dl
         className="overflow-hidden"
-        style={{ borderRadius: "var(--lp-radius)", border: "1px solid var(--lp-border)" }}
+        style={{
+          borderRadius: "var(--lp-radius)",
+          border: "1px solid var(--lp-border)",
+        }}
       >
         {items.map(([label, value], index) => (
           <div
@@ -1420,7 +1537,8 @@ function SpecsBlock({ block }: { block: LandingBlock }) {
             className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm"
             style={{
               borderTop: index === 0 ? "none" : "1px solid var(--lp-border)",
-              backgroundColor: index % 2 === 0 ? "var(--lp-surface)" : undefined,
+              backgroundColor:
+                index % 2 === 0 ? "var(--lp-surface)" : undefined,
             }}
           >
             <dt className="font-semibold">{label}</dt>
@@ -1491,7 +1609,10 @@ function FeaturesBlock({ block }: { block: LandingBlock }) {
       ) : null}
       <ul className="space-y-2.5">
         {items.map((item, index) => (
-          <li key={`${item}-${index}`} className="flex items-start gap-2.5 text-base">
+          <li
+            key={`${item}-${index}`}
+            className="flex items-start gap-2.5 text-base"
+          >
             <Check
               className="mt-0.5 size-5 shrink-0"
               style={{ color: "var(--lp-primary)" }}
@@ -1512,7 +1633,9 @@ function ComparisonBlock({ block }: { block: LandingBlock }) {
 
   return (
     <Section block={block}>
-      <Heading className="mb-4">{propText(block.props, "title", "Comparação")}</Heading>
+      <Heading className="mb-4">
+        {propText(block.props, "title", "Comparação")}
+      </Heading>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] text-sm">
           <thead>
@@ -1528,7 +1651,10 @@ function ComparisonBlock({ block }: { block: LandingBlock }) {
           </thead>
           <tbody>
             {rows.map((cells, index) => (
-              <tr key={index} style={{ borderTop: "1px solid var(--lp-border)" }}>
+              <tr
+                key={index}
+                style={{ borderTop: "1px solid var(--lp-border)" }}
+              >
                 <td className="px-4 py-3 font-medium">{cells[0] ?? ""}</td>
                 <td className="px-4 py-3">{cells[1] ?? ""}</td>
                 <td className="px-4 py-3" style={{ color: "var(--lp-muted)" }}>
@@ -1549,7 +1675,10 @@ function StarRow({ value }: { value: number }) {
       {Array.from({ length: 5 }).map((_, index) => (
         <Star
           key={index}
-          className={cn("size-4", index < Math.round(value) ? "fill-current" : "opacity-25")}
+          className={cn(
+            "size-4",
+            index < Math.round(value) ? "fill-current" : "opacity-25",
+          )}
         />
       ))}
     </span>
@@ -1595,7 +1724,10 @@ function ReviewsBlock({ block }: { block: LandingBlock }) {
         }}
       >
         <span className="text-3xl font-black">
-          {average.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+          {average.toLocaleString(locale, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })}
         </span>
         <StarRow value={average} />
         <span className="text-sm" style={{ color: "var(--lp-muted)" }}>
@@ -1607,7 +1739,10 @@ function ReviewsBlock({ block }: { block: LandingBlock }) {
           <article
             key={`${review.name}-${index}`}
             className="p-4"
-            style={{ borderRadius: "var(--lp-radius)", border: "1px solid var(--lp-border)" }}
+            style={{
+              borderRadius: "var(--lp-radius)",
+              border: "1px solid var(--lp-border)",
+            }}
           >
             <div className="flex flex-wrap items-center gap-2">
               <strong className="text-sm">{review.name}</strong>
@@ -1622,7 +1757,9 @@ function ReviewsBlock({ block }: { block: LandingBlock }) {
             </div>
             <div className="mt-2 flex items-center gap-2">
               <StarRow value={review.stars} />
-              {review.title ? <span className="text-sm font-bold">{review.title}</span> : null}
+              {review.title ? (
+                <span className="text-sm font-bold">{review.title}</span>
+              ) : null}
             </div>
             <p className="mt-1.5 text-sm leading-relaxed">{review.text}</p>
           </article>
@@ -1673,13 +1810,19 @@ function FaqBlock({ block }: { block: LandingBlock }) {
           <details
             key={`${question}-${index}`}
             className="group px-4 py-3"
-            style={{ borderRadius: "var(--lp-radius)", border: "1px solid var(--lp-border)" }}
+            style={{
+              borderRadius: "var(--lp-radius)",
+              border: "1px solid var(--lp-border)",
+            }}
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
               {question}
               <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
             </summary>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--lp-muted)" }}>
+            <p
+              className="mt-2 text-sm leading-relaxed"
+              style={{ color: "var(--lp-muted)" }}
+            >
               {answer}
             </p>
           </details>
@@ -1707,7 +1850,10 @@ function ShippingBlock({ block }: { block: LandingBlock }) {
       <ul className="mt-3 space-y-2 text-sm">
         {items.map((item, index) => (
           <li key={`${item}-${index}`} className="flex items-start gap-2">
-            <Check className="mt-0.5 size-4 shrink-0" style={{ color: "var(--lp-primary)" }} />
+            <Check
+              className="mt-0.5 size-4 shrink-0"
+              style={{ color: "var(--lp-primary)" }}
+            />
             {item}
           </li>
         ))}
@@ -1729,7 +1875,10 @@ function GuaranteeBlock({ block }: { block: LandingBlock }) {
           backgroundColor: "var(--lp-surface)",
         }}
       >
-        <ShieldCheck className="size-10 shrink-0" style={{ color: "var(--lp-primary)" }} />
+        <ShieldCheck
+          className="size-10 shrink-0"
+          style={{ color: "var(--lp-primary)" }}
+        />
         <div>
           <p className="text-lg font-bold">
             {propText(block.props, "title", "Garantia")}
@@ -1818,7 +1967,9 @@ function CountdownBlock({ block }: { block: LandingBlock }) {
 function FormBlock({ block }: { block: LandingBlock }) {
   const runtime = useRuntime();
   const { pageId, mode, track } = runtime;
-  const [status, setStatus] = React.useState<"idle" | "sending" | "done" | "error">("idle");
+  const [status, setStatus] = React.useState<
+    "idle" | "sending" | "done" | "error"
+  >("idle");
   const [error, setError] = React.useState("");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1842,9 +1993,10 @@ function FormBlock({ block }: { block: LandingBlock }) {
         }),
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { ok?: boolean; error?: string }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
 
       if (!response.ok || !payload?.ok) {
         setStatus("error");
@@ -1877,7 +2029,11 @@ function FormBlock({ block }: { block: LandingBlock }) {
             backgroundColor: "var(--lp-surface)",
           }}
         >
-          {propText(block.props, "successMessage", "Recebemos os seus dados. Obrigado!")}
+          {propText(
+            block.props,
+            "successMessage",
+            "Recebemos os seus dados. Obrigado!",
+          )}
         </p>
       </Section>
     );
@@ -1903,7 +2059,10 @@ function FormBlock({ block }: { block: LandingBlock }) {
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           {propBool(block.props, "askName", true) ? (
             <div>
-              <label htmlFor={`${block.id}-name`} className="text-sm font-medium">
+              <label
+                htmlFor={`${block.id}-name`}
+                className="text-sm font-medium"
+              >
                 Nome
               </label>
               <input
@@ -1917,7 +2076,10 @@ function FormBlock({ block }: { block: LandingBlock }) {
           ) : null}
 
           <div>
-            <label htmlFor={`${block.id}-email`} className="text-sm font-medium">
+            <label
+              htmlFor={`${block.id}-email`}
+              className="text-sm font-medium"
+            >
               E-mail
             </label>
             <input
@@ -1933,7 +2095,10 @@ function FormBlock({ block }: { block: LandingBlock }) {
 
           {propBool(block.props, "askPhone") ? (
             <div>
-              <label htmlFor={`${block.id}-phone`} className="text-sm font-medium">
+              <label
+                htmlFor={`${block.id}-phone`}
+                className="text-sm font-medium"
+              >
                 Telefone
               </label>
               <input
@@ -1948,12 +2113,21 @@ function FormBlock({ block }: { block: LandingBlock }) {
           ) : null}
 
           <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="consent" required className="mt-1 size-4" />
+            <input
+              type="checkbox"
+              name="consent"
+              required
+              className="mt-1 size-4"
+            />
             {propText(block.props, "consentText", "Autorizo o contacto.")}
           </label>
 
           {error ? (
-            <p className="text-sm font-medium" role="alert" style={{ color: "#DC2626" }}>
+            <p
+              className="text-sm font-medium"
+              role="alert"
+              style={{ color: "#DC2626" }}
+            >
               {error}
             </p>
           ) : null}
@@ -1984,18 +2158,28 @@ function FooterBlock({ block }: { block: LandingBlock }) {
 
   return (
     <footer
-      className={cn("px-4 py-8 text-center text-sm", visibilityClass(block.style))}
+      className={cn(
+        "px-4 py-8 text-center text-sm",
+        visibilityClass(block.style),
+      )}
       style={{
         backgroundColor: "var(--lp-footer-bg)",
         color: "var(--lp-footer-text)",
         ...blockStyleToCss(block.style),
       }}
     >
-      <div className="mx-auto w-full" style={{ maxWidth: "var(--lp-max-width)" }}>
+      <div
+        className="mx-auto w-full"
+        style={{ maxWidth: "var(--lp-max-width)" }}
+      >
         <p>{text}</p>
         <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {links.map(([label, href], index) => (
-            <a key={`${label}-${index}`} href={href || "#"} className="hover:opacity-80">
+            <a
+              key={`${label}-${index}`}
+              href={href || "#"}
+              className="hover:opacity-80"
+            >
               {label}
             </a>
           ))}
@@ -2143,7 +2327,9 @@ export function LandingRenderer({
     if (!product) return [];
     // Variação sem fotos próprias herda a galeria geral — a página nunca
     // fica sem imagem por falta de upload numa cor.
-    return variant && variant.gallery.length > 0 ? variant.gallery : product.gallery;
+    return variant && variant.gallery.length > 0
+      ? variant.gallery
+      : product.gallery;
   }, [product, variant]);
 
   const currentStock = React.useMemo(() => {
@@ -2201,7 +2387,9 @@ export function LandingRenderer({
 
     // Parâmetros padrão da página entram só onde ainda não há valor vindo
     // do anúncio — o que o anunciante mandou tem prioridade.
-    for (const [key, value] of new URLSearchParams(snapshot.tracking.defaultUtm)) {
+    for (const [key, value] of new URLSearchParams(
+      snapshot.tracking.defaultUtm,
+    )) {
       if (!params.has(key)) params.set(key, value);
     }
 
@@ -2263,7 +2451,9 @@ export function LandingRenderer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  const visibleBlocks = snapshot.content.blocks.filter((block) => !block.hidden);
+  const visibleBlocks = snapshot.content.blocks.filter(
+    (block) => !block.hidden,
+  );
 
   return (
     <RuntimeContext.Provider value={runtime}>
@@ -2271,11 +2461,16 @@ export function LandingRenderer({
       {snapshot.customCode.css ? (
         <style dangerouslySetInnerHTML={{ __html: snapshot.customCode.css }} />
       ) : null}
-      <div className={cn("lp-root min-h-svh", className)} style={themeToCssVars(snapshot.theme)}>
+      <div
+        className={cn("lp-root min-h-svh", className)}
+        style={themeToCssVars(snapshot.theme)}
+      >
         {visibleBlocks.map((block) => {
           const node = <RenderBlock key={block.id} block={block} />;
           return wrapBlock ? (
-            <React.Fragment key={block.id}>{wrapBlock(block, node)}</React.Fragment>
+            <React.Fragment key={block.id}>
+              {wrapBlock(block, node)}
+            </React.Fragment>
           ) : (
             node
           );

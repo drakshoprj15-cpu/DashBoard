@@ -19,7 +19,10 @@ export async function GET(request: Request) {
   }
 
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   const { searchParams } = new URL(request.url);

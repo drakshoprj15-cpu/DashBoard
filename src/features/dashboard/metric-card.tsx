@@ -56,9 +56,15 @@ export function MetricCard({
         >
           {hasChange ? (
             <>
-              {positive && <TrendingUp className="size-3.5" aria-hidden="true" />}
-              {negative && <TrendingDown className="size-3.5" aria-hidden="true" />}
-              {!positive && !negative && <Minus className="size-3.5" aria-hidden="true" />}
+              {positive && (
+                <TrendingUp className="size-3.5" aria-hidden="true" />
+              )}
+              {negative && (
+                <TrendingDown className="size-3.5" aria-hidden="true" />
+              )}
+              {!positive && !negative && (
+                <Minus className="size-3.5" aria-hidden="true" />
+              )}
               <span>
                 {positive && "+"}
                 {formatPercent(changePercent)}

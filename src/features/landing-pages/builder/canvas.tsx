@@ -75,7 +75,9 @@ export function BuilderCanvas({
           event.preventDefault();
           setDropIndex(index);
         }}
-        onDragLeave={() => setDropIndex((current) => (current === index ? null : current))}
+        onDragLeave={() =>
+          setDropIndex((current) => (current === index ? null : current))
+        }
         onDrop={(event) => handleDrop(event, index)}
         className={cn(
           "relative z-10 -my-1 h-2 transition-all",
@@ -226,7 +228,11 @@ function BlockFrame({
           label={block.hidden ? "Mostrar bloco" : "Ocultar bloco"}
           onClick={() => state.toggleBlockVisibility(block.id)}
         >
-          {block.hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          {block.hidden ? (
+            <EyeOff className="size-3.5" />
+          ) : (
+            <Eye className="size-3.5" />
+          )}
         </CanvasButton>
         <CanvasButton
           label="Duplicar bloco"

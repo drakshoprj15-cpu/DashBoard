@@ -53,7 +53,12 @@ export function ShippingForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
-              <Input id="name" name="name" placeholder="Ex.: Envio Standard" required />
+              <Input
+                id="name"
+                name="name"
+                placeholder="Ex.: Envio Standard"
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="deliveryEstimate">Prazo</Label>
@@ -91,7 +96,9 @@ export function ShippingForm() {
             <div className="space-y-2">
               <Label htmlFor="freeAboveCents">
                 Grátis a partir de (€){" "}
-                <span className="text-muted-foreground font-normal">(opcional)</span>
+                <span className="text-muted-foreground font-normal">
+                  (opcional)
+                </span>
               </Label>
               <Input
                 id="freeAboveCentsDisplay"

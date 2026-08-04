@@ -83,7 +83,9 @@ export function BlockInspector({ state }: { state: BuilderState }) {
             key={field.key}
             field={field}
             value={block.props[field.key]}
-            onChange={(value) => state.updateBlockProp(block.id, field.key, value)}
+            onChange={(value) =>
+              state.updateBlockProp(block.id, field.key, value)
+            }
           />
         ))}
       </section>
@@ -228,12 +230,16 @@ function StyleSection({
         <ColorField
           label="Fundo"
           value={style.background ?? ""}
-          onChange={(value) => state.updateBlockStyle(block.id, { background: value })}
+          onChange={(value) =>
+            state.updateBlockStyle(block.id, { background: value })
+          }
         />
         <ColorField
           label="Texto"
           value={style.textColor ?? ""}
-          onChange={(value) => state.updateBlockStyle(block.id, { textColor: value })}
+          onChange={(value) =>
+            state.updateBlockStyle(block.id, { textColor: value })
+          }
         />
       </div>
 

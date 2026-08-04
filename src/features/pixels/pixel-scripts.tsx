@@ -62,7 +62,11 @@ ${
       ))}
 
       {gtm.map((p) => (
-        <Script key={`gtm-${p.pixelId}`} id={`gtm-${p.pixelId}`} strategy="afterInteractive">
+        <Script
+          key={`gtm-${p.pixelId}`}
+          id={`gtm-${p.pixelId}`}
+          strategy="afterInteractive"
+        >
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -79,7 +83,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         />
       ))}
       {[...ga4, ...googleAds].map((p) => (
-        <Script key={`gtag-${p.pixelId}`} id={`gtag-${p.pixelId}`} strategy="afterInteractive">
+        <Script
+          key={`gtag-${p.pixelId}`}
+          id={`gtag-${p.pixelId}`}
+          strategy="afterInteractive"
+        >
           {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
 gtag('js',new Date());gtag('config','${p.pixelId}');
 ${
@@ -91,7 +99,11 @@ ${
       ))}
 
       {tiktok.map((p) => (
-        <Script key={`tt-${p.pixelId}`} id={`tiktok-${p.pixelId}`} strategy="afterInteractive">
+        <Script
+          key={`tt-${p.pixelId}`}
+          id={`tiktok-${p.pixelId}`}
+          strategy="afterInteractive"
+        >
           {`!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
 ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
 ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};

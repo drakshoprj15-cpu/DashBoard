@@ -49,9 +49,9 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
           <AlertDescription>
             Na app Pushcut, crie <strong>duas Notifications</strong> (ex.:{" "}
             <code className="font-mono text-xs">Venda gerada</code> e{" "}
-            <code className="font-mono text-xs">Venda aprovada</code>) para
-            cada uma poder ter som e ícone próprios. Em cada Notification,
-            abra <strong>Webhook URL</strong> e copie o endereço completo —
+            <code className="font-mono text-xs">Venda aprovada</code>) para cada
+            uma poder ter som e ícone próprios. Em cada Notification, abra{" "}
+            <strong>Webhook URL</strong> e copie o endereço completo —
             <em> não</em> é a &ldquo;Account → API key&rdquo;. Cole aqui a URL
             copiada diretamente do aplicativo Pushcut; ela será guardada de
             forma criptografada e nunca mostrada de novo por completo.
@@ -82,7 +82,9 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold">{slot.label}</h3>
                       <Badge variant={current.configured ? "success" : "muted"}>
-                        {current.configured ? "Webhook configurado" : "Sem webhook"}
+                        {current.configured
+                          ? "Webhook configurado"
+                          : "Sem webhook"}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground mt-1 text-xs">
@@ -110,9 +112,9 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
                       }
                     />
                     <p className="text-muted-foreground text-xs">
-                      Cole aqui a URL copiada diretamente do aplicativo
-                      Pushcut. É guardada de forma criptografada — nunca é
-                      devolvida ao navegador depois de salva.
+                      Cole aqui a URL copiada diretamente do aplicativo Pushcut.
+                      É guardada de forma criptografada — nunca é devolvida ao
+                      navegador depois de salva.
                     </p>
                     {current.configured && current.maskedUrl && (
                       <p className="font-mono text-xs">{current.maskedUrl}</p>

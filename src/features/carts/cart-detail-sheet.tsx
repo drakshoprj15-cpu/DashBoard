@@ -48,7 +48,13 @@ async function copyToClipboard(value: string, label: string) {
   }
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <p className="text-muted-foreground text-xs">{label}</p>
@@ -62,7 +68,10 @@ export interface CartDetailSheetProps {
   onClose: () => void;
   onSendReminder: (orderId: string) => void;
   onOpenWhatsApp: (orderId: string) => void;
-  onMarkStatus: (orderId: string, mark: "recovered" | "refused" | "pending") => void;
+  onMarkStatus: (
+    orderId: string,
+    mark: "recovered" | "refused" | "pending",
+  ) => void;
   onArchive: (orderId: string, archived: boolean) => void;
   onSync: (orderId: string) => void;
   onCancel: (orderId: string) => void;
@@ -86,7 +95,9 @@ export function CartDetailSheet({
   refreshToken,
 }: CartDetailSheetProps) {
   const [data, setData] = React.useState<CartDetailDTO | null>(null);
-  const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = React.useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [documentRevealed, setDocumentRevealed] = React.useState(false);
 
   // Reset síncrono durante a renderização (não em efeito) sempre que o
@@ -136,7 +147,9 @@ export function CartDetailSheet({
         <SheetHeader>
           <SheetTitle>Detalhes do checkout</SheetTitle>
           <SheetDescription>
-            {data ? `Pedido ${data.order.reference}` : "Carregando informações do pedido…"}
+            {data
+              ? `Pedido ${data.order.reference}`
+              : "Carregando informações do pedido…"}
           </SheetDescription>
         </SheetHeader>
 
@@ -153,7 +166,9 @@ export function CartDetailSheet({
           {status === "error" && (
             <Alert variant="destructive">
               <AlertCircle />
-              <AlertDescription>Não foi possível carregar os detalhes deste pedido.</AlertDescription>
+              <AlertDescription>
+                Não foi possível carregar os detalhes deste pedido.
+              </AlertDescription>
             </Alert>
           )}
 
@@ -169,7 +184,12 @@ export function CartDetailSheet({
               {/* Ações rápidas de recuperação */}
               <div className="flex flex-wrap gap-2">
                 {isRecoverableCategory(data.order.category) && (
-                  <Button type="button" size="sm" variant="outline" onClick={() => onSendReminder(data.order.id)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onSendReminder(data.order.id)}
+                  >
                     <Mail /> Enviar lembrete
                   </Button>
                 )}
@@ -189,32 +209,40 @@ export function CartDetailSheet({
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(data.order.checkoutUrl!, "Link do checkout")}
+                    onClick={() =>
+                      copyToClipboard(
+                        data.order.checkoutUrl!,
+                        "Link do checkout",
+                      )
+                    }
                   >
                     <Link2 /> Copiar link
                   </Button>
                 )}
-                {data.order.category !== "paid" && data.order.category !== "recovered" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onMarkStatus(data.order.id, "recovered")}
-                  >
-                    <CheckCircle2 /> Marcar como convertido
-                  </Button>
-                )}
-                {isRecoverableCategory(data.order.category) && data.order.category !== "declined" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onMarkStatus(data.order.id, "refused")}
-                  >
-                    Marcar como recusado
-                  </Button>
-                )}
-                {(data.order.category === "awaiting_payment" || data.order.category === "abandoned") && (
+                {data.order.category !== "paid" &&
+                  data.order.category !== "recovered" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onMarkStatus(data.order.id, "recovered")}
+                    >
+                      <CheckCircle2 /> Marcar como convertido
+                    </Button>
+                  )}
+                {isRecoverableCategory(data.order.category) &&
+                  data.order.category !== "declined" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onMarkStatus(data.order.id, "refused")}
+                    >
+                      Marcar como recusado
+                    </Button>
+                  )}
+                {(data.order.category === "awaiting_payment" ||
+                  data.order.category === "abandoned") && (
                   <Button
                     type="button"
                     size="sm"
@@ -228,9 +256,12 @@ export function CartDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => onArchive(data.order.id, !data.order.archivedAt)}
+                  onClick={() =>
+                    onArchive(data.order.id, !data.order.archivedAt)
+                  }
                 >
-                  <Archive /> {data.order.archivedAt ? "Desarquivar" : "Arquivar"}
+                  <Archive />{" "}
+                  {data.order.archivedAt ? "Desarquivar" : "Arquivar"}
                 </Button>
                 {data.payments.some((p) => p.externalId) && (
                   <Button
@@ -240,7 +271,10 @@ export function CartDetailSheet({
                     disabled={syncing}
                     onClick={() => onSync(data.order.id)}
                   >
-                    <RefreshCw className={syncing ? "animate-spin" : undefined} /> Sincronizar status
+                    <RefreshCw
+                      className={syncing ? "animate-spin" : undefined}
+                    />{" "}
+                    Sincronizar status
                   </Button>
                 )}
                 {CANCELLABLE.has(data.order.category) && (
@@ -259,9 +293,11 @@ export function CartDetailSheet({
               {data.order.lastReminderSentAt && (
                 <p className="text-muted-foreground text-xs">
                   Último lembrete por{" "}
-                  {data.order.lastReminderChannel === "whatsapp" ? "WhatsApp" : "e-mail"} em{" "}
-                  {formatDateTime(data.order.lastReminderSentAt, "pt-PT")} · {data.order.reminderCount}{" "}
-                  no total.
+                  {data.order.lastReminderChannel === "whatsapp"
+                    ? "WhatsApp"
+                    : "e-mail"}{" "}
+                  em {formatDateTime(data.order.lastReminderSentAt, "pt-PT")} ·{" "}
+                  {data.order.reminderCount} no total.
                 </p>
               )}
 
@@ -279,7 +315,9 @@ export function CartDetailSheet({
                         {data.customer.email}
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(data.customer!.email, "E-mail")}
+                          onClick={() =>
+                            copyToClipboard(data.customer!.email, "E-mail")
+                          }
                           className="text-muted-foreground hover:text-foreground"
                           aria-label="Copiar e-mail"
                         >
@@ -293,7 +331,9 @@ export function CartDetailSheet({
                           {data.customer.phone}
                           <button
                             type="button"
-                            onClick={() => copyToClipboard(data.customer!.phone!, "Telefone")}
+                            onClick={() =>
+                              copyToClipboard(data.customer!.phone!, "Telefone")
+                            }
                             className="text-muted-foreground hover:text-foreground"
                             aria-label="Copiar telefone"
                           >
@@ -318,18 +358,33 @@ export function CartDetailSheet({
                     <Field label="CPF/documento">
                       {data.customer.document ? (
                         <span className="flex items-center gap-1.5 font-mono">
-                          {documentRevealed ? data.customer.document : maskDocument(data.customer.document)}
+                          {documentRevealed
+                            ? data.customer.document
+                            : maskDocument(data.customer.document)}
                           <button
                             type="button"
                             onClick={() => setDocumentRevealed((v) => !v)}
                             className="text-muted-foreground hover:text-foreground"
-                            aria-label={documentRevealed ? "Ocultar documento" : "Revelar documento"}
+                            aria-label={
+                              documentRevealed
+                                ? "Ocultar documento"
+                                : "Revelar documento"
+                            }
                           >
-                            {documentRevealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                            {documentRevealed ? (
+                              <EyeOff className="size-3.5" />
+                            ) : (
+                              <Eye className="size-3.5" />
+                            )}
                           </button>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard(data.customer!.document!, "Documento")}
+                            onClick={() =>
+                              copyToClipboard(
+                                data.customer!.document!,
+                                "Documento",
+                              )
+                            }
                             className="text-muted-foreground hover:text-foreground"
                             aria-label="Copiar documento"
                           >
@@ -341,13 +396,21 @@ export function CartDetailSheet({
                       )}
                     </Field>
                     <Field label="Comunicações">
-                      <Badge variant={data.customer.marketingOptOut ? "muted" : "success"}>
-                        {data.customer.marketingOptOut ? "Descadastrado" : "Autorizadas"}
+                      <Badge
+                        variant={
+                          data.customer.marketingOptOut ? "muted" : "success"
+                        }
+                      >
+                        {data.customer.marketingOptOut
+                          ? "Descadastrado"
+                          : "Autorizadas"}
                       </Badge>
                     </Field>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-sm">Nenhum cliente associado a este pedido.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Nenhum cliente associado a este pedido.
+                  </p>
                 )}
               </section>
 
@@ -359,7 +422,9 @@ export function CartDetailSheet({
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Referência">{data.order.reference}</Field>
                   <Field label="Origem">
-                    {data.order.origin === "import" ? "Importado de planilha" : (data.order.origin ?? "—")}
+                    {data.order.origin === "import"
+                      ? "Importado de planilha"
+                      : (data.order.origin ?? "—")}
                   </Field>
                   {data.order.checkoutUrl && (
                     <Field label="Link do checkout">
@@ -384,10 +449,18 @@ export function CartDetailSheet({
                   )}
                   <Field label="Produto(s)">
                     {data.items.map((i, index) => (
-                      <span key={`${i.productName}-${i.sku ?? index}`} className="block">
+                      <span
+                        key={`${i.productName}-${i.sku ?? index}`}
+                        className="block"
+                      >
                         {i.productName}
-                        {i.variantName ? ` — ${i.variantName}` : ""} ×{i.quantity} —{" "}
-                        {formatMoney(i.totalCents, data.order.currency, "pt-PT")}
+                        {i.variantName ? ` — ${i.variantName}` : ""} ×
+                        {i.quantity} —{" "}
+                        {formatMoney(
+                          i.totalCents,
+                          data.order.currency,
+                          "pt-PT",
+                        )}
                         {i.sku ? (
                           <span className="text-muted-foreground block font-mono text-[11px]">
                             SKU {i.sku}
@@ -396,13 +469,25 @@ export function CartDetailSheet({
                       </span>
                     ))}
                   </Field>
-                  <Field label="Total">{formatMoney(data.order.totalCents, data.order.currency, "pt-PT")}</Field>
+                  <Field label="Total">
+                    {formatMoney(
+                      data.order.totalCents,
+                      data.order.currency,
+                      "pt-PT",
+                    )}
+                  </Field>
                   <Field label="Envio">
                     {data.order.shippingCents > 0
-                      ? formatMoney(data.order.shippingCents, data.order.currency, "pt-PT")
+                      ? formatMoney(
+                          data.order.shippingCents,
+                          data.order.currency,
+                          "pt-PT",
+                        )
                       : "Grátis"}
                   </Field>
-                  <Field label="Criado em">{formatDateTime(data.order.createdAt, "pt-PT")}</Field>
+                  <Field label="Criado em">
+                    {formatDateTime(data.order.createdAt, "pt-PT")}
+                  </Field>
                 </div>
               </section>
 
@@ -412,21 +497,37 @@ export function CartDetailSheet({
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold">Pagamento</h3>
                 {data.payments.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">Nenhum pagamento criado ainda.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Nenhum pagamento criado ainda.
+                  </p>
                 ) : (
                   data.payments.map((p) => (
-                    <div key={p.id} className="grid grid-cols-2 gap-3 rounded-lg border p-3">
-                      <Field label="Forma">{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</Field>
+                    <div
+                      key={p.id}
+                      className="grid grid-cols-2 gap-3 rounded-lg border p-3"
+                    >
+                      <Field label="Forma">
+                        {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                      </Field>
                       <Field label="Gateway">{p.gateway ?? "—"}</Field>
-                      <Field label="Status (interno)">{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</Field>
-                      <Field label="Status original do gateway">{p.status}</Field>
+                      <Field label="Status (interno)">
+                        {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
+                      </Field>
+                      <Field label="Status original do gateway">
+                        {p.status}
+                      </Field>
                       <Field label="ID da transação">
                         {p.externalId ? (
                           <span className="flex items-center gap-1.5 font-mono text-xs">
                             {p.externalId}
                             <button
                               type="button"
-                              onClick={() => copyToClipboard(p.externalId!, "ID da transação")}
+                              onClick={() =>
+                                copyToClipboard(
+                                  p.externalId!,
+                                  "ID da transação",
+                                )
+                              }
                               className="text-muted-foreground hover:text-foreground"
                               aria-label="Copiar ID da transação"
                             >
@@ -438,14 +539,20 @@ export function CartDetailSheet({
                         )}
                       </Field>
                       <Field label="Aprovado em">
-                        {p.approvedAt ? formatDateTime(p.approvedAt, "pt-PT") : "—"}
+                        {p.approvedAt
+                          ? formatDateTime(p.approvedAt, "pt-PT")
+                          : "—"}
                       </Field>
                       {p.cardBrand && p.cardLast4 && (
                         <Field label="Cartão">
                           {p.cardBrand} •••• {p.cardLast4}
                         </Field>
                       )}
-                      {p.failureReason && <Field label="Motivo da recusa">{p.failureReason}</Field>}
+                      {p.failureReason && (
+                        <Field label="Motivo da recusa">
+                          {p.failureReason}
+                        </Field>
+                      )}
                     </div>
                   ))
                 )}
@@ -455,15 +562,27 @@ export function CartDetailSheet({
                 <>
                   <Separator />
                   <section className="space-y-2">
-                    <h3 className="text-sm font-semibold">Reembolsos e chargebacks</h3>
+                    <h3 className="text-sm font-semibold">
+                      Reembolsos e chargebacks
+                    </h3>
                     {data.refunds.map((r) => (
                       <p key={r.id} className="text-sm">
-                        Reembolso {r.status} — {formatMoney(r.amountCents, data.order.currency, "pt-PT")}
+                        Reembolso {r.status} —{" "}
+                        {formatMoney(
+                          r.amountCents,
+                          data.order.currency,
+                          "pt-PT",
+                        )}
                       </p>
                     ))}
                     {data.chargebacks.map((c) => (
                       <p key={c.id} className="text-sm">
-                        Chargeback {c.status} — {formatMoney(c.amountCents, data.order.currency, "pt-PT")}
+                        Chargeback {c.status} —{" "}
+                        {formatMoney(
+                          c.amountCents,
+                          data.order.currency,
+                          "pt-PT",
+                        )}
                       </p>
                     ))}
                   </section>
@@ -480,8 +599,14 @@ export function CartDetailSheet({
                     <li key={e.key} className="relative">
                       <span className="bg-primary absolute top-1.5 -left-[21px] size-2 rounded-full" />
                       <p className="text-sm font-medium">{e.label}</p>
-                      {e.detail && <p className="text-muted-foreground text-xs">{e.detail}</p>}
-                      <p className="text-muted-foreground text-xs">{formatDateTime(e.at, "pt-PT")}</p>
+                      {e.detail && (
+                        <p className="text-muted-foreground text-xs">
+                          {e.detail}
+                        </p>
+                      )}
+                      <p className="text-muted-foreground text-xs">
+                        {formatDateTime(e.at, "pt-PT")}
+                      </p>
                     </li>
                   ))}
                 </ol>

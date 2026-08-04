@@ -6,7 +6,11 @@ import { getSession } from "@/lib/auth/session";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { customers, orderItems, orders, payments } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
-import { CATEGORY_LABEL, PAYMENT_METHOD_LABEL, resolveCartCategory } from "@/features/carts/status";
+import {
+  CATEGORY_LABEL,
+  PAYMENT_METHOD_LABEL,
+  resolveCartCategory,
+} from "@/features/carts/status";
 import { listCarts } from "@/features/carts/queries";
 import { parseCartFilters } from "@/app/api/carrinhos/filters";
 import { maskDocument } from "@/lib/mask";
@@ -118,20 +122,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
-  if (!parsed.success || (!parsed.data.orderIds && parsed.data.filters === undefined)) {
+  if (
+    !parsed.success ||
+    (!parsed.data.orderIds && parsed.data.filters === undefined)
+  ) {
     return NextResponse.json({ error: "validation_error" }, { status: 400 });
   }
 
   // Export por filtro: reaproveita `listCarts`, que já monta produto,
   // pagamento e categoria de cada linha — nenhuma lógica duplicada aqui.
   if (!parsed.data.orderIds) {
-    const filters = parseCartFilters(new URLSearchParams(parsed.data.filters ?? ""));
-    const list = await listCarts({ ...filters, page: 1, pageSize: MAX_FILTERED_EXPORT });
+    const filters = parseCartFilters(
+      new URLSearchParams(parsed.data.filters ?? ""),
+    );
+    const list = await listCarts({
+      ...filters,
+      page: 1,
+      pageSize: MAX_FILTERED_EXPORT,
+    });
 
     const rows: ExportRow[] = list.rows.map((r) => ({
       reference: r.reference,
@@ -144,9 +160,13 @@ export async function POST(request: Request) {
       totalCents: r.totalCents,
       currency: r.currency,
       status: CATEGORY_LABEL[r.category],
-      method: r.paymentMethod ? (PAYMENT_METHOD_LABEL[r.paymentMethod] ?? r.paymentMethod) : "",
+      method: r.paymentMethod
+        ? (PAYMENT_METHOD_LABEL[r.paymentMethod] ?? r.paymentMethod)
+        : "",
       checkoutUrl: r.checkoutUrl ?? "",
-      lastReminderSentAt: r.lastReminderSentAt ? new Date(r.lastReminderSentAt).toISOString() : "",
+      lastReminderSentAt: r.lastReminderSentAt
+        ? new Date(r.lastReminderSentAt).toISOString()
+        : "",
       reminderCount: r.reminderCount,
       createdAt: new Date(r.createdAt).toISOString(),
       updatedAt: new Date(r.updatedAt).toISOString(),
@@ -186,7 +206,9 @@ export async function POST(request: Request) {
     })
     .from(orders)
     .leftJoin(customers, eq(orders.customerId, customers.id))
-    .where(and(eq(orders.workspaceId, workspaceId), inArray(orders.id, orderIds)));
+    .where(
+      and(eq(orders.workspaceId, workspaceId), inArray(orders.id, orderIds)),
+    );
 
   const matchedIds = rows.map((r) => r.id);
 
@@ -209,10 +231,16 @@ export async function POST(request: Request) {
       : Promise.resolve([]),
   ]);
 
-  const itemByOrder = new Map<string, { productName: string; quantity: number }>();
+  const itemByOrder = new Map<
+    string,
+    { productName: string; quantity: number }
+  >();
   for (const r of itemRows) {
     if (!itemByOrder.has(r.orderId)) {
-      itemByOrder.set(r.orderId, { productName: r.productName, quantity: r.quantity });
+      itemByOrder.set(r.orderId, {
+        productName: r.productName,
+        quantity: r.quantity,
+      });
     }
   }
   const methodByOrder = new Map<string, string>();
@@ -221,8 +249,13 @@ export async function POST(request: Request) {
   }
 
   const exportRows: ExportRow[] = rows.map((r) => {
-    const hoursSinceUpdate = (Date.now() - new Date(r.updatedAt).getTime()) / 3_600_000;
-    const category = resolveCartCategory(r.status, hoursSinceUpdate, r.recoveredManuallyAt);
+    const hoursSinceUpdate =
+      (Date.now() - new Date(r.updatedAt).getTime()) / 3_600_000;
+    const category = resolveCartCategory(
+      r.status,
+      hoursSinceUpdate,
+      r.recoveredManuallyAt,
+    );
     const item = itemByOrder.get(r.id);
     const method = methodByOrder.get(r.id);
 
@@ -239,7 +272,9 @@ export async function POST(request: Request) {
       status: CATEGORY_LABEL[category],
       method: method ? (PAYMENT_METHOD_LABEL[method] ?? method) : "",
       checkoutUrl: r.checkoutUrl ?? "",
-      lastReminderSentAt: r.lastReminderSentAt ? r.lastReminderSentAt.toISOString() : "",
+      lastReminderSentAt: r.lastReminderSentAt
+        ? r.lastReminderSentAt.toISOString()
+        : "",
       reminderCount: r.reminderCount,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),

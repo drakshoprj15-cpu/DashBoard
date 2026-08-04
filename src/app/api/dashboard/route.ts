@@ -20,7 +20,10 @@ export async function GET(request: Request) {
   const snapshot = await getDashboardSnapshot(period);
 
   if (!snapshot) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
 
   return NextResponse.json(snapshot);

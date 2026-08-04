@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Database, Info, XCircle, CheckCircle2 } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
-import { getCustomRecipients, getSegmentCounts } from "@/features/emails/segments";
+import {
+  getCustomRecipients,
+  getSegmentCounts,
+} from "@/features/emails/segments";
 import { isResendConfigured } from "@/features/emails/resend-provider";
 import { CampaignForm } from "@/features/emails/campaign-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,7 +15,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 export const metadata: Metadata = { title: "Emails" };
 export const dynamic = "force-dynamic";
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function EmailsPage({
   searchParams,
@@ -39,7 +43,9 @@ export default async function EmailsPage({
 
   const [counts, customRecipients] = await Promise.all([
     getSegmentCounts(),
-    customerIds.length > 0 ? getCustomRecipients(customerIds) : Promise.resolve(null),
+    customerIds.length > 0
+      ? getCustomRecipients(customerIds)
+      : Promise.resolve(null),
   ]);
   const resendReady = isResendConfigured();
 
@@ -72,8 +78,8 @@ export default async function EmailsPage({
           <AlertDescription>
             Os segmentos abaixo já são reais (vêm do seu banco de dados), mas
             para enviar é preciso criar conta em resend.com, verificar o seu
-            domínio e definir <code className="font-mono">RESEND_API_KEY</code> e{" "}
-            <code className="font-mono">RESEND_FROM_EMAIL</code> na Vercel.
+            domínio e definir <code className="font-mono">RESEND_API_KEY</code>{" "}
+            e <code className="font-mono">RESEND_FROM_EMAIL</code> na Vercel.
             Nenhum e-mail é enviado enquanto isso.
           </AlertDescription>
         </Alert>

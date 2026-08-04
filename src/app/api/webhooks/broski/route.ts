@@ -60,7 +60,10 @@ export async function POST(request: Request) {
   }
   if (!process.env.BROSKI_WEBHOOK_SECRET) {
     // Sem segredo não há como validar autenticidade — rejeitar sempre.
-    return NextResponse.json({ error: "webhook_secret_missing" }, { status: 503 });
+    return NextResponse.json(
+      { error: "webhook_secret_missing" },
+      { status: 503 },
+    );
   }
 
   const provider = createBroskiProvider({
@@ -128,7 +131,10 @@ export async function POST(request: Request) {
         // Entrega at-least-once + eventos fora de ordem: nunca rebaixa um
         // pedido já confirmado (ex.: "processing" atrasado chegando depois
         // de "approved" não pode reverter um pedido pago).
-        if (currentOrder && canTransitionOrderStatus(currentOrder.status, newOrderStatus)) {
+        if (
+          currentOrder &&
+          canTransitionOrderStatus(currentOrder.status, newOrderStatus)
+        ) {
           await db
             .update(orders)
             .set({
@@ -141,11 +147,17 @@ export async function POST(request: Request) {
           await db.insert(orderStatusHistory).values({
             workspaceId: currentOrder.workspaceId,
             orderId,
-            fromStatus: currentOrder.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
-            toStatus: newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
+            fromStatus:
+              currentOrder.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+            toStatus:
+              newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
             reason: `Webhook Broski: ${event.type}`,
             changedBy: null,
-            metadata: { source: "webhook", providerKey: "broski", eventType: event.type },
+            metadata: {
+              source: "webhook",
+              providerKey: "broski",
+              eventType: event.type,
+            },
           });
         }
       }
@@ -192,7 +204,13 @@ export async function POST(request: Request) {
           // Usa o valor bruto do pedido — o Broski não retorna a taxa cobrada
           // em nenhum ponto do fluxo, então nunca lançamos gateway_fee aqui.
           const LEDGER_ENTRY_BY_STATUS: Partial<
-            Record<string, { type: "sale" | "refund" | "chargeback"; direction: "in" | "out" }>
+            Record<
+              string,
+              {
+                type: "sale" | "refund" | "chargeback";
+                direction: "in" | "out";
+              }
+            >
           > = {
             approved: { type: "sale", direction: "in" },
             refunded: { type: "refund", direction: "out" },
@@ -347,7 +365,10 @@ export async function POST(request: Request) {
           }
         }
       } catch (error) {
-        console.error("[webhook/broski] erro nos efeitos pós-pagamento:", error);
+        console.error(
+          "[webhook/broski] erro nos efeitos pós-pagamento:",
+          error,
+        );
       }
     }
   } else if (event.type === "payout.paid") {
@@ -365,11 +386,17 @@ export async function POST(request: Request) {
       const payoutObject = raw?.data?.object ?? {};
 
       const externalId =
-        typeof payoutObject.id === "string" ? payoutObject.id : event.externalEventId;
+        typeof payoutObject.id === "string"
+          ? payoutObject.id
+          : event.externalEventId;
       const amountCents =
-        typeof payoutObject.amount === "number" ? payoutObject.amount : event.amountCents;
+        typeof payoutObject.amount === "number"
+          ? payoutObject.amount
+          : event.amountCents;
       const currency =
-        typeof payoutObject.currency === "string" ? payoutObject.currency.toUpperCase() : "EUR";
+        typeof payoutObject.currency === "string"
+          ? payoutObject.currency.toUpperCase()
+          : "EUR";
       const arrivedAtRaw =
         (payoutObject.paid_at as string | undefined) ??
         (payoutObject.arrived_at as string | undefined);

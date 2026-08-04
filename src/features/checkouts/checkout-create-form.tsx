@@ -130,7 +130,10 @@ export function CheckoutCreateForm({
             <Label>Formas de pagamento</Label>
             <div className="flex flex-wrap gap-4">
               {METHODS.map((m) => (
-                <label key={m.value} className="flex items-center gap-2 text-sm">
+                <label
+                  key={m.value}
+                  className="flex items-center gap-2 text-sm"
+                >
                   <input
                     type="checkbox"
                     name="paymentMethods"

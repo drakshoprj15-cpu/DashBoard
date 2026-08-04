@@ -78,10 +78,8 @@ export default async function NotificacoesPage() {
         <div>
           <h2 className="text-xl font-bold tracking-tight">Notificações</h2>
           <p className="text-muted-foreground text-sm">
-            {unread.length > 0
-              ? `${unread.length} por ler`
-              : "Tudo lido"}{" "}
-            · geradas automaticamente pelos eventos do gateway
+            {unread.length > 0 ? `${unread.length} por ler` : "Tudo lido"} ·
+            geradas automaticamente pelos eventos do gateway
           </p>
         </div>
         {unread.length > 0 && (
@@ -154,7 +152,10 @@ export default async function NotificacoesPage() {
             return (
               <Card
                 key={n.id}
-                className={cn("py-4", isUnread && "border-primary/40 bg-accent/20")}
+                className={cn(
+                  "py-4",
+                  isUnread && "border-primary/40 bg-accent/20",
+                )}
               >
                 <CardContent className="flex flex-wrap items-start gap-3 px-4">
                   <Icon

@@ -39,7 +39,10 @@ export async function POST(request: Request) {
 
     if (!checkRateLimit(`lead:${ip}`)) {
       return NextResponse.json(
-        { ok: false, error: "Demasiados envios. Tente novamente daqui a pouco." },
+        {
+          ok: false,
+          error: "Demasiados envios. Tente novamente daqui a pouco.",
+        },
         { status: 429 },
       );
     }

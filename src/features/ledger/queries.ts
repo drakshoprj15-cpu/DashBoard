@@ -61,7 +61,9 @@ export async function listLedgerEntries(
         eq(ledgerEntries.workspaceId, workspaceId),
         gte(ledgerEntries.occurredAt, range.start),
         lt(ledgerEntries.occurredAt, range.end),
-        direction === "all" ? undefined : eq(ledgerEntries.direction, direction),
+        direction === "all"
+          ? undefined
+          : eq(ledgerEntries.direction, direction),
       ),
     )
     .orderBy(desc(ledgerEntries.occurredAt))
@@ -74,7 +76,9 @@ export async function listLedgerEntries(
 }
 
 /** Total de entradas, saídas e saldo do período — soma agregada no servidor. */
-export async function getLedgerSummary(period: DashboardPeriod): Promise<LedgerSummary> {
+export async function getLedgerSummary(
+  period: DashboardPeriod,
+): Promise<LedgerSummary> {
   if (!isDatabaseConfigured()) {
     return { inflowCents: 0, outflowCents: 0, balanceCents: 0 };
   }

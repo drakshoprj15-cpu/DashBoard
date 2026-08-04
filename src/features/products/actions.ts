@@ -253,7 +253,9 @@ export async function updateProductCoreAction(
   }
 }
 
-function toCentsOrUndefined(raw: FormDataEntryValue | null): number | undefined {
+function toCentsOrUndefined(
+  raw: FormDataEntryValue | null,
+): number | undefined {
   if (!raw || !Number.isFinite(Number(raw))) return undefined;
   return Math.round(Number(raw) * 100);
 }

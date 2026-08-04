@@ -4,7 +4,10 @@ import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth/session";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { orders, orderStatusHistory, payments } from "@/database/schema";
-import { BroskiApiError, createBroskiProvider } from "@/payment-providers/broski";
+import {
+  BroskiApiError,
+  createBroskiProvider,
+} from "@/payment-providers/broski";
 import {
   canTransitionOrderStatus,
   ORDER_STATUS_BY_PAYMENT_STATUS,
@@ -31,11 +34,17 @@ export async function POST(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
   }
   if (!process.env.BROSKI_API_KEY) {
     return NextResponse.json(
-      { error: "gateway_not_configured", message: "Gateway de pagamento não configurado." },
+      {
+        error: "gateway_not_configured",
+        message: "Gateway de pagamento não configurado.",
+      },
       { status: 503 },
     );
   }
@@ -43,7 +52,11 @@ export async function POST(
   const { orderId } = await ctx.params;
   const db = getDb();
 
-  const [orderRow] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const [orderRow] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
   if (!orderRow) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
@@ -91,7 +104,10 @@ export async function POST(
       error instanceof BroskiApiError
         ? `O gateway recusou a consulta: ${error.message}`
         : "Não foi possível consultar o gateway agora. Tente novamente em instantes.";
-    return NextResponse.json({ error: "gateway_error", message }, { status: 502 });
+    return NextResponse.json(
+      { error: "gateway_error", message },
+      { status: 502 },
+    );
   }
 
   const now = new Date();
@@ -108,7 +124,10 @@ export async function POST(
   const newOrderStatus = ORDER_STATUS_BY_PAYMENT_STATUS[result.status];
   let orderStatusChanged = false;
 
-  if (newOrderStatus && canTransitionOrderStatus(orderRow.status, newOrderStatus)) {
+  if (
+    newOrderStatus &&
+    canTransitionOrderStatus(orderRow.status, newOrderStatus)
+  ) {
     await db
       .update(orders)
       .set({
@@ -121,8 +140,10 @@ export async function POST(
     await db.insert(orderStatusHistory).values({
       workspaceId: orderRow.workspaceId,
       orderId,
-      fromStatus: orderRow.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
-      toStatus: newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
+      fromStatus:
+        orderRow.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+      toStatus:
+        newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
       reason: "Sincronização manual com o gateway",
       changedBy: null,
       metadata: { source: "manual_sync", providerKey: "broski" },

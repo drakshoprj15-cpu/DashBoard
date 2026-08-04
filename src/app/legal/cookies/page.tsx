@@ -62,7 +62,10 @@ export default function CookiesPage() {
       <h2>Contacto</h2>
       <p>
         Dúvidas sobre esta política:{" "}
-        <a href={`mailto:${company.email}`} className="text-violet-600 underline">
+        <a
+          href={`mailto:${company.email}`}
+          className="text-violet-600 underline"
+        >
           {company.email}
         </a>
       </p>

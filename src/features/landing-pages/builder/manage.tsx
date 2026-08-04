@@ -152,7 +152,12 @@ export function ProductPanel({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="settings-name">Nome de controlo interno</Label>
-              <Input id="settings-name" name="name" defaultValue={page.name} required />
+              <Input
+                id="settings-name"
+                name="name"
+                defaultValue={page.name}
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="settings-public-name">Nome público</Label>
@@ -206,7 +211,9 @@ export function ProductPanel({
 
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <div>
-              <Label htmlFor="settings-sync">Manter sincronizado com o catálogo</Label>
+              <Label htmlFor="settings-sync">
+                Manter sincronizado com o catálogo
+              </Label>
               <p className="text-muted-foreground text-xs">
                 Ligado, alterar preço ou fotos no catálogo atualiza a página no
                 ar sem republicar. Desligado, a página usa a cópia congelada.
@@ -231,8 +238,14 @@ export function ProductPanel({
                   label="Preço"
                   value={`${(page.product.priceCents / 100).toFixed(2)} ${page.product.currency}`}
                 />
-                <Detail label="Imagens" value={String(page.product.gallery.length)} />
-                <Detail label="Variações" value={String(page.product.variants.length)} />
+                <Detail
+                  label="Imagens"
+                  value={String(page.product.gallery.length)}
+                />
+                <Detail
+                  label="Variações"
+                  value={String(page.product.variants.length)}
+                />
                 <Detail
                   label="Estoque"
                   value={
@@ -279,14 +292,18 @@ export function ProductPanel({
                         <span className="font-medium">{variant.name}</span>
                         <span className="text-muted-foreground">
                           {(
-                            (variant.priceCents ?? page.product!.priceCents) / 100
+                            (variant.priceCents ?? page.product!.priceCents) /
+                            100
                           ).toFixed(2)}{" "}
                           {page.product!.currency}
                         </span>
                         {variant.isDefault ? (
-                          <span className="text-primary font-semibold">padrão</span>
+                          <span className="text-primary font-semibold">
+                            padrão
+                          </span>
                         ) : null}
-                        {variant.trackInventory && variant.stockQuantity <= 0 ? (
+                        {variant.trackInventory &&
+                        variant.stockQuantity <= 0 ? (
                           <span className="text-destructive font-semibold">
                             esgotada
                           </span>
@@ -445,12 +462,12 @@ export function PublishPanel({
     FormData
   >(publishLandingPageAction, null);
   const [scheduled, setScheduled] = React.useState("");
-  const [previewToken, setPreviewToken] = React.useState(page.previewToken ?? "");
+  const [previewToken, setPreviewToken] = React.useState(
+    page.previewToken ?? "",
+  );
 
   const publicUrl = `${appUrl}/lp/${page.slug}`;
-  const previewUrl = previewToken
-    ? `${publicUrl}?preview=${previewToken}`
-    : "";
+  const previewUrl = previewToken ? `${publicUrl}?preview=${previewToken}` : "";
 
   const issues = React.useMemo(
     () =>
@@ -473,7 +490,9 @@ export function PublishPanel({
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={page.status} />
           {page.publishedVersion ? (
-            <Badge variant="secondary">Versão {page.publishedVersion} no ar</Badge>
+            <Badge variant="secondary">
+              Versão {page.publishedVersion} no ar
+            </Badge>
           ) : null}
           {page.hasUnpublishedChanges && page.publishedVersion ? (
             <Badge variant="warning">Há alterações por publicar</Badge>
@@ -568,7 +587,11 @@ export function PublishPanel({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" loading={pending} disabled={issues.length > 0}>
+            <Button
+              type="submit"
+              loading={pending}
+              disabled={issues.length > 0}
+            >
               <Rocket />
               {page.publishedVersion ? "Republicar" : "Publicar página"}
             </Button>
@@ -608,7 +631,9 @@ export function PublishPanel({
             formData.set("id", page.id);
             const rotated = await rotatePreviewTokenAction(formData);
             if (rotated.ok) {
-              toast.success("Novo link gerado. O anterior deixou de funcionar.");
+              toast.success(
+                "Novo link gerado. O anterior deixou de funcionar.",
+              );
               router.refresh();
               setPreviewToken("");
             } else {
@@ -775,7 +800,9 @@ export function HistoryPanel({
   versions: LandingVersionRow[];
 }) {
   const router = useRouter();
-  const [pendingVersion, setPendingVersion] = React.useState<number | null>(null);
+  const [pendingVersion, setPendingVersion] = React.useState<number | null>(
+    null,
+  );
 
   if (versions.length === 0) {
     return (
@@ -833,13 +860,16 @@ export function HistoryPanel({
                       const formData = new FormData();
                       formData.set("id", page.id);
                       formData.set("version", String(version.version));
-                      const result = await restoreLandingVersionAction(formData);
+                      const result =
+                        await restoreLandingVersionAction(formData);
                       setPendingVersion(null);
                       if (result.ok) {
                         toast.success(result.message ?? "Versão restaurada.");
                         router.refresh();
                       } else {
-                        toast.error(result.error ?? "Não foi possível restaurar.");
+                        toast.error(
+                          result.error ?? "Não foi possível restaurar.",
+                        );
                       }
                     }}
                   >
@@ -908,7 +938,10 @@ export function MetricsPanel({
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-border"
+                />
                 <XAxis dataKey="day" fontSize={11} tickLine={false} />
                 <YAxis fontSize={11} tickLine={false} allowDecimals={false} />
                 <RechartsTooltip />

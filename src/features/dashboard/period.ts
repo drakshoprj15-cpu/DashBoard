@@ -102,8 +102,12 @@ export function resolvePeriodRange(
   }
 }
 
-export function isDashboardPeriod(value: string | null): value is DashboardPeriod {
-  return value === "today" || value === "7d" || value === "30d" || value === "90d";
+export function isDashboardPeriod(
+  value: string | null,
+): value is DashboardPeriod {
+  return (
+    value === "today" || value === "7d" || value === "30d" || value === "90d"
+  );
 }
 
 /**
@@ -111,7 +115,10 @@ export function isDashboardPeriod(value: string | null): value is DashboardPerio
  * Retorna `null` quando não há base de comparação (período anterior zerado)
  * — nunca Infinity/NaN, e nunca inventa uma tendência sem base real.
  */
-export function percentChange(current: number, previous: number): number | null {
+export function percentChange(
+  current: number,
+  previous: number,
+): number | null {
   if (previous === 0) return current === 0 ? 0 : null;
   return (current - previous) / previous;
 }

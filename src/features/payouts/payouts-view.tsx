@@ -25,8 +25,14 @@ export function PayoutsView({ payouts, summary }: PayoutsViewProps) {
   const currency = payouts[0]?.currency ?? "EUR";
 
   const cards = [
-    { label: "Já repassado", value: formatMoney(summary.paidCents, currency, "pt-PT") },
-    { label: "A receber", value: formatMoney(summary.upcomingCents, currency, "pt-PT") },
+    {
+      label: "Já repassado",
+      value: formatMoney(summary.paidCents, currency, "pt-PT"),
+    },
+    {
+      label: "A receber",
+      value: formatMoney(summary.upcomingCents, currency, "pt-PT"),
+    },
     {
       label: "Próximo repasse",
       value: summary.nextPayout
@@ -44,9 +50,9 @@ export function PayoutsView({ payouts, summary }: PayoutsViewProps) {
         <Info />
         <AlertTitle>Como funciona</AlertTitle>
         <AlertDescription>
-          Os repasses chegam automaticamente do gateway (Broski) via webhook — não há lançamento
-          manual aqui. Enquanto nenhum repasse real for confirmado pelo gateway, esta página fica
-          vazia.
+          Os repasses chegam automaticamente do gateway (Broski) via webhook —
+          não há lançamento manual aqui. Enquanto nenhum repasse real for
+          confirmado pelo gateway, esta página fica vazia.
         </AlertDescription>
       </Alert>
 
@@ -58,14 +64,18 @@ export function PayoutsView({ payouts, summary }: PayoutsViewProps) {
             </CardHeader>
             <CardContent className="px-4">
               <p className="text-xl font-bold tracking-tight">{c.value}</p>
-              {c.hint && <p className="text-muted-foreground mt-1 text-xs">{c.hint}</p>}
+              {c.hint && (
+                <p className="text-muted-foreground mt-1 text-xs">{c.hint}</p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
       <Card>
-        <CardContent className={payouts.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"}>
+        <CardContent
+          className={payouts.length === 0 ? "" : "p-0 pt-4 sm:p-6 sm:pt-6"}
+        >
           {payouts.length === 0 ? (
             <EmptyState
               icon={Banknote}
@@ -78,7 +88,10 @@ export function PayoutsView({ payouts, summary }: PayoutsViewProps) {
               <table className="w-full border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground border-b text-left text-xs">
-                    <th scope="col" className="pr-3 pb-2.5 text-right font-medium">
+                    <th
+                      scope="col"
+                      className="pr-3 pb-2.5 text-right font-medium"
+                    >
                       Valor
                     </th>
                     <th scope="col" className="pr-3 pb-2.5 font-medium">
@@ -97,7 +110,10 @@ export function PayoutsView({ payouts, summary }: PayoutsViewProps) {
                 </thead>
                 <tbody>
                   {payouts.map((p) => (
-                    <tr key={p.id} className="hover:bg-muted/40 border-b transition-colors last:border-0">
+                    <tr
+                      key={p.id}
+                      className="hover:bg-muted/40 border-b transition-colors last:border-0"
+                    >
                       <td className="py-3 pr-3 text-right font-semibold whitespace-nowrap">
                         {formatMoney(p.amountCents, p.currency, "pt-PT")}
                       </td>
@@ -109,14 +125,20 @@ export function PayoutsView({ payouts, summary }: PayoutsViewProps) {
                           {PAYOUT_STATUS_LABEL[p.status]}
                         </Badge>
                         {p.status === "failed" && p.failureReason && (
-                          <p className="text-destructive mt-1 text-xs">{p.failureReason}</p>
+                          <p className="text-destructive mt-1 text-xs">
+                            {p.failureReason}
+                          </p>
                         )}
                       </td>
                       <td className="text-muted-foreground py-3 pr-3 text-xs whitespace-nowrap">
-                        {p.expectedArrivalAt ? formatDateTime(p.expectedArrivalAt, "pt-PT") : "—"}
+                        {p.expectedArrivalAt
+                          ? formatDateTime(p.expectedArrivalAt, "pt-PT")
+                          : "—"}
                       </td>
                       <td className="text-muted-foreground py-3 text-xs whitespace-nowrap">
-                        {p.arrivedAt ? formatDateTime(p.arrivedAt, "pt-PT") : "—"}
+                        {p.arrivedAt
+                          ? formatDateTime(p.arrivedAt, "pt-PT")
+                          : "—"}
                       </td>
                     </tr>
                   ))}

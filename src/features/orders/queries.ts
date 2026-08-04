@@ -83,9 +83,8 @@ export async function listOrders(limit = 100): Promise<OrderRow[]> {
       currency: r.currency,
       createdAt: r.createdAt,
       paidAt: r.paidAt,
-      customerName: [r.customerName, r.customerLastName]
-        .filter(Boolean)
-        .join(" ") || null,
+      customerName:
+        [r.customerName, r.customerLastName].filter(Boolean).join(" ") || null,
       customerEmail: r.customerEmail,
       productName: r.productName,
       variantName: r.variantName,

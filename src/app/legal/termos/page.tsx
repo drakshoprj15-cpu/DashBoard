@@ -21,7 +21,10 @@ export default function TermosPage() {
       </p>
       <p>
         Contacto de apoio ao cliente:{" "}
-        <a href={`mailto:${company.email}`} className="text-violet-600 underline">
+        <a
+          href={`mailto:${company.email}`}
+          className="text-violet-600 underline"
+        >
           {company.email}
         </a>
         {company.phone ? ` · ${company.phone}` : ""}
@@ -97,9 +100,9 @@ export default function TermosPage() {
 
       <h2>9. Lei aplicável</h2>
       <p>
-        Estes termos regem-se pela lei portuguesa. Para a resolução de
-        quaisquer litígios é competente o foro da comarca da sede do vendedor,
-        sem prejuízo dos direitos do consumidor.
+        Estes termos regem-se pela lei portuguesa. Para a resolução de quaisquer
+        litígios é competente o foro da comarca da sede do vendedor, sem
+        prejuízo dos direitos do consumidor.
       </p>
     </>
   );

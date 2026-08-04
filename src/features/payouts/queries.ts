@@ -74,13 +74,20 @@ export async function getPayoutsSummary(): Promise<PayoutsSummary> {
       expectedArrivalAt: payouts.expectedArrivalAt,
     })
     .from(payouts)
-    .where(and(eq(payouts.workspaceId, workspaceId), eq(payouts.status, "upcoming")))
+    .where(
+      and(eq(payouts.workspaceId, workspaceId), eq(payouts.status, "upcoming")),
+    )
     .orderBy(asc(payouts.expectedArrivalAt))
     .limit(1);
 
   return {
     paidCents: totals?.paidCents ?? 0,
     upcomingCents: totals?.upcomingCents ?? 0,
-    nextPayout: next ? { amountCents: Number(next.amountCents), expectedArrivalAt: next.expectedArrivalAt } : null,
+    nextPayout: next
+      ? {
+          amountCents: Number(next.amountCents),
+          expectedArrivalAt: next.expectedArrivalAt,
+        }
+      : null,
   };
 }

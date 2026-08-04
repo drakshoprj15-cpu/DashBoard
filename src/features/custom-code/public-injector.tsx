@@ -18,7 +18,11 @@ import { ConsentGate } from "@/features/consent/consent-gate";
  * visíveis, mas uma `<meta>` colada aqui não tem o mesmo efeito que teria
  * dentro do `<head>` real.
  */
-export async function ProductCustomCodeTop({ productId }: { productId: string }) {
+export async function ProductCustomCodeTop({
+  productId,
+}: {
+  productId: string;
+}) {
   const code = await getActiveCustomCodeForPublic(productId);
   if (!code) return null;
 
@@ -46,7 +50,10 @@ export async function ProductCustomCodeTop({ productId }: { productId: string })
 
       {code.metaPixelEnabled && code.metaPixelId && (
         <ConsentGate>
-          <Script id={`product-meta-pixel-${productId}`} strategy="afterInteractive">
+          <Script
+            id={`product-meta-pixel-${productId}`}
+            strategy="afterInteractive"
+          >
             {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
 n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
@@ -69,7 +76,10 @@ fbq('track','PageView');`}
       )}
 
       {code.customJavaScript && (
-        <Script id={`product-custom-js-${productId}`} strategy="afterInteractive">
+        <Script
+          id={`product-custom-js-${productId}`}
+          strategy="afterInteractive"
+        >
           {code.customJavaScript}
         </Script>
       )}

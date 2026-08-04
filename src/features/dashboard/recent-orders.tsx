@@ -73,7 +73,10 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
                 <td className="max-w-[180px] truncate py-3 pr-3">
                   {o.productName ?? "—"}
                   {o.quantity && o.quantity > 1 && (
-                    <span className="text-muted-foreground"> ×{o.quantity}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ×{o.quantity}
+                    </span>
                   )}
                 </td>
                 <td className="py-3 pr-3 text-right font-medium whitespace-nowrap">
@@ -98,7 +101,10 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
         </table>
       </div>
       <div className="flex justify-end">
-        <Link href="/pedidos" className="text-primary text-xs font-medium hover:underline">
+        <Link
+          href="/pedidos"
+          className="text-primary text-xs font-medium hover:underline"
+        >
           Ver todos os pedidos
         </Link>
       </div>

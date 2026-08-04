@@ -11,13 +11,17 @@ export const createWebhookEndpointSchema = z.object({
   isActive: z.coerce.boolean().default(true),
 });
 
-export type CreateWebhookEndpointInput = z.infer<typeof createWebhookEndpointSchema>;
+export type CreateWebhookEndpointInput = z.infer<
+  typeof createWebhookEndpointSchema
+>;
 
 export const updateWebhookEndpointSchema = createWebhookEndpointSchema.extend({
   id: z.string().uuid("Webhook inválido"),
 });
 
-export type UpdateWebhookEndpointInput = z.infer<typeof updateWebhookEndpointSchema>;
+export type UpdateWebhookEndpointInput = z.infer<
+  typeof updateWebhookEndpointSchema
+>;
 
 export const sendTestWebhookSchema = z.object({
   id: z.string().uuid("Webhook inválido"),

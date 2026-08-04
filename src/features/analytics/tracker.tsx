@@ -78,7 +78,12 @@ interface TrackerProps {
  * Rastreador das páginas públicas: regista a visita, mantém a sessão viva
  * enquanto a aba está aberta e alimenta o Live View.
  */
-export function Tracker({ event, productSlug, valueCents, currency }: TrackerProps) {
+export function Tracker({
+  event,
+  productSlug,
+  valueCents,
+  currency,
+}: TrackerProps) {
   React.useEffect(() => {
     const extra = { productSlug, valueCents, currency };
     sendTrack("page_view", extra);

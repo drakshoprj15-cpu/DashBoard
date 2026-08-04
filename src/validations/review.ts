@@ -4,8 +4,17 @@ export const reviewSchema = z.object({
   productId: z.string().uuid("Escolha o produto"),
   authorName: z.string().trim().min(2, "Informe o nome de quem avaliou"),
   location: z.string().trim().optional().or(z.literal("")),
-  rating: z.coerce.number().int().min(1, "Nota de 1 a 5").max(5, "Nota de 1 a 5"),
-  title: z.string().trim().max(80, "Título muito longo").optional().or(z.literal("")),
+  rating: z.coerce
+    .number()
+    .int()
+    .min(1, "Nota de 1 a 5")
+    .max(5, "Nota de 1 a 5"),
+  title: z
+    .string()
+    .trim()
+    .max(80, "Título muito longo")
+    .optional()
+    .or(z.literal("")),
   body: z.string().trim().min(10, "Escreva ao menos uma frase"),
   photoUrl: z
     .string()

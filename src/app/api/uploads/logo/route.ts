@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { isDatabaseConfigured } from "@/database/client";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
 const BUCKET = "logos";
@@ -55,7 +58,10 @@ export async function POST(request: Request) {
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Nenhum arquivo enviado." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Nenhum arquivo enviado." },
+      { status: 400 },
+    );
   }
 
   const extension = ALLOWED_TYPES[file.type];

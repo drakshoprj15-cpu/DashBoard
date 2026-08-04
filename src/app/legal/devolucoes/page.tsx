@@ -19,7 +19,10 @@ export default function DevolucoesPage() {
       <ul>
         <li>
           Envie um e-mail para{" "}
-          <a href={`mailto:${company.email}`} className="text-violet-600 underline">
+          <a
+            href={`mailto:${company.email}`}
+            className="text-violet-600 underline"
+          >
             {company.email}
           </a>{" "}
           indicando a referência da encomenda.

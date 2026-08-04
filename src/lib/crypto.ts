@@ -1,4 +1,9 @@
-import { createCipheriv, createDecipheriv, randomBytes, createHash } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  createHash,
+} from "node:crypto";
 
 /**
  * Criptografia simétrica (AES-256-GCM) para credenciais de integrações.
@@ -28,9 +33,11 @@ export function encryptSecret(plain: string): string {
     cipher.final(),
   ]);
   const tag = cipher.getAuthTag();
-  return [iv.toString("base64"), tag.toString("base64"), encrypted.toString("base64")].join(
-    ".",
-  );
+  return [
+    iv.toString("base64"),
+    tag.toString("base64"),
+    encrypted.toString("base64"),
+  ].join(".");
 }
 
 export function decryptSecret(payload: string): string {

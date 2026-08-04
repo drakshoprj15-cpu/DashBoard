@@ -36,7 +36,10 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    return NextResponse.json({ ok: recorded }, { status: recorded ? 200 : 404 });
+    return NextResponse.json(
+      { ok: recorded },
+      { status: recorded ? 200 : 404 },
+    );
   } catch (error) {
     // Rastreamento nunca pode quebrar a página do visitante.
     console.error("[lp-events] erro:", error);

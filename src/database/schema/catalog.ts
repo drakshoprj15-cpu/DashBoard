@@ -127,7 +127,9 @@ export const productReviews = pgTable(
     body: text("body").notNull(),
     photoUrl: text("photo_url"),
     helpfulCount: integer("helpful_count").default(0).notNull(),
-    isVerifiedPurchase: boolean("is_verified_purchase").default(false).notNull(),
+    isVerifiedPurchase: boolean("is_verified_purchase")
+      .default(false)
+      .notNull(),
     isPublished: boolean("is_published").default(true).notNull(),
     position: integer("position").default(0).notNull(),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true })

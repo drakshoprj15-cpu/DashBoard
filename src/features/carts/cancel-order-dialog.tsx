@@ -27,7 +27,13 @@ export interface CancelOrderDialogProps {
  * Cancelamento administrativo — sempre exige motivo e confirmação. Nunca
  * oferece "Pago" como opção: essa transição só acontece via gateway.
  */
-export function CancelOrderDialog({ open, onOpenChange, sending, error, onConfirm }: CancelOrderDialogProps) {
+export function CancelOrderDialog({
+  open,
+  onOpenChange,
+  sending,
+  error,
+  onConfirm,
+}: CancelOrderDialogProps) {
   const [reason, setReason] = React.useState("");
 
   // Limpa o motivo ao fechar — ajuste síncrono durante a renderização, não em efeito.
@@ -46,8 +52,8 @@ export function CancelOrderDialog({ open, onOpenChange, sending, error, onConfir
             Cancelar pedido
           </SheetTitle>
           <SheetDescription>
-            Marca o pedido como cancelado. Isto não afeta um pagamento já aprovado — “Pago” só é definido pela
-            confirmação real do gateway.
+            Marca o pedido como cancelado. Isto não afeta um pagamento já
+            aprovado — “Pago” só é definido pela confirmação real do gateway.
           </SheetDescription>
         </SheetHeader>
 
@@ -81,7 +87,11 @@ export function CancelOrderDialog({ open, onOpenChange, sending, error, onConfir
           >
             <XCircle /> Confirmar cancelamento
           </Button>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Voltar
           </Button>
         </SheetFooter>

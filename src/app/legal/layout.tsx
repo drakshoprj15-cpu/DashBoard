@@ -20,7 +20,10 @@ export default function LegalLayout({
     <div className="min-h-svh bg-white text-zinc-900">
       <header className="bg-zinc-950 py-4">
         <div className="mx-auto max-w-4xl px-4">
-          <Link href="/" className="text-xl font-black tracking-tight text-white">
+          <Link
+            href="/"
+            className="text-xl font-black tracking-tight text-white"
+          >
             Tech<span className="text-violet-400">Nébula</span>
           </Link>
         </div>

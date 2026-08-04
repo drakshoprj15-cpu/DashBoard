@@ -27,8 +27,9 @@ export function CookieBanner() {
       <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center">
         <Cookie className="hidden size-5 shrink-0 text-violet-600 sm:block" />
         <p className="flex-1 text-sm leading-relaxed text-zinc-700">
-          Usamos cookies essenciais para a loja funcionar. Com a sua autorização,
-          usamos também cookies de análise e marketing para medir campanhas.{" "}
+          Usamos cookies essenciais para a loja funcionar. Com a sua
+          autorização, usamos também cookies de análise e marketing para medir
+          campanhas.{" "}
           <Link href="/legal/cookies" className="text-violet-600 underline">
             Saber mais
           </Link>

@@ -9,7 +9,10 @@ const MAX_BLOCKS = 200;
 const hexColor = z
   .string()
   .trim()
-  .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use uma cor no formato #RRGGBB");
+  .regex(
+    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/,
+    "Use uma cor no formato #RRGGBB",
+  );
 
 const slugField = z
   .string()
@@ -99,7 +102,9 @@ export const landingSeoSchema = z.object({
   keywords: z.string().trim().max(300).default(""),
   canonicalUrl: optionalUrl,
   shareImageUrl: optionalUrl,
-  twitterCard: z.enum(["summary", "summary_large_image"]).default("summary_large_image"),
+  twitterCard: z
+    .enum(["summary", "summary_large_image"])
+    .default("summary_large_image"),
   noIndex: z.boolean().default(false),
   productSchema: z.boolean().default(true),
 });
@@ -109,20 +114,29 @@ export const landingTrackingSchema = z.object({
     .string()
     .trim()
     .max(32)
-    .refine((v) => v === "" || /^\d{15,16}$/.test(v), "O Meta Pixel tem 15 ou 16 dígitos")
+    .refine(
+      (v) => v === "" || /^\d{15,16}$/.test(v),
+      "O Meta Pixel tem 15 ou 16 dígitos",
+    )
     .default(""),
   tiktokPixelId: z.string().trim().max(64).default(""),
   ga4MeasurementId: z
     .string()
     .trim()
     .max(32)
-    .refine((v) => v === "" || /^G-[A-Z0-9]{6,}$/i.test(v), "O GA4 começa por G-")
+    .refine(
+      (v) => v === "" || /^G-[A-Z0-9]{6,}$/i.test(v),
+      "O GA4 começa por G-",
+    )
     .default(""),
   gtmContainerId: z
     .string()
     .trim()
     .max(32)
-    .refine((v) => v === "" || /^GTM-[A-Z0-9]{4,}$/i.test(v), "O GTM começa por GTM-")
+    .refine(
+      (v) => v === "" || /^GTM-[A-Z0-9]{4,}$/i.test(v),
+      "O GTM começa por GTM-",
+    )
     .default(""),
   defaultUtm: z.string().trim().max(500).default(""),
   inheritWorkspacePixels: z.boolean().default(true),
@@ -145,7 +159,11 @@ export const createLandingPageSchema = z.object({
   name: z.string().trim().min(2, "Dê um nome de controlo à página").max(120),
   publicName: z.string().trim().max(120).default(""),
   slug: slugField,
-  productId: z.string().uuid("Escolha um produto válido").optional().or(z.literal("")),
+  productId: z
+    .string()
+    .uuid("Escolha um produto válido")
+    .optional()
+    .or(z.literal("")),
   template: z.string().trim().min(1, "Escolha um modelo").max(60),
   language: z.string().trim().max(10).default("pt-PT"),
   country: z.string().trim().max(4).default("PT"),

@@ -75,7 +75,11 @@ export async function listCustomers(limit = 200): Promise<CustomerRow[]> {
       customers.isBlocked,
       customers.createdAt,
     )
-    .orderBy(desc(sql`coalesce(sum(${orders.totalCents}) filter (where ${paidFilter}), 0)`))
+    .orderBy(
+      desc(
+        sql`coalesce(sum(${orders.totalCents}) filter (where ${paidFilter}), 0)`,
+      ),
+    )
     .limit(limit);
 
   return rows.map((r) => ({
@@ -106,6 +110,7 @@ export function summarizeCustomers(rows: CustomerRow[]): CustomersSummary {
     total: rows.length,
     buyers: buyers.length,
     revenueCents,
-    averageTicketCents: paidOrders > 0 ? Math.round(revenueCents / paidOrders) : 0,
+    averageTicketCents:
+      paidOrders > 0 ? Math.round(revenueCents / paidOrders) : 0,
   };
 }

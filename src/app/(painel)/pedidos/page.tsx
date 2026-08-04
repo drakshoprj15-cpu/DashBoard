@@ -113,7 +113,10 @@ export default async function PedidosPage() {
                     <td className="py-3">
                       {o.productName ?? "—"}
                       {o.quantity && o.quantity > 1 && (
-                        <span className="text-muted-foreground"> ×{o.quantity}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          ×{o.quantity}
+                        </span>
                       )}
                       {o.variantName && (
                         <span className="text-muted-foreground block text-xs">

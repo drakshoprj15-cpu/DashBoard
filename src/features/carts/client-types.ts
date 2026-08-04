@@ -77,7 +77,14 @@ export interface TimelineEventDTO {
   label: string;
   detail?: string;
   at: string;
-  source: "order" | "payment" | "webhook" | "refund" | "chargeback" | "history" | "recovery";
+  source:
+    | "order"
+    | "payment"
+    | "webhook"
+    | "refund"
+    | "chargeback"
+    | "history"
+    | "recovery";
 }
 
 export interface CartDetailDTO {
@@ -151,9 +158,26 @@ export interface CartDetailDTO {
     expiresAt: string | null;
     createdAt: string;
   }[];
-  refunds: { id: string; amountCents: number; status: string; reason: string | null; createdAt: string }[];
-  chargebacks: { id: string; amountCents: number; status: string; reason: string | null; createdAt: string }[];
-  consents: { type: string; granted: boolean; source: string | null; createdAt: string }[];
+  refunds: {
+    id: string;
+    amountCents: number;
+    status: string;
+    reason: string | null;
+    createdAt: string;
+  }[];
+  chargebacks: {
+    id: string;
+    amountCents: number;
+    status: string;
+    reason: string | null;
+    createdAt: string;
+  }[];
+  consents: {
+    type: string;
+    granted: boolean;
+    source: string | null;
+    createdAt: string;
+  }[];
   timeline: TimelineEventDTO[];
 }
 

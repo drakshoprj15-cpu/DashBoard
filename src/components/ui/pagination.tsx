@@ -73,7 +73,8 @@ function Pagination({
             <ChevronLeft />
           </Button>
           <span className="text-muted-foreground min-w-[70px] text-center text-xs">
-            Página {formatNumber(page, locale)} de {formatNumber(pageCount, locale)}
+            Página {formatNumber(page, locale)} de{" "}
+            {formatNumber(pageCount, locale)}
           </span>
           <Button
             type="button"

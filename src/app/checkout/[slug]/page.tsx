@@ -105,7 +105,10 @@ export default async function CheckoutSlugPage(
       {/* Cabeçalho — a logo (ou nome da loja) fica sempre centralizada. */}
       <header
         className="py-6 md:py-7"
-        style={{ backgroundColor: (checkout?.theme ?? DEFAULT_CHECKOUT_THEME).bannerColor }}
+        style={{
+          backgroundColor: (checkout?.theme ?? DEFAULT_CHECKOUT_THEME)
+            .bannerColor,
+        }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-center px-4">
           <Link href={`/p/${product.slug}`} className="flex items-center">

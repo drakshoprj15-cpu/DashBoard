@@ -28,7 +28,10 @@ export function OperationalAlerts({ alerts }: OperationalAlertsProps) {
   if (alerts.length === 0) {
     return (
       <div className="flex items-center gap-3 py-4">
-        <CheckCircle2 className="text-success size-8 shrink-0" aria-hidden="true" />
+        <CheckCircle2
+          className="text-success size-8 shrink-0"
+          aria-hidden="true"
+        />
         <div>
           <p className="text-sm font-medium">Tudo certo por aqui</p>
           <p className="text-muted-foreground text-xs">
@@ -49,7 +52,10 @@ export function OperationalAlerts({ alerts }: OperationalAlertsProps) {
               href={a.href}
               className="hover:bg-muted/60 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors"
             >
-              <Icon className="text-warning size-4 shrink-0" aria-hidden="true" />
+              <Icon
+                className="text-warning size-4 shrink-0"
+                aria-hidden="true"
+              />
               <span className="flex-1 text-sm font-medium">{a.title}</span>
               <span className="text-muted-foreground text-xs font-semibold">
                 {formatNumber(a.count)}

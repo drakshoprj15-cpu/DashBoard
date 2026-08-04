@@ -38,7 +38,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 function timeAgoShort(iso: string): string {
-  const diffSeconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  const diffSeconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(iso).getTime()) / 1000),
+  );
   if (diffSeconds < 10) return "agora mesmo";
   if (diffSeconds < 60) return `há ${diffSeconds}s`;
   const minutes = Math.floor(diffSeconds / 60);
@@ -50,12 +53,14 @@ export function DashboardView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlPeriod = searchParams.get("period");
-  const period: DashboardPeriod = isDashboardPeriod(urlPeriod) ? urlPeriod : "7d";
+  const period: DashboardPeriod = isDashboardPeriod(urlPeriod)
+    ? urlPeriod
+    : "7d";
 
   const [data, setData] = React.useState<DashboardSnapshot | null>(null);
-  const [status, setStatus] = React.useState<"loading" | "success" | "error" | "empty">(
-    "loading",
-  );
+  const [status, setStatus] = React.useState<
+    "loading" | "success" | "error" | "empty"
+  >("loading");
   const [refreshing, setRefreshing] = React.useState(false);
 
   React.useEffect(() => {
@@ -98,7 +103,9 @@ export function DashboardView() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const res = await fetch(`/api/dashboard?period=${period}`, { cache: "no-store" });
+      const res = await fetch(`/api/dashboard?period=${period}`, {
+        cache: "no-store",
+      });
       if (res.status === 503) {
         setData(null);
         setStatus("empty");
@@ -142,7 +149,9 @@ export function DashboardView() {
             disabled={refreshing || status === "loading"}
             aria-label="Atualizar dados"
           >
-            <RefreshCw className={refreshing ? "size-4 animate-spin" : "size-4"} />
+            <RefreshCw
+              className={refreshing ? "size-4 animate-spin" : "size-4"}
+            />
             Atualizar
           </Button>
         </div>
@@ -209,7 +218,9 @@ export function DashboardView() {
             <MetricCard
               label="Taxa de conversão"
               value={
-                data.conversionRate !== null ? formatPercent(data.conversionRate) : "—"
+                data.conversionRate !== null
+                  ? formatPercent(data.conversionRate)
+                  : "—"
               }
               icon={TrendingUp}
               changePercent={data.conversionChangePercent}
@@ -221,8 +232,12 @@ export function DashboardView() {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Desempenho de vendas</CardTitle>
-                <CardDescription>Faturamento e pedidos no período</CardDescription>
+                <CardTitle className="text-base">
+                  Desempenho de vendas
+                </CardTitle>
+                <CardDescription>
+                  Faturamento e pedidos no período
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <SalesChart data={data.chartSeries} currency={currency} />
@@ -231,7 +246,9 @@ export function DashboardView() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Produtos mais vendidos</CardTitle>
+                <CardTitle className="text-base">
+                  Produtos mais vendidos
+                </CardTitle>
                 <CardDescription>Até 5 produtos no período</CardDescription>
               </CardHeader>
               <CardContent>
@@ -280,7 +297,9 @@ export function DashboardView() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Funil de vendas</CardTitle>
-                  <CardDescription>Do visitante à compra aprovada</CardDescription>
+                  <CardDescription>
+                    Do visitante à compra aprovada
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <SalesFunnel steps={data.funnel} />
@@ -289,11 +308,16 @@ export function DashboardView() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Formas de pagamento</CardTitle>
+                  <CardTitle className="text-base">
+                    Formas de pagamento
+                  </CardTitle>
                   <CardDescription>Participação no período</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <PaymentMethods methods={data.paymentMethods} currency={currency} />
+                  <PaymentMethods
+                    methods={data.paymentMethods}
+                    currency={currency}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -303,7 +327,9 @@ export function DashboardView() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Atenção necessária</CardTitle>
-              <CardDescription>Pendências que precisam da sua ação</CardDescription>
+              <CardDescription>
+                Pendências que precisam da sua ação
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <OperationalAlerts alerts={data.alerts} />

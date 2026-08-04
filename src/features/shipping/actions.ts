@@ -40,7 +40,9 @@ export async function saveShippingMethodAction(
     const d = parsed.data;
 
     const [{ maxPos }] = await db
-      .select({ maxPos: sql<number>`coalesce(max(${shippingMethods.position}), -1)::int` })
+      .select({
+        maxPos: sql<number>`coalesce(max(${shippingMethods.position}), -1)::int`,
+      })
       .from(shippingMethods)
       .where(eq(shippingMethods.workspaceId, workspaceId));
 
@@ -62,7 +64,9 @@ export async function saveShippingMethodAction(
   }
 }
 
-export async function toggleShippingMethodAction(formData: FormData): Promise<void> {
+export async function toggleShippingMethodAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
   const next = formData.get("next") === "true";
   if (!id || !isDatabaseConfigured()) return;
@@ -83,7 +87,9 @@ export async function toggleShippingMethodAction(formData: FormData): Promise<vo
   revalidatePath("/editor/fretes");
 }
 
-export async function deleteShippingMethodAction(formData: FormData): Promise<void> {
+export async function deleteShippingMethodAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id || !isDatabaseConfigured()) return;
 
@@ -105,9 +111,13 @@ export async function deleteShippingMethodAction(formData: FormData): Promise<vo
 
 const MOVE = { up: -1, down: 1 } as const;
 
-export async function reorderShippingMethodAction(formData: FormData): Promise<void> {
+export async function reorderShippingMethodAction(
+  formData: FormData,
+): Promise<void> {
   const id = String(formData.get("id") ?? "");
-  const direction = String(formData.get("direction") ?? "") as keyof typeof MOVE;
+  const direction = String(
+    formData.get("direction") ?? "",
+  ) as keyof typeof MOVE;
   if (!id || !MOVE[direction] || !isDatabaseConfigured()) return;
 
   const db = getDb();

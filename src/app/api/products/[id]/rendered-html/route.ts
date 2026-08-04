@@ -13,10 +13,16 @@ export const dynamic = "force-dynamic";
  * reconstruída). `getProductById` já filtra pelo workspace da sessão, então
  * um ID de produto de outro workspace simplesmente não é encontrado.
  */
-export async function GET(_request: Request, ctx: RouteContext<"/api/products/[id]/rendered-html">) {
+export async function GET(
+  _request: Request,
+  ctx: RouteContext<"/api/products/[id]/rendered-html">,
+) {
   const session = await getSession();
   if (!session || session.demoMode) {
-    return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "Não autenticado." },
+      { status: 401 },
+    );
   }
 
   const { id } = await ctx.params;
@@ -32,12 +38,15 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/products/[i
     return NextResponse.json({
       ok: false,
       notPublished: true,
-      error: "Esta landing page ainda não foi publicada. Ative o produto para gerar o código.",
+      error:
+        "Esta landing page ainda não foi publicada. Ative o produto para gerar o código.",
     });
   }
 
   const hostname = await getVerifiedDomainForProductSlug(product.slug);
-  const url = hostname ? `https://${hostname}/` : `${getAppUrl()}/p/${product.slug}`;
+  const url = hostname
+    ? `https://${hostname}/`
+    : `${getAppUrl()}/p/${product.slug}`;
 
   try {
     const res = await fetch(url, {

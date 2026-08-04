@@ -31,7 +31,9 @@ export interface RecordCartEventInput {
  * `features/audit/log.ts`: uma falha aqui vira log de console, não erro para
  * o operador que acabou de enviar um lembrete com sucesso.
  */
-export async function recordCartEvent(input: RecordCartEventInput): Promise<void> {
+export async function recordCartEvent(
+  input: RecordCartEventInput,
+): Promise<void> {
   if (!isDatabaseConfigured()) return;
 
   try {
@@ -51,7 +53,9 @@ export async function recordCartEvent(input: RecordCartEventInput): Promise<void
 }
 
 /** Versão em lote — usada pela importação, que grava um evento por pedido. */
-export async function recordCartEvents(inputs: RecordCartEventInput[]): Promise<void> {
+export async function recordCartEvents(
+  inputs: RecordCartEventInput[],
+): Promise<void> {
   if (!isDatabaseConfigured() || inputs.length === 0) return;
 
   try {

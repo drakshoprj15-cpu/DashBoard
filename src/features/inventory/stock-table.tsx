@@ -38,12 +38,21 @@ export function StockTable({ products }: { products: InventoryProductRow[] }) {
         </thead>
         <tbody>
           {products.map((p) => (
-            <tr key={p.id} className="hover:bg-muted/40 border-b transition-colors last:border-0">
+            <tr
+              key={p.id}
+              className="hover:bg-muted/40 border-b transition-colors last:border-0"
+            >
               <td className="py-3 pr-3">
                 <div className="flex items-center gap-3">
                   <div className="bg-muted relative size-9 shrink-0 overflow-hidden rounded-lg">
                     {p.mainImageUrl ? (
-                      <Image src={p.mainImageUrl} alt={p.name} fill sizes="36px" className="object-cover" />
+                      <Image
+                        src={p.mainImageUrl}
+                        alt={p.name}
+                        fill
+                        sizes="36px"
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="text-muted-foreground flex h-full items-center justify-center">
                         <Package className="size-4" aria-hidden="true" />
@@ -51,8 +60,12 @@ export function StockTable({ products }: { products: InventoryProductRow[] }) {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="max-w-[220px] truncate font-medium">{p.name}</p>
-                    {p.sku && <p className="text-muted-foreground text-xs">{p.sku}</p>}
+                    <p className="max-w-[220px] truncate font-medium">
+                      {p.name}
+                    </p>
+                    {p.sku && (
+                      <p className="text-muted-foreground text-xs">{p.sku}</p>
+                    )}
                   </div>
                 </div>
               </td>

@@ -37,7 +37,10 @@ export default function EnviosPage() {
       <h2>Encomenda não entregue</h2>
       <p>
         Se a encomenda não chegar dentro do prazo previsto, contacte{" "}
-        <a href={`mailto:${company.email}`} className="text-violet-600 underline">
+        <a
+          href={`mailto:${company.email}`}
+          className="text-violet-600 underline"
+        >
           {company.email}
         </a>{" "}
         com a referência do pedido para investigarmos junto da transportadora.

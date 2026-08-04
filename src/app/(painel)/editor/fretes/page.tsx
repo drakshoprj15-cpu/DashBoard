@@ -102,14 +102,20 @@ export default async function FretesPage() {
                     </td>
                     <td className="py-2.5">
                       {m.priceCents === 0 ? (
-                        <span className="text-success font-semibold">Grátis</span>
+                        <span className="text-success font-semibold">
+                          Grátis
+                        </span>
                       ) : (
                         <>
                           {formatMoney(m.priceCents, m.currency, "pt-PT")}
                           {m.freeAboveCents !== null && (
                             <span className="text-muted-foreground block text-xs">
                               grátis acima de{" "}
-                              {formatMoney(m.freeAboveCents, m.currency, "pt-PT")}
+                              {formatMoney(
+                                m.freeAboveCents,
+                                m.currency,
+                                "pt-PT",
+                              )}
                             </span>
                           )}
                         </>

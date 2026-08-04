@@ -27,9 +27,7 @@ export async function toggleMarketingConsentAction(
   const [customer] = await db
     .select({ email: customers.email })
     .from(customers)
-    .where(
-      and(eq(customers.id, id), eq(customers.workspaceId, workspaceId)),
-    )
+    .where(and(eq(customers.id, id), eq(customers.workspaceId, workspaceId)))
     .limit(1);
 
   if (!customer) return;

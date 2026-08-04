@@ -7,10 +7,19 @@ import {
   listActiveShippingMethods,
 } from "@/features/shipping/queries";
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { customers, orderItems, orders, payments, products } from "@/database/schema";
+import {
+  customers,
+  orderItems,
+  orders,
+  payments,
+  products,
+} from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { getRequestUrl } from "@/lib/request-url";
-import { createBroskiProvider, BroskiApiError } from "@/payment-providers/broski";
+import {
+  createBroskiProvider,
+  BroskiApiError,
+} from "@/payment-providers/broski";
 import { createNotification } from "@/features/notifications/create";
 import { pushEvent } from "@/features/notifications/pushcut";
 import {
@@ -80,7 +89,10 @@ export async function submitCheckoutAction(
   });
 
   if (!parsed.success) {
-    return { status: "validation_error", error: parsed.error.issues[0].message };
+    return {
+      status: "validation_error",
+      error: parsed.error.issues[0].message,
+    };
   }
 
   const data = parsed.data;
@@ -188,7 +200,10 @@ export async function submitCheckoutAction(
       .select({ id: customers.id })
       .from(customers)
       .where(
-        and(eq(customers.workspaceId, workspaceId), eq(customers.email, data.email)),
+        and(
+          eq(customers.workspaceId, workspaceId),
+          eq(customers.email, data.email),
+        ),
       )
       .limit(1);
 
@@ -232,7 +247,12 @@ export async function submitCheckoutAction(
     const [productRow] = await db
       .select({ id: products.id })
       .from(products)
-      .where(and(eq(products.workspaceId, workspaceId), eq(products.slug, product.slug)))
+      .where(
+        and(
+          eq(products.workspaceId, workspaceId),
+          eq(products.slug, product.slug),
+        ),
+      )
       .limit(1);
 
     const [order] = await db

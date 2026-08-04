@@ -15,9 +15,7 @@ export function SalesFunnel({ steps }: SalesFunnelProps) {
         const prev = i > 0 ? steps[i - 1] : null;
         const widthPercent = Math.max(4, (step.count / maxCount) * 100);
         const dropRate =
-          prev && prev.count > 0
-            ? 1 - step.count / prev.count
-            : null;
+          prev && prev.count > 0 ? 1 - step.count / prev.count : null;
 
         return (
           <div key={step.event} className="space-y-1.5">
