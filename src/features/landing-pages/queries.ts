@@ -67,7 +67,7 @@ export interface LandingPageRow {
   lastError: string | null;
   updatedAt: Date;
   createdAt: Date;
-  /** Primeira imagem encontrada no rascunho — miniatura do cartão */
+  /** Imagem do rascunho, do produto ou da marca — miniatura do cartão. */
   thumbnailUrl: string | null;
   hasUnpublishedChanges: boolean;
   metrics: LandingPageMetrics;
@@ -135,6 +135,7 @@ export async function listLandingPages(
       productId: landingPages.productId,
       productName: products.name,
       productSlug: products.slug,
+      productMainImageUrl: products.mainImageUrl,
       content: landingPages.content,
       publishedVersion: landingPages.publishedVersion,
       draftVersion: landingPages.draftVersion,
@@ -182,7 +183,8 @@ export async function listLandingPages(
       lastError: row.lastError,
       updatedAt: row.updatedAt,
       createdAt: row.createdAt,
-      thumbnailUrl: findThumbnail(content) ?? row.logoUrl,
+      thumbnailUrl:
+        findThumbnail(content) ?? row.productMainImageUrl ?? row.logoUrl,
       hasUnpublishedChanges:
         row.publishedVersion === null ||
         row.draftVersion > row.publishedVersion,

@@ -335,22 +335,24 @@ function PageCard({
   return (
     <Card className="gap-3 overflow-hidden py-0 pb-4">
       <div className="bg-muted relative aspect-[16/9] w-full overflow-hidden border-b">
+        <div className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-1 text-xs">
+          <ImageOff className="size-5" />
+          Sem imagem cadastrada
+        </div>
         {page.thumbnailUrl ? (
           // A miniatura vem de um endereço arbitrário definido pelo lojista;
           // o next/image exigiria listar cada domínio em next.config.ts.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={page.thumbnailUrl}
-            alt=""
-            className="size-full object-contain p-4"
+            alt={`Imagem de ${page.productName ?? page.name}`}
+            className="bg-muted relative z-10 size-full object-contain p-4"
             loading="lazy"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
           />
-        ) : (
-          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1 text-xs">
-            <ImageOff className="size-5" />
-            Sem imagem na página
-          </div>
-        )}
+        ) : null}
         <div className="absolute top-2 left-2 flex flex-wrap gap-1">
           <StatusBadge status={page.status} />
           {page.hasUnpublishedChanges && page.status === "published" ? (
