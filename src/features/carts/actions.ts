@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured, type Database } from "@/database/client";
 import { customers, emailSuppressions, orderItems, orders, orderStatusHistory } from "@/database/schema";
@@ -10,7 +10,20 @@ import { isResendConfigured, sendEmail } from "@/features/emails/resend-provider
 import { company } from "@/lib/company";
 import { formatMoney } from "@/lib/format";
 import { recordAuditLog } from "@/features/audit/log";
-import { canTransitionOrderStatus } from "@/features/carts/status";
+import { recordCartEvent } from "@/features/carts/events";
+import { MAX_BULK_ORDERS } from "@/features/carts/limits";
+import {
+  PAID_ORDER_STATUSES,
+  canTransitionOrderStatus,
+  resolveCartCategory,
+} from "@/features/carts/status";
+import {
+  CART_TEMPLATES,
+  buildTemplateVars,
+  renderTemplate,
+  suggestTemplate,
+  type CartTemplateKey,
+} from "@/features/carts/templates";
 
 export interface CartActionResult {
   ok: boolean;
@@ -24,22 +37,42 @@ const REMINDER_COOLDOWN_MS = 20 * 60 * 60 * 1000;
 /** Pedidos ainda não resolvidos são os únicos que um admin pode cancelar manualmente. */
 const CANCELLABLE_STATUSES = ["created", "awaiting_payment", "processing"];
 
+const PAID_STATUSES = PAID_ORDER_STATUSES;
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Envolve o corpo já renderizado do template no layout de e-mail da marca.
+ * O corpo vem de template fixo + variáveis do próprio pedido, mas é escapado
+ * na mesma — nome e produto são dados que o cliente controla, e uma planilha
+ * importada pode trazer qualquer coisa neles.
+ */
 function reminderHtml(
-  customerName: string,
+  body: string,
   reference: string,
-  productName: string | null,
   totalCents: number,
   currency: string,
+  checkoutUrl: string | null,
 ): string {
   const amount = formatMoney(totalCents, currency, "pt-PT");
+  const safeBody = escapeHtml(body).replace(/\n/g, "<br>");
+  const cta =
+    checkoutUrl && /^https?:\/\//.test(checkoutUrl)
+      ? `<p style="margin:0 0 20px"><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;background:#d61f69;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">Concluir pagamento</a></p>`
+      : "";
+
   return `<!doctype html><html lang="pt"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
 <p style="margin:0 0 20px;font-size:20px;font-weight:800">${company.tradeName}</p>
-<p style="margin:0 0 14px;line-height:1.6">Olá ${customerName},</p>
-<p style="margin:0 0 14px;line-height:1.6">Reparámos que o seu pedido <strong>${reference}</strong>${
-    productName ? ` (${productName})` : ""
-  } no valor de <strong>${amount}</strong> ainda está por pagar.</p>
-<p style="margin:0 0 14px;line-height:1.6">Se ainda tiver interesse, pode concluir o pagamento a qualquer momento.</p>
+<p style="margin:0 0 18px;line-height:1.6">${safeBody}</p>
+${cta}
+<p style="margin:0 0 14px;line-height:1.6;color:#52525b;font-size:14px">Pedido <strong>${escapeHtml(reference)}</strong> — <strong>${amount}</strong>.</p>
 <hr style="margin:24px 0;border:none;border-top:1px solid #e4e4e7">
 <p style="margin:0;font-size:12px;color:#71717a">
 Recebeu este e-mail porque iniciou uma compra em ${company.tradeName}.<br>
@@ -53,6 +86,7 @@ interface ReminderEligibility {
   reason?: string;
   email?: string;
   name?: string;
+  phone?: string | null;
 }
 
 async function checkReminderEligibility(
@@ -82,6 +116,7 @@ async function checkReminderEligibility(
     eligible: true,
     email: customer.email,
     name: [customer.firstName, customer.lastName].filter(Boolean).join(" ") || customer.email,
+    phone: customer.phone,
   };
 }
 
@@ -90,7 +125,10 @@ async function checkReminderEligibility(
  * Respeita opt-out/bloqueio/supressão e nunca reenvia dentro do intervalo
  * de cooldown — mesma regra usada no envio em massa.
  */
-export async function sendCartReminderAction(orderId: string): Promise<CartActionResult> {
+export async function sendCartReminderAction(
+  orderId: string,
+  templateKey?: CartTemplateKey,
+): Promise<CartActionResult> {
   const session = await getSession();
   if (!session || session.demoMode) {
     return { ok: false, error: "Não autenticado." };
@@ -137,37 +175,309 @@ export async function sendCartReminderAction(orderId: string): Promise<CartActio
     .where(eq(orderItems.orderId, orderId))
     .limit(1);
 
+  const category = resolveCartCategory(
+    order.status,
+    (Date.now() - new Date(order.updatedAt).getTime()) / 3_600_000,
+    order.recoveredManuallyAt,
+  );
+  const template = CART_TEMPLATES[templateKey ?? suggestTemplate(category)];
+
+  const vars = buildTemplateVars({
+    customerName: eligibility.name,
+    customerEmail: eligibility.email,
+    customerPhone: eligibility.phone ?? null,
+    productName: item?.productName ?? null,
+    totalCents: Number(order.totalCents),
+    currency: order.currency,
+    category,
+    checkoutUrl: order.checkoutUrl,
+    createdAt: order.createdAt,
+  });
+
   const html = reminderHtml(
-    eligibility.name,
+    renderTemplate(template.emailBody, vars),
     order.reference,
-    item?.productName ?? null,
     Number(order.totalCents),
     order.currency,
+    order.checkoutUrl,
   );
 
   const result = await sendEmail({
     to: eligibility.email,
-    subject: `O seu pedido ${order.reference} ainda está por pagar`,
+    subject: renderTemplate(template.subject, vars),
     html,
     replyTo: company.email,
     idempotencyKey: `reminder_${orderId}_${new Date().toISOString().slice(0, 13)}`,
   });
 
   if (!result.ok) {
+    await recordCartEvent({
+      workspaceId,
+      orderId,
+      type: "reminder_failed",
+      channel: "email",
+      message: result.error ?? "Falha no envio",
+      createdBy: session.user.id,
+    });
     return { ok: false, error: result.error ?? "Falha ao enviar o lembrete." };
   }
 
   const now = new Date();
-  await db.update(orders).set({ lastReminderSentAt: now, updatedAt: now }).where(eq(orders.id, orderId));
+  await db
+    .update(orders)
+    .set({
+      lastReminderSentAt: now,
+      lastReminderChannel: "email",
+      reminderCount: sql`${orders.reminderCount} + 1`,
+      updatedAt: now,
+    })
+    .where(eq(orders.id, orderId));
+
+  await recordCartEvent({
+    workspaceId,
+    orderId,
+    type: "email_sent",
+    channel: "email",
+    message: `Template "${template.label}" enviado.`,
+    metadata: { template: template.key },
+    createdBy: session.user.id,
+  });
 
   await recordAuditLog({
     action: "cart.reminder_sent",
     entityType: "order",
     entityId: orderId,
-    changes: { email: eligibility.email },
+    changes: { email: eligibility.email, template: template.key },
   });
 
   return { ok: true, message: `Lembrete enviado para ${eligibility.email}.` };
+}
+
+/**
+ * Regista que o operador iniciou a recuperação por WhatsApp.
+ *
+ * Não envia mensagem nenhuma — o envio acontece no aplicativo do operador,
+ * via link `wa.me`. Ver `whatsapp-provider.ts` para o porquê de não haver
+ * disparo automático.
+ */
+export async function logWhatsAppReminderAction(orderId: string): Promise<CartActionResult> {
+  const session = await getSession();
+  if (!session || session.demoMode) {
+    return { ok: false, error: "Não autenticado." };
+  }
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Banco de dados não configurado." };
+  }
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+
+  const [order] = await db
+    .select({ id: orders.id, customerId: orders.customerId })
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.workspaceId, workspaceId)))
+    .limit(1);
+  if (!order) return { ok: false, error: "Carrinho não encontrado." };
+
+  if (order.customerId) {
+    const [customer] = await db
+      .select({ marketingOptOut: customers.marketingOptOut, isBlocked: customers.isBlocked })
+      .from(customers)
+      .where(eq(customers.id, order.customerId))
+      .limit(1);
+    if (customer?.marketingOptOut) {
+      return { ok: false, error: "O cliente pediu para não receber comunicações." };
+    }
+    if (customer?.isBlocked) {
+      return { ok: false, error: "O cliente está bloqueado." };
+    }
+  }
+
+  const now = new Date();
+  await db
+    .update(orders)
+    .set({
+      lastReminderSentAt: now,
+      lastReminderChannel: "whatsapp",
+      reminderCount: sql`${orders.reminderCount} + 1`,
+      updatedAt: now,
+    })
+    .where(eq(orders.id, orderId));
+
+  await recordCartEvent({
+    workspaceId,
+    orderId,
+    type: "whatsapp_opened",
+    channel: "whatsapp",
+    message: "Conversa aberta no WhatsApp pelo operador.",
+    createdBy: session.user.id,
+  });
+
+  await recordAuditLog({
+    action: "cart.whatsapp_opened",
+    entityType: "order",
+    entityId: orderId,
+  });
+
+  return { ok: true, message: "Lembrete por WhatsApp registado." };
+}
+
+export type CartStatusMark = "recovered" | "refused" | "pending";
+
+/**
+ * Marcação manual de status pelo operador.
+ *
+ * "Recuperado" grava `recovered_manually_at` e **nunca** `status = 'paid'`:
+ * receita em todo o painel vem de `orders.status`, e só a confirmação do
+ * gateway pode produzi-la. As demais marcações passam por
+ * `canTransitionOrderStatus`, que impede rebaixar um pedido já pago.
+ */
+export async function markCartStatusAction(
+  orderId: string,
+  mark: CartStatusMark,
+): Promise<CartActionResult> {
+  const session = await getSession();
+  if (!session || session.demoMode) {
+    return { ok: false, error: "Não autenticado." };
+  }
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Banco de dados não configurado." };
+  }
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.workspaceId, workspaceId)))
+    .limit(1);
+  if (!order) return { ok: false, error: "Carrinho não encontrado." };
+
+  const now = new Date();
+
+  if (mark === "recovered") {
+    if (PAID_STATUSES.includes(order.status)) {
+      return { ok: false, error: "Este pedido já foi pago e confirmado pelo gateway." };
+    }
+    if (order.recoveredManuallyAt) {
+      return { ok: false, error: "Este carrinho já está marcado como recuperado." };
+    }
+    await db
+      .update(orders)
+      .set({ recoveredManuallyAt: now, updatedAt: now })
+      .where(eq(orders.id, orderId));
+
+    await recordCartEvent({
+      workspaceId,
+      orderId,
+      type: "status_changed",
+      message: "Marcado como recuperado manualmente (não entra em receita).",
+      metadata: { mark },
+      createdBy: session.user.id,
+    });
+    await recordAuditLog({
+      action: "cart.marked_recovered",
+      entityType: "order",
+      entityId: orderId,
+    });
+    return { ok: true, message: "Carrinho marcado como recuperado." };
+  }
+
+  const nextStatus = mark === "refused" ? "refused" : "processing";
+  if (!canTransitionOrderStatus(order.status, nextStatus)) {
+    return {
+      ok: false,
+      error: "Este pedido já está num estado mais avançado — a marcação não pode retroceder o status.",
+    };
+  }
+
+  await db
+    .update(orders)
+    .set({
+      status: nextStatus as (typeof orders.$inferInsert)["status"],
+      updatedAt: now,
+    })
+    .where(eq(orders.id, orderId));
+
+  await db.insert(orderStatusHistory).values({
+    workspaceId,
+    orderId,
+    fromStatus: order.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+    toStatus: nextStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
+    reason: "Marcação manual na central de recuperação",
+    changedBy: session.user.id,
+    metadata: { source: "admin_override" },
+  });
+
+  await recordCartEvent({
+    workspaceId,
+    orderId,
+    type: "status_changed",
+    message: `Status alterado manualmente para "${nextStatus}".`,
+    metadata: { from: order.status, to: nextStatus },
+    createdBy: session.user.id,
+  });
+
+  await recordAuditLog({
+    action: "cart.status_marked",
+    entityType: "order",
+    entityId: orderId,
+    changes: { from: order.status, to: nextStatus },
+  });
+
+  return { ok: true, message: mark === "refused" ? "Marcado como recusado." : "Marcado como pendente." };
+}
+
+/** Arquiva (ou desarquiva) carrinhos — some da listagem sem perder o histórico. */
+export async function archiveCartsAction(
+  orderIds: string[],
+  archived: boolean,
+): Promise<CartActionResult> {
+  const session = await getSession();
+  if (!session || session.demoMode) {
+    return { ok: false, error: "Não autenticado." };
+  }
+  if (orderIds.length === 0) return { ok: false, error: "Nenhum carrinho selecionado." };
+  if (orderIds.length > MAX_BULK_ORDERS) {
+    return { ok: false, error: `Selecione no máximo ${MAX_BULK_ORDERS} carrinhos por vez.` };
+  }
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Banco de dados não configurado." };
+  }
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+  const now = new Date();
+
+  const updated = await db
+    .update(orders)
+    .set({ archivedAt: archived ? now : null, updatedAt: now })
+    .where(and(eq(orders.workspaceId, workspaceId), inArray(orders.id, orderIds)))
+    .returning({ id: orders.id });
+
+  for (const row of updated) {
+    await recordCartEvent({
+      workspaceId,
+      orderId: row.id,
+      type: "archived",
+      message: archived ? "Carrinho arquivado." : "Carrinho desarquivado.",
+      createdBy: session.user.id,
+    });
+  }
+
+  await recordAuditLog({
+    action: archived ? "cart.archived" : "cart.unarchived",
+    entityType: "order",
+    changes: { count: updated.length },
+  });
+
+  return {
+    ok: true,
+    message: archived
+      ? `${updated.length} ${updated.length === 1 ? "carrinho arquivado" : "carrinhos arquivados"}.`
+      : `${updated.length} ${updated.length === 1 ? "carrinho restaurado" : "carrinhos restaurados"}.`,
+  };
 }
 
 export interface BulkReminderResult {
@@ -178,7 +488,10 @@ export interface BulkReminderResult {
 }
 
 /** Envia lembretes em massa — reaproveita `sendCartReminderAction` por pedido. */
-export async function bulkSendReminderAction(orderIds: string[]): Promise<BulkReminderResult> {
+export async function bulkSendReminderAction(
+  orderIds: string[],
+  templateKey?: CartTemplateKey,
+): Promise<BulkReminderResult> {
   const session = await getSession();
   if (!session || session.demoMode) {
     return { ok: false, sent: 0, skipped: orderIds.length, errors: ["Não autenticado."] };
@@ -186,8 +499,13 @@ export async function bulkSendReminderAction(orderIds: string[]): Promise<BulkRe
   if (orderIds.length === 0) {
     return { ok: false, sent: 0, skipped: 0, errors: ["Nenhum carrinho selecionado."] };
   }
-  if (orderIds.length > 200) {
-    return { ok: false, sent: 0, skipped: orderIds.length, errors: ["Selecione no máximo 200 carrinhos por vez."] };
+  if (orderIds.length > MAX_BULK_ORDERS) {
+    return {
+      ok: false,
+      sent: 0,
+      skipped: orderIds.length,
+      errors: [`Selecione no máximo ${MAX_BULK_ORDERS} carrinhos por vez.`],
+    };
   }
 
   let sent = 0;
@@ -195,7 +513,7 @@ export async function bulkSendReminderAction(orderIds: string[]): Promise<BulkRe
   const errors: string[] = [];
 
   for (const orderId of orderIds) {
-    const result = await sendCartReminderAction(orderId);
+    const result = await sendCartReminderAction(orderId, templateKey);
     if (result.ok) {
       sent += 1;
     } else {

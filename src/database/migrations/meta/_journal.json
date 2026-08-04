@@ -92,6 +92,13 @@
       "when": 1786100000000,
       "tag": "0012_product_variations",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0013_cart_recovery",
+      "breakpoints": true
     }
   ]
 }

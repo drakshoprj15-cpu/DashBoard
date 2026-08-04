@@ -4,6 +4,8 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  Archive,
+  CheckCircle2,
   Copy,
   Eye,
   EyeOff,
@@ -18,9 +20,11 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { maskDocument } from "@/lib/mask";
-import { PAYMENT_METHOD_LABEL } from "@/features/carts/status";
+import { PAYMENT_METHOD_LABEL, isRecoverableCategory } from "@/features/carts/status";
+import { whatsAppUrl } from "@/features/carts/phone";
 import type { CartRowDTO } from "@/features/carts/client-types";
 import { CartStatusBadge } from "@/features/carts/cart-status-badge";
+import { CartRecoveryActions } from "@/features/carts/cart-recovery-actions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -44,12 +48,6 @@ async function copyToClipboard(value: string, label: string) {
   }
 }
 
-function whatsAppUrl(phone: string): string | null {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-  return `https://wa.me/${digits}`;
-}
-
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(ms / 3_600_000);
@@ -57,6 +55,14 @@ function relativeTime(iso: string): string {
   if (hours < 24) return `há ${hours}h`;
   const days = Math.floor(hours / 24);
   return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+}
+
+/** Resumo curto do último lembrete, ou um traço quando ainda não houve nenhum. */
+function lastReminderLabel(row: CartRowDTO): string {
+  if (!row.lastReminderSentAt) return "—";
+  const channel = row.lastReminderChannel === "whatsapp" ? "WhatsApp" : "E-mail";
+  const times = row.reminderCount > 1 ? ` · ${row.reminderCount}×` : "";
+  return `${channel} ${relativeTime(row.lastReminderSentAt)}${times}`;
 }
 
 export interface CartsTableProps {
@@ -68,16 +74,21 @@ export interface CartsTableProps {
   onToggleSelect: (orderId: string) => void;
   onToggleSelectAll: () => void;
   onOpenDetail: (orderId: string) => void;
-  sortBy: "createdAt" | "totalCents";
+  sortBy: CartSortBy;
   sortDir: "asc" | "desc";
-  onSort: (sortBy: "createdAt" | "totalCents") => void;
-  onSendReminder: (orderId: string) => void;
+  onSort: (sortBy: CartSortBy) => void;
+  onSendReminder: (row: CartRowDTO) => void;
+  onOpenWhatsApp: (row: CartRowDTO) => void;
+  onMarkStatus: (orderId: string, mark: "recovered" | "refused" | "pending") => void;
+  onArchive: (orderId: string, archived: boolean) => void;
   onSync: (orderId: string) => void;
   onCancel: (orderId: string) => void;
   onExportOne: (orderId: string) => void;
   syncingIds: Set<string>;
   hasFilters: boolean;
 }
+
+type CartSortBy = "createdAt" | "totalCents" | "lastReminderSentAt";
 
 const CANCELLABLE = new Set(["awaiting_payment", "pending", "abandoned"]);
 
@@ -94,6 +105,9 @@ export function CartsTable({
   sortDir,
   onSort,
   onSendReminder,
+  onOpenWhatsApp,
+  onMarkStatus,
+  onArchive,
   onSync,
   onCancel,
   onExportOne,
@@ -153,6 +167,50 @@ export function CartsTable({
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.orderId));
 
   return (
+    <>
+      {/* Telas pequenas: a tabela vira lista de cartões — uma tabela de 13
+          colunas em 375px só produz rolagem horizontal inútil. */}
+      <ul className="divide-y md:hidden">
+        {rows.map((r) => (
+          <li key={r.orderId} className="space-y-2 p-4">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selected.has(r.orderId)}
+                onChange={() => onToggleSelect(r.orderId)}
+                className="accent-primary mt-1 size-4"
+                aria-label={`Selecionar carrinho ${r.reference}`}
+              />
+              <button
+                type="button"
+                onClick={() => onOpenDetail(r.orderId)}
+                className="flex-1 text-left"
+              >
+                <p className="font-medium">{r.customerName ?? "—"}</p>
+                <p className="text-muted-foreground text-xs">{r.customerEmail ?? r.customerPhone ?? ""}</p>
+              </button>
+              <div className="text-right">
+                <p className="font-semibold">{formatMoney(r.totalCents, r.currency, "pt-PT")}</p>
+                <CartStatusBadge category={r.category} />
+              </div>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {r.productName ?? "—"}
+              {r.quantity && r.quantity > 1 ? ` ×${r.quantity}` : ""} · {relativeTime(r.createdAt)}
+            </p>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground text-xs">{lastReminderLabel(r)}</span>
+              <CartRecoveryActions
+                row={r}
+                onSendEmail={onSendReminder}
+                onOpenWhatsApp={onOpenWhatsApp}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="hidden overflow-x-auto md:block">
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
@@ -167,9 +225,10 @@ export function CartsTable({
           </TableHead>
           <TableHead>Referência</TableHead>
           <TableHead>Cliente</TableHead>
-          <TableHead>Contato</TableHead>
-          <TableHead>Documento</TableHead>
+          <TableHead>Telefone</TableHead>
+          <TableHead>CPF</TableHead>
           <TableHead>Produto</TableHead>
+          <TableHead className="text-center">Artigos</TableHead>
           <TableHead>Pagamento</TableHead>
           <TableHead
             className="cursor-pointer text-right select-none"
@@ -179,8 +238,15 @@ export function CartsTable({
           </TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="cursor-pointer select-none" onClick={() => onSort("createdAt")}>
-            Data {sortBy === "createdAt" && (sortDir === "asc" ? "↑" : "↓")}
+            Atualizado em {sortBy === "createdAt" && (sortDir === "asc" ? "↑" : "↓")}
           </TableHead>
+          <TableHead
+            className="cursor-pointer select-none"
+            onClick={() => onSort("lastReminderSentAt")}
+          >
+            Último lembrete {sortBy === "lastReminderSentAt" && (sortDir === "asc" ? "↑" : "↓")}
+          </TableHead>
+          <TableHead>Recuperação manual</TableHead>
           <TableHead className="w-10" />
         </TableRow>
       </TableHeader>
@@ -281,10 +347,14 @@ export function CartsTable({
 
               <TableCell>
                 {r.productName ?? "—"}
-                {r.quantity && r.quantity > 1 && (
-                  <span className="text-muted-foreground"> ×{r.quantity}</span>
+                {r.itemCount > 1 && (
+                  <span className="text-muted-foreground block text-xs">
+                    +{r.itemCount - 1} outro{r.itemCount > 2 ? "s" : ""}
+                  </span>
                 )}
               </TableCell>
+
+              <TableCell className="text-center text-xs">{r.quantity ?? 1}</TableCell>
 
               <TableCell className="text-xs">
                 {r.paymentMethod ? (
@@ -311,14 +381,35 @@ export function CartsTable({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-xs">
-                      <span>{relativeTime(r.createdAt)}</span>
+                      <span>{relativeTime(r.updatedAt)}</span>
                       <span className="text-muted-foreground block">
-                        {formatDateTime(r.createdAt, "pt-PT")}
+                        {formatDateTime(r.updatedAt, "pt-PT")}
                       </span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>Fuso horário local do navegador</TooltipContent>
                 </Tooltip>
+              </TableCell>
+
+              <TableCell className="text-xs">
+                {r.lastReminderSentAt ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>{lastReminderLabel(r)}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>{formatDateTime(r.lastReminderSentAt, "pt-PT")}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <CartRecoveryActions
+                  row={r}
+                  onSendEmail={onSendReminder}
+                  onOpenWhatsApp={onOpenWhatsApp}
+                />
               </TableCell>
 
               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -343,18 +434,48 @@ export function CartsTable({
                     <DropdownMenuItem onClick={() => copyToClipboard(r.reference, "Referência")}>
                       Copiar referência
                     </DropdownMenuItem>
+                    {r.checkoutUrl && (
+                      <DropdownMenuItem onClick={() => copyToClipboard(r.checkoutUrl!, "Link do checkout")}>
+                        Copiar link do checkout
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    {(r.category === "awaiting_payment" || r.category === "pending" || r.category === "abandoned") && (
-                      <DropdownMenuItem onClick={() => onSendReminder(r.orderId)}>
+                    {isRecoverableCategory(r.category) && (
+                      <DropdownMenuItem onClick={() => onSendReminder(r)}>
                         <Mail /> Enviar lembrete de pagamento
                       </DropdownMenuItem>
                     )}
+                    {whatsAppUrl(r.customerPhone) && (
+                      <DropdownMenuItem onClick={() => onOpenWhatsApp(r)}>
+                        <MessageCircle /> Recuperar por WhatsApp
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    {r.category !== "paid" && r.category !== "recovered" && (
+                      <DropdownMenuItem onClick={() => onMarkStatus(r.orderId, "recovered")}>
+                        <CheckCircle2 /> Marcar como convertido
+                      </DropdownMenuItem>
+                    )}
+                    {isRecoverableCategory(r.category) && r.category !== "declined" && (
+                      <DropdownMenuItem onClick={() => onMarkStatus(r.orderId, "refused")}>
+                        Marcar como recusado
+                      </DropdownMenuItem>
+                    )}
+                    {r.category === "awaiting_payment" || r.category === "abandoned" ? (
+                      <DropdownMenuItem onClick={() => onMarkStatus(r.orderId, "pending")}>
+                        Marcar como pendente
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuSeparator />
                     {r.externalId && (
                       <DropdownMenuItem disabled={isSyncing} onClick={() => onSync(r.orderId)}>
                         <RefreshCw className={cn(isSyncing && "animate-spin")} /> Sincronizar status
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => onExportOne(r.orderId)}>Exportar dados</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onArchive(r.orderId, !r.archivedAt)}>
+                      <Archive /> {r.archivedAt ? "Desarquivar" : "Arquivar"} carrinho
+                    </DropdownMenuItem>
                     {CANCELLABLE.has(r.category) && (
                       <>
                         <DropdownMenuSeparator />
@@ -371,5 +492,7 @@ export function CartsTable({
         })}
       </TableBody>
     </Table>
+      </div>
+    </>
   );
 }

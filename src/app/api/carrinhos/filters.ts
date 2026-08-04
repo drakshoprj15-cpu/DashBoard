@@ -1,4 +1,4 @@
-import type { CartFilters } from "@/features/carts/queries";
+import { isCartSortBy, type CartFilters } from "@/features/carts/queries";
 import { isCartTab } from "@/features/carts/status";
 
 /** Data `yyyy-mm-dd` do início do dia, em UTC. `undefined` se inválida/ausente. */
@@ -18,6 +18,7 @@ function parseDateTo(value: string | null): Date | undefined {
 /** Lê e valida os filtros de Carrinhos a partir da query string da requisição. */
 export function parseCartFilters(searchParams: URLSearchParams): CartFilters {
   const tab = searchParams.get("status");
+  const sortBy = searchParams.get("sortBy");
 
   return {
     search: searchParams.get("q") ?? undefined,
@@ -29,9 +30,11 @@ export function parseCartFilters(searchParams: URLSearchParams): CartFilters {
     productId: searchParams.get("productId") ?? undefined,
     dateFrom: parseDateFrom(searchParams.get("from")),
     dateTo: parseDateTo(searchParams.get("to")),
+    importedOnly: searchParams.get("imported") === "1",
+    includeArchived: searchParams.get("archived") === "1",
     page: Number(searchParams.get("page") ?? "1"),
     pageSize: Number(searchParams.get("pageSize") ?? "25"),
-    sortBy: searchParams.get("sortBy") === "totalCents" ? "totalCents" : "createdAt",
+    sortBy: isCartSortBy(sortBy) ? sortBy : "createdAt",
     sortDir: searchParams.get("sortDir") === "asc" ? "asc" : "desc",
   };
 }

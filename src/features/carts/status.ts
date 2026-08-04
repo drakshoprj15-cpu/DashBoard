@@ -10,6 +10,7 @@ export type CartCategory =
   | "awaiting_payment"
   | "pending"
   | "paid"
+  | "recovered"
   | "declined"
   | "abandoned"
   | "expired"
@@ -44,12 +45,19 @@ export const ABANDON_THRESHOLD_HOURS = 24;
  * atualização — um "aguardando pagamento" parado há mais de
  * `ABANDON_THRESHOLD_HOURS` passa a contar como abandonado, sem que isso
  * altere `orders.status` no banco (é só uma leitura derivada).
+ *
+ * `recoveredManuallyAt` tem precedência sobre tudo menos um pagamento real:
+ * é a marcação manual do operador ("recuperei este carrinho por fora"), que
+ * nunca vira `orders.status = 'paid'` porque só o gateway confirma receita.
  */
 export function resolveCartCategory(
   orderStatus: string,
   hoursSinceUpdate: number,
+  recoveredManuallyAt?: Date | string | null,
 ): CartCategory {
   const base = BASE_CATEGORY_BY_ORDER_STATUS[orderStatus] ?? "awaiting_payment";
+  if (base === "paid") return "paid";
+  if (recoveredManuallyAt) return "recovered";
   if (
     ABANDONABLE_CATEGORIES.includes(base) &&
     hoursSinceUpdate >= ABANDON_THRESHOLD_HOURS
@@ -63,6 +71,7 @@ export const CATEGORY_LABEL: Record<CartCategory, string> = {
   awaiting_payment: "Aguardando pagamento",
   pending: "Pendente",
   paid: "Pago",
+  recovered: "Recuperado",
   declined: "Recusado",
   abandoned: "Abandonado",
   expired: "Expirado",
@@ -76,6 +85,7 @@ export const CATEGORY_BADGE_VARIANT: Record<
   "success" | "warning" | "destructive" | "info" | "muted"
 > = {
   paid: "success",
+  recovered: "success",
   pending: "info",
   awaiting_payment: "warning",
   declined: "destructive",
@@ -133,32 +143,53 @@ export type CartTab =
   | "awaiting_payment"
   | "pending"
   | "paid"
+  | "recovered"
   | "declined"
   | "abandoned"
+  | "reminded"
   | "other";
 
 export const CART_TABS: { key: CartTab; label: string }[] = [
   { key: "all", label: "Todos" },
+  { key: "abandoned", label: "Abandonados" },
   { key: "awaiting_payment", label: "Aguardando pagamento" },
   { key: "pending", label: "Pendentes" },
-  { key: "paid", label: "Pagos" },
   { key: "declined", label: "Recusados" },
-  { key: "abandoned", label: "Abandonados" },
+  { key: "paid", label: "Pagos" },
+  { key: "recovered", label: "Recuperados" },
+  { key: "reminded", label: "Lembrete enviado" },
   { key: "other", label: "Outros" },
 ];
 
-/** Categorias incluídas em cada aba — "other" agrupa os estados residuais. */
+/**
+ * Categorias incluídas em cada aba — "other" agrupa os estados residuais.
+ * "reminded" não é uma categoria: é um recorte por `last_reminder_sent_at`,
+ * transversal a todas elas (por isso fica fora deste mapa).
+ */
 export const CATEGORIES_BY_TAB: Record<
-  Exclude<CartTab, "all">,
+  Exclude<CartTab, "all" | "reminded">,
   CartCategory[]
 > = {
   awaiting_payment: ["awaiting_payment"],
   pending: ["pending"],
   paid: ["paid"],
+  recovered: ["recovered"],
   declined: ["declined"],
   abandoned: ["abandoned"],
   other: ["expired", "cancelled", "refunded", "chargeback"],
 };
+
+/** Categorias que ainda podem ser recuperadas — habilitam lembrete/disparo. */
+export const RECOVERABLE_CATEGORIES: CartCategory[] = [
+  "awaiting_payment",
+  "pending",
+  "abandoned",
+  "declined",
+];
+
+export function isRecoverableCategory(category: CartCategory): boolean {
+  return RECOVERABLE_CATEGORIES.includes(category);
+}
 
 const VALID_TABS: readonly string[] = CART_TABS.map((t) => t.key);
 

@@ -4,9 +4,12 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   AlertCircle,
+  Archive,
+  CheckCircle2,
   Copy,
   Eye,
   EyeOff,
+  Link2,
   Mail,
   MessageCircle,
   RefreshCw,
@@ -15,7 +18,12 @@ import {
 
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { maskDocument } from "@/lib/mask";
-import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL } from "@/features/carts/status";
+import {
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATUS_LABEL,
+  isRecoverableCategory,
+} from "@/features/carts/status";
+import { whatsAppUrl } from "@/features/carts/phone";
 import type { CartDetailDTO } from "@/features/carts/client-types";
 import { CartStatusBadge } from "@/features/carts/cart-status-badge";
 import { Button } from "@/components/ui/button";
@@ -40,12 +48,6 @@ async function copyToClipboard(value: string, label: string) {
   }
 }
 
-function whatsAppUrl(phone: string): string | null {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-  return `https://wa.me/${digits}`;
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -59,6 +61,9 @@ export interface CartDetailSheetProps {
   orderId: string | null;
   onClose: () => void;
   onSendReminder: (orderId: string) => void;
+  onOpenWhatsApp: (orderId: string) => void;
+  onMarkStatus: (orderId: string, mark: "recovered" | "refused" | "pending") => void;
+  onArchive: (orderId: string, archived: boolean) => void;
   onSync: (orderId: string) => void;
   onCancel: (orderId: string) => void;
   syncing: boolean;
@@ -72,6 +77,9 @@ export function CartDetailSheet({
   orderId,
   onClose,
   onSendReminder,
+  onOpenWhatsApp,
+  onMarkStatus,
+  onArchive,
   onSync,
   onCancel,
   syncing,
@@ -158,15 +166,72 @@ export function CartDetailSheet({
                 </span>
               </div>
 
-              {/* Ações */}
+              {/* Ações rápidas de recuperação */}
               <div className="flex flex-wrap gap-2">
-                {(data.order.category === "awaiting_payment" ||
-                  data.order.category === "pending" ||
-                  data.order.category === "abandoned") && (
+                {isRecoverableCategory(data.order.category) && (
                   <Button type="button" size="sm" variant="outline" onClick={() => onSendReminder(data.order.id)}>
                     <Mail /> Enviar lembrete
                   </Button>
                 )}
+                {data.customer?.phone && whatsAppUrl(data.customer.phone) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={data.customer.marketingOptOut}
+                    onClick={() => onOpenWhatsApp(data.order.id)}
+                  >
+                    <MessageCircle /> WhatsApp
+                  </Button>
+                )}
+                {data.order.checkoutUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(data.order.checkoutUrl!, "Link do checkout")}
+                  >
+                    <Link2 /> Copiar link
+                  </Button>
+                )}
+                {data.order.category !== "paid" && data.order.category !== "recovered" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onMarkStatus(data.order.id, "recovered")}
+                  >
+                    <CheckCircle2 /> Marcar como convertido
+                  </Button>
+                )}
+                {isRecoverableCategory(data.order.category) && data.order.category !== "declined" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onMarkStatus(data.order.id, "refused")}
+                  >
+                    Marcar como recusado
+                  </Button>
+                )}
+                {(data.order.category === "awaiting_payment" || data.order.category === "abandoned") && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onMarkStatus(data.order.id, "pending")}
+                  >
+                    Marcar como pendente
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onArchive(data.order.id, !data.order.archivedAt)}
+                >
+                  <Archive /> {data.order.archivedAt ? "Desarquivar" : "Arquivar"}
+                </Button>
                 {data.payments.some((p) => p.externalId) && (
                   <Button
                     type="button"
@@ -190,6 +255,15 @@ export function CartDetailSheet({
                   </Button>
                 )}
               </div>
+
+              {data.order.lastReminderSentAt && (
+                <p className="text-muted-foreground text-xs">
+                  Último lembrete por{" "}
+                  {data.order.lastReminderChannel === "whatsapp" ? "WhatsApp" : "e-mail"} em{" "}
+                  {formatDateTime(data.order.lastReminderSentAt, "pt-PT")} · {data.order.reminderCount}{" "}
+                  no total.
+                </p>
+              )}
 
               <Separator />
 
@@ -284,7 +358,30 @@ export function CartDetailSheet({
                 <h3 className="text-sm font-semibold">Pedido</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Referência">{data.order.reference}</Field>
-                  <Field label="Origem">{data.order.origin ?? "—"}</Field>
+                  <Field label="Origem">
+                    {data.order.origin === "import" ? "Importado de planilha" : (data.order.origin ?? "—")}
+                  </Field>
+                  {data.order.checkoutUrl && (
+                    <Field label="Link do checkout">
+                      <a
+                        href={data.order.checkoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary break-all hover:underline"
+                      >
+                        {data.order.checkoutUrl}
+                      </a>
+                    </Field>
+                  )}
+                  {data.order.utm && Object.keys(data.order.utm).length > 0 && (
+                    <Field label="Origem/UTM">
+                      {Object.entries(data.order.utm).map(([key, value]) => (
+                        <span key={key} className="block text-xs">
+                          {key}: {String(value)}
+                        </span>
+                      ))}
+                    </Field>
+                  )}
                   <Field label="Produto(s)">
                     {data.items.map((i, index) => (
                       <span key={`${i.productName}-${i.sku ?? index}`} className="block">

@@ -33,16 +33,33 @@ export interface CartRowDTO {
   updatedAt: string;
   paidAt: string | null;
   lastReminderSentAt: string | null;
+  lastReminderChannel: string | null;
+  reminderCount: number;
+  checkoutUrl: string | null;
+  recoveredManuallyAt: string | null;
+  archivedAt: string | null;
+  origin: string | null;
   marketingOptOut: boolean;
+}
+
+export interface CartFacetTotalDTO {
+  count: number;
+  valueCents: number;
 }
 
 export interface CartFacetsDTO {
   tabCounts: Record<CartTab, number>;
+  dominantCurrency: string;
   totals: {
-    awaitingPayment: { count: number; valueCents: number };
-    pending: { count: number; valueCents: number };
-    paid: { count: number; valueCents: number };
-    declined: { count: number; valueCents: number };
+    awaitingPayment: CartFacetTotalDTO;
+    pending: CartFacetTotalDTO;
+    paid: CartFacetTotalDTO;
+    declined: CartFacetTotalDTO;
+    abandoned: CartFacetTotalDTO;
+    recovered: CartFacetTotalDTO;
+    remindersSent: number;
+    recoveredRevenueCents: number;
+    recoveryRate: number;
     conversionRate: number;
   };
 }
@@ -60,7 +77,7 @@ export interface TimelineEventDTO {
   label: string;
   detail?: string;
   at: string;
-  source: "order" | "payment" | "webhook" | "refund" | "chargeback" | "history";
+  source: "order" | "payment" | "webhook" | "refund" | "chargeback" | "history" | "recovery";
 }
 
 export interface CartDetailDTO {
@@ -88,6 +105,11 @@ export interface CartDetailDTO {
     paidAt: string | null;
     cancelledAt: string | null;
     lastReminderSentAt: string | null;
+    lastReminderChannel: string | null;
+    reminderCount: number;
+    checkoutUrl: string | null;
+    recoveredManuallyAt: string | null;
+    archivedAt: string | null;
   };
   customer: {
     id: string;

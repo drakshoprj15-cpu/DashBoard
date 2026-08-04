@@ -33,10 +33,13 @@ describe.skipIf(!hasDatabase)(
 
     it("as abas particionam o conjunto — a soma bate com Todos", async () => {
       const facets = await getCartsFacets({});
+      // "reminded" fica de fora da soma de propósito: é um recorte por
+      // último lembrete, transversal às categorias, não uma partição.
       const soma =
         facets.tabCounts.awaiting_payment +
         facets.tabCounts.pending +
         facets.tabCounts.paid +
+        facets.tabCounts.recovered +
         facets.tabCounts.declined +
         facets.tabCounts.abandoned +
         facets.tabCounts.other;
@@ -46,17 +49,64 @@ describe.skipIf(!hasDatabase)(
       expect(facets.totals.conversionRate).toBeLessThanOrEqual(1);
     });
 
+    it("os agregados de recuperação são coerentes", async () => {
+      const facets = await getCartsFacets({});
+
+      expect(facets.totals.recoveryRate).toBeGreaterThanOrEqual(0);
+      expect(facets.totals.recoveryRate).toBeLessThanOrEqual(1);
+      expect(facets.totals.remindersSent).toBeGreaterThanOrEqual(0);
+      expect(facets.totals.recoveredRevenueCents).toBeGreaterThanOrEqual(0);
+      // `sum(bigint)` chega do driver como string — os cards somam números.
+      expect(typeof facets.totals.abandoned.valueCents).toBe("number");
+      expect(typeof facets.totals.recoveredRevenueCents).toBe("number");
+      // "Convertidos" = pagos de verdade + marcados manualmente.
+      expect(facets.totals.recovered.count).toBe(
+        facets.tabCounts.paid + facets.tabCounts.recovered,
+      );
+      expect(facets.dominantCurrency).toMatch(/^[A-Z]{3}$/);
+    });
+
     it("cada aba filtra sem erro de SQL", async () => {
       for (const tab of [
         "awaiting_payment",
         "pending",
         "paid",
+        "recovered",
         "declined",
         "abandoned",
+        "reminded",
         "other",
       ] as const) {
         const result = await listCarts({ tab, page: 1, pageSize: 10 });
         expect(result.total).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it("cada ordenação corre sem erro de SQL", async () => {
+      for (const sortBy of ["createdAt", "totalCents", "lastReminderSentAt"] as const) {
+        for (const sortDir of ["asc", "desc"] as const) {
+          const result = await listCarts({ sortBy, sortDir, page: 1, pageSize: 10 });
+          expect(Array.isArray(result.rows)).toBe(true);
+        }
+      }
+    });
+
+    it("arquivados ficam ocultos por omissão e aparecem quando pedido", async () => {
+      const padrao = await listCarts({ page: 1, pageSize: 1, tab: "all" });
+      const comArquivados = await listCarts({
+        page: 1,
+        pageSize: 1,
+        tab: "all",
+        includeArchived: true,
+      });
+
+      expect(comArquivados.total).toBeGreaterThanOrEqual(padrao.total);
+    });
+
+    it("o filtro de importados devolve só o que veio de planilha", async () => {
+      const importados = await listCarts({ importedOnly: true, page: 1, pageSize: 25 });
+      for (const row of importados.rows) {
+        expect(row.origin).toBe("import");
       }
     });
 

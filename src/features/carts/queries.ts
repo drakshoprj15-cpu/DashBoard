@@ -14,6 +14,7 @@ import {
 
 import { getDb, isDatabaseConfigured, type Database } from "@/database/client";
 import {
+  cartEvents,
   chargebacks,
   customerConsents,
   customers,
@@ -78,21 +79,33 @@ function abandonCutoff(now: Date = new Date()): string {
   return new Date(now.getTime() - ABANDON_THRESHOLD_HOURS * 3_600_000).toISOString();
 }
 
+/**
+ * Um pedido marcado manualmente como recuperado sai das categorias
+ * "recuperáveis" (aguardando/pendente/abandonado/recusado) e passa a contar
+ * como recuperado — espelha `resolveCartCategory`, que faz o mesmo na
+ * leitura linha a linha.
+ */
+const NOT_RECOVERED = sql`${orders.recoveredManuallyAt} is null`;
+
 function tabCondition(tab: CartTab | undefined, cutoff: string): SQL | undefined {
   if (!tab || tab === "all") return undefined;
   switch (tab) {
     case "awaiting_payment":
-      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz`;
+      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz and ${NOT_RECOVERED}`;
     case "abandoned":
-      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz`;
+      return sql`${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz and ${NOT_RECOVERED}`;
     case "pending":
-      return sql`${orders.status} = 'processing'`;
+      return sql`${orders.status} = 'processing' and ${NOT_RECOVERED}`;
     case "paid":
       return sql`${orders.status} in ('paid','preparing','shipped','delivered')`;
+    case "recovered":
+      return sql`${orders.recoveredManuallyAt} is not null and ${orders.status} not in ('paid','preparing','shipped','delivered')`;
     case "declined":
-      return sql`${orders.status} = 'refused'`;
+      return sql`${orders.status} = 'refused' and ${NOT_RECOVERED}`;
+    case "reminded":
+      return sql`${orders.lastReminderSentAt} is not null`;
     case "other":
-      return sql`${orders.status} in ('expired','cancelled','refunded','chargeback')`;
+      return sql`${orders.status} in ('expired','cancelled','refunded','chargeback') and ${NOT_RECOVERED}`;
     default:
       return undefined;
   }
@@ -108,10 +121,37 @@ export interface CartFilters {
   productId?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  /** Só carrinhos importados de planilha (`origin = 'import'`). */
+  importedOnly?: boolean;
+  /** Por omissão os arquivados ficam ocultos. */
+  includeArchived?: boolean;
   page?: number;
   pageSize?: number;
-  sortBy?: "createdAt" | "totalCents";
+  sortBy?: CartSortBy;
   sortDir?: "asc" | "desc";
+}
+
+export type CartSortBy = "createdAt" | "totalCents" | "lastReminderSentAt";
+
+export function isCartSortBy(value: string | null | undefined): value is CartSortBy {
+  return value === "createdAt" || value === "totalCents" || value === "lastReminderSentAt";
+}
+
+/**
+ * Ordenação da listagem. `lastReminderSentAt` é anulável e no Postgres um
+ * `desc` puro traria os nulos primeiro — quem ordena por "último lembrete"
+ * quer justamente ver quem já recebeu, então os nulos vão sempre para o fim.
+ */
+function cartOrderBy(sortBy: CartSortBy | undefined, sortDir: "asc" | "desc" | undefined): SQL {
+  const direction = sortDir === "asc" ? sql`asc` : sql`desc`;
+  switch (sortBy) {
+    case "totalCents":
+      return sql`${orders.totalCents} ${direction}`;
+    case "lastReminderSentAt":
+      return sql`${orders.lastReminderSentAt} ${direction} nulls last`;
+    default:
+      return sql`${orders.createdAt} ${direction}`;
+  }
 }
 
 function gatewayFromMetadata(metadata: unknown): string | null {
@@ -121,6 +161,24 @@ function gatewayFromMetadata(metadata: unknown): string | null {
   }
   return null;
 }
+
+/** `orders.origin` gravado nos carrinhos vindos de planilha. */
+export const IMPORT_ORIGIN = "import";
+
+/** Filtros aplicáveis fora da aba de status — reutilizado em facets e export. */
+export type BaseCartFilters = Pick<
+  CartFilters,
+  | "search"
+  | "paymentMethod"
+  | "gateway"
+  | "productId"
+  | "country"
+  | "currency"
+  | "dateFrom"
+  | "dateTo"
+  | "importedOnly"
+  | "includeArchived"
+>;
 
 /**
  * Condições comuns a listagem, contagem e resumos — tudo exceto a aba de
@@ -132,12 +190,12 @@ function gatewayFromMetadata(metadata: unknown): string | null {
 async function buildBaseWhere(
   db: Database,
   workspaceId: string,
-  filters: Pick<
-    CartFilters,
-    "search" | "paymentMethod" | "gateway" | "productId" | "country" | "currency" | "dateFrom" | "dateTo"
-  >,
+  filters: BaseCartFilters,
 ): Promise<SQL> {
   const conditions: SQL[] = [eq(orders.workspaceId, workspaceId)];
+
+  if (!filters.includeArchived) conditions.push(sql`${orders.archivedAt} is null`);
+  if (filters.importedOnly) conditions.push(eq(orders.origin, IMPORT_ORIGIN));
 
   const term = sanitizeSearchTerm(filters.search);
   if (term) {
@@ -224,6 +282,12 @@ export interface CartRow {
   updatedAt: Date;
   paidAt: Date | null;
   lastReminderSentAt: Date | null;
+  lastReminderChannel: string | null;
+  reminderCount: number;
+  checkoutUrl: string | null;
+  recoveredManuallyAt: Date | null;
+  archivedAt: Date | null;
+  origin: string | null;
   marketingOptOut: boolean;
 }
 
@@ -335,8 +399,7 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
     .where(where);
   const total = totalRow?.total ?? 0;
 
-  const sortColumn = filters.sortBy === "totalCents" ? orders.totalCents : orders.createdAt;
-  const orderBy = filters.sortDir === "asc" ? asc(sortColumn) : desc(sortColumn);
+  const orderBy = cartOrderBy(filters.sortBy, filters.sortDir);
 
   const rows = await db
     .select({
@@ -350,6 +413,12 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
       updatedAt: orders.updatedAt,
       paidAt: orders.paidAt,
       lastReminderSentAt: orders.lastReminderSentAt,
+      lastReminderChannel: orders.lastReminderChannel,
+      reminderCount: orders.reminderCount,
+      checkoutUrl: orders.checkoutUrl,
+      recoveredManuallyAt: orders.recoveredManuallyAt,
+      archivedAt: orders.archivedAt,
+      origin: orders.origin,
       customerId: orders.customerId,
       customerFirst: customers.firstName,
       customerLast: customers.lastName,
@@ -380,7 +449,7 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
       orderId: r.orderId,
       reference: r.reference,
       status: r.status,
-      category: resolveCartCategory(r.status, hoursSinceUpdate),
+      category: resolveCartCategory(r.status, hoursSinceUpdate, r.recoveredManuallyAt),
       customerId: r.customerId,
       customerName: [r.customerFirst, r.customerLast].filter(Boolean).join(" ") || null,
       customerEmail: r.customerEmail,
@@ -403,6 +472,12 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
       updatedAt: r.updatedAt,
       paidAt: r.paidAt,
       lastReminderSentAt: r.lastReminderSentAt,
+      lastReminderChannel: r.lastReminderChannel,
+      reminderCount: r.reminderCount,
+      checkoutUrl: r.checkoutUrl,
+      recoveredManuallyAt: r.recoveredManuallyAt,
+      archivedAt: r.archivedAt,
+      origin: r.origin,
       marketingOptOut: r.marketingOptOut ?? false,
     };
   });
@@ -422,10 +497,7 @@ export interface PendingReminderCandidates {
  * atuais da página exceto a aba selecionada. Limitado a `limit` por chamada.
  */
 export async function listPendingReminderCandidates(
-  filters: Pick<
-    CartFilters,
-    "search" | "paymentMethod" | "gateway" | "productId" | "country" | "currency" | "dateFrom" | "dateTo"
-  >,
+  filters: BaseCartFilters,
   limit = 200,
 ): Promise<PendingReminderCandidates> {
   if (!isDatabaseConfigured()) return { orderIds: [], matchedTotal: 0 };
@@ -433,7 +505,11 @@ export async function listPendingReminderCandidates(
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
   const baseWhere = await buildBaseWhere(db, workspaceId, filters);
-  const where = and(baseWhere, sql`${orders.status} in ('created','awaiting_payment','processing')`)!;
+  const where = and(
+    baseWhere,
+    sql`${orders.status} in ('created','awaiting_payment','processing','refused')`,
+    NOT_RECOVERED,
+  )!;
 
   const [totalRow] = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -452,17 +528,38 @@ export async function listPendingReminderCandidates(
   return { orderIds: rows.map((r) => r.id), matchedTotal: totalRow?.n ?? 0 };
 }
 
+export interface CartFacetTotal {
+  count: number;
+  valueCents: number;
+}
+
 export interface CartFacets {
   tabCounts: Record<CartTab, number>;
+  /** Moeda mais frequente no recorte — os cards somam valores nela. */
+  dominantCurrency: string;
   totals: {
-    awaitingPayment: { count: number; valueCents: number };
-    pending: { count: number; valueCents: number };
-    paid: { count: number; valueCents: number };
-    declined: { count: number; valueCents: number };
+    awaitingPayment: CartFacetTotal;
+    pending: CartFacetTotal;
+    paid: CartFacetTotal;
+    declined: CartFacetTotal;
+    abandoned: CartFacetTotal;
+    /** Pagos + marcados manualmente como recuperados. */
+    recovered: CartFacetTotal;
+    /** Carrinhos que já receberam pelo menos um lembrete (qualquer canal). */
+    remindersSent: number;
+    /**
+     * Valor dos carrinhos que converteram **depois** de receberem um lembrete
+     * — a receita que a central de recuperação trouxe de volta.
+     */
+    recoveredRevenueCents: number;
+    /** Recuperados após lembrete ÷ lembretes enviados. */
+    recoveryRate: number;
     /** Pagos ÷ total de pedidos no filtro — nunca inclui abandono no denominador extra. */
     conversionRate: number;
   };
 }
+
+const EMPTY_TOTAL: CartFacetTotal = { count: 0, valueCents: 0 };
 
 function emptyFacets(): CartFacets {
   return {
@@ -471,15 +568,23 @@ function emptyFacets(): CartFacets {
       awaiting_payment: 0,
       pending: 0,
       paid: 0,
+      recovered: 0,
       declined: 0,
       abandoned: 0,
+      reminded: 0,
       other: 0,
     },
+    dominantCurrency: "EUR",
     totals: {
-      awaitingPayment: { count: 0, valueCents: 0 },
-      pending: { count: 0, valueCents: 0 },
-      paid: { count: 0, valueCents: 0 },
-      declined: { count: 0, valueCents: 0 },
+      awaitingPayment: { ...EMPTY_TOTAL },
+      pending: { ...EMPTY_TOTAL },
+      paid: { ...EMPTY_TOTAL },
+      declined: { ...EMPTY_TOTAL },
+      abandoned: { ...EMPTY_TOTAL },
+      recovered: { ...EMPTY_TOTAL },
+      remindersSent: 0,
+      recoveredRevenueCents: 0,
+      recoveryRate: 0,
       conversionRate: 0,
     },
   };
@@ -500,19 +605,41 @@ export async function getCartsFacets(
   const cutoff = abandonCutoff();
   const baseWhere = await buildBaseWhere(db, workspaceId, filters);
 
+  const paidSql = sql`${orders.status} in ('paid','preparing','shipped','delivered')`;
+  const recoveredSql = sql`${orders.recoveredManuallyAt} is not null and not (${paidSql})`;
+  const openSql = sql`${orders.recoveredManuallyAt} is null`;
+
+  /**
+   * Conversão pós-lembrete: o pedido recebeu lembrete e converteu **depois**
+   * disso. Sem a comparação de datas, um pedido já pago que recebesse um
+   * lembrete por engano entraria como "recuperado" e inflaria a métrica.
+   */
+  const recoveredAfterReminderSql = sql`
+    ${orders.lastReminderSentAt} is not null and (
+      (${orders.paidAt} is not null and ${orders.paidAt} >= ${orders.lastReminderSentAt})
+      or (${orders.recoveredManuallyAt} is not null and ${orders.recoveredManuallyAt} >= ${orders.lastReminderSentAt})
+    )`;
+
   const [row] = await db
     .select({
-      awaitingCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz)::int`,
-      awaitingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz), 0)::int`,
-      abandonedCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz)::int`,
-      pendingCount: sql<number>`count(*) filter (where ${orders.status} = 'processing')::int`,
-      pendingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'processing'), 0)::int`,
-      paidCount: sql<number>`count(*) filter (where ${orders.status} in ('paid','preparing','shipped','delivered'))::int`,
-      paidValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('paid','preparing','shipped','delivered')), 0)::int`,
-      declinedCount: sql<number>`count(*) filter (where ${orders.status} = 'refused')::int`,
-      declinedValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'refused'), 0)::int`,
-      otherCount: sql<number>`count(*) filter (where ${orders.status} in ('expired','cancelled','refunded','chargeback'))::int`,
+      awaitingCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz and ${openSql})::int`,
+      awaitingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} >= ${cutoff}::timestamptz and ${openSql}), 0)::bigint`,
+      abandonedCount: sql<number>`count(*) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz and ${openSql})::int`,
+      abandonedValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} in ('created','awaiting_payment') and ${orders.updatedAt} < ${cutoff}::timestamptz and ${openSql}), 0)::bigint`,
+      pendingCount: sql<number>`count(*) filter (where ${orders.status} = 'processing' and ${openSql})::int`,
+      pendingValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'processing' and ${openSql}), 0)::bigint`,
+      paidCount: sql<number>`count(*) filter (where ${paidSql})::int`,
+      paidValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${paidSql}), 0)::bigint`,
+      manualRecoveredCount: sql<number>`count(*) filter (where ${recoveredSql})::int`,
+      manualRecoveredValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${recoveredSql}), 0)::bigint`,
+      declinedCount: sql<number>`count(*) filter (where ${orders.status} = 'refused' and ${openSql})::int`,
+      declinedValue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'refused' and ${openSql}), 0)::bigint`,
+      otherCount: sql<number>`count(*) filter (where ${orders.status} in ('expired','cancelled','refunded','chargeback') and ${openSql})::int`,
+      remindedCount: sql<number>`count(*) filter (where ${orders.lastReminderSentAt} is not null)::int`,
+      recoveredAfterReminderCount: sql<number>`count(*) filter (where ${recoveredAfterReminderSql})::int`,
+      recoveredRevenue: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${recoveredAfterReminderSql}), 0)::bigint`,
       totalCount: sql<number>`count(*)::int`,
+      dominantCurrency: sql<string | null>`mode() within group (order by ${orders.currency})`,
     })
     .from(orders)
     .leftJoin(customers, eq(orders.customerId, customers.id))
@@ -520,6 +647,12 @@ export async function getCartsFacets(
 
   const totalCount = row?.totalCount ?? 0;
   const paidCount = row?.paidCount ?? 0;
+  const manualRecoveredCount = row?.manualRecoveredCount ?? 0;
+  const remindersSent = row?.remindedCount ?? 0;
+  const recoveredAfterReminder = row?.recoveredAfterReminderCount ?? 0;
+
+  // `sum(bigint)` volta como string no driver — Number() aqui, uma única vez.
+  const num = (value: number | string | null | undefined): number => Number(value ?? 0);
 
   return {
     tabCounts: {
@@ -527,15 +660,26 @@ export async function getCartsFacets(
       awaiting_payment: row?.awaitingCount ?? 0,
       pending: row?.pendingCount ?? 0,
       paid: paidCount,
+      recovered: manualRecoveredCount,
       declined: row?.declinedCount ?? 0,
       abandoned: row?.abandonedCount ?? 0,
+      reminded: remindersSent,
       other: row?.otherCount ?? 0,
     },
+    dominantCurrency: row?.dominantCurrency ?? "EUR",
     totals: {
-      awaitingPayment: { count: row?.awaitingCount ?? 0, valueCents: row?.awaitingValue ?? 0 },
-      pending: { count: row?.pendingCount ?? 0, valueCents: row?.pendingValue ?? 0 },
-      paid: { count: paidCount, valueCents: row?.paidValue ?? 0 },
-      declined: { count: row?.declinedCount ?? 0, valueCents: row?.declinedValue ?? 0 },
+      awaitingPayment: { count: row?.awaitingCount ?? 0, valueCents: num(row?.awaitingValue) },
+      pending: { count: row?.pendingCount ?? 0, valueCents: num(row?.pendingValue) },
+      paid: { count: paidCount, valueCents: num(row?.paidValue) },
+      declined: { count: row?.declinedCount ?? 0, valueCents: num(row?.declinedValue) },
+      abandoned: { count: row?.abandonedCount ?? 0, valueCents: num(row?.abandonedValue) },
+      recovered: {
+        count: paidCount + manualRecoveredCount,
+        valueCents: num(row?.paidValue) + num(row?.manualRecoveredValue),
+      },
+      remindersSent,
+      recoveredRevenueCents: num(row?.recoveredRevenue),
+      recoveryRate: remindersSent > 0 ? recoveredAfterReminder / remindersSent : 0,
       conversionRate: totalCount > 0 ? paidCount / totalCount : 0,
     },
   };
@@ -554,6 +698,8 @@ export async function getPendingCartsCount(): Promise<number> {
       and(
         eq(orders.workspaceId, workspaceId),
         sql`${orders.status} in ('created','awaiting_payment','processing')`,
+        sql`${orders.archivedAt} is null`,
+        NOT_RECOVERED,
       ),
     );
   return row?.n ?? 0;
@@ -564,7 +710,7 @@ export interface TimelineEvent {
   label: string;
   detail?: string;
   at: Date;
-  source: "order" | "payment" | "webhook" | "refund" | "chargeback" | "history";
+  source: "order" | "payment" | "webhook" | "refund" | "chargeback" | "history" | "recovery";
 }
 
 export interface CartDetail {
@@ -592,6 +738,11 @@ export interface CartDetail {
     paidAt: Date | null;
     cancelledAt: Date | null;
     lastReminderSentAt: Date | null;
+    lastReminderChannel: string | null;
+    reminderCount: number;
+    checkoutUrl: string | null;
+    recoveredManuallyAt: Date | null;
+    archivedAt: Date | null;
   };
   customer: {
     id: string;
@@ -646,6 +797,18 @@ const PAYMENT_EVENT_LABEL: Record<string, string> = {
   "order.chargeback": "Chargeback aberto",
 };
 
+/** Rótulo de cada evento da central de recuperação na linha do tempo. */
+const CART_EVENT_LABEL: Record<string, string> = {
+  created: "Carrinho criado",
+  status_changed: "Status alterado manualmente",
+  email_sent: "Lembrete enviado por e-mail",
+  whatsapp_opened: "Lembrete iniciado por WhatsApp",
+  imported: "Importado de planilha",
+  exported: "Exportado",
+  archived: "Carrinho arquivado",
+  reminder_failed: "Falha ao enviar lembrete",
+};
+
 /** Detalhe completo de um carrinho/pedido para o drawer — escopado ao workspace. */
 export async function getCartDetail(orderId: string): Promise<CartDetail | null> {
   if (!isDatabaseConfigured()) return null;
@@ -664,7 +827,7 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
     ? await db.select().from(customers).where(eq(customers.id, orderRow.customerId)).limit(1)
     : [undefined];
 
-  const [itemRows, paymentRows, historyRows] = await Promise.all([
+  const [itemRows, paymentRows, historyRows, eventRows] = await Promise.all([
     db.select().from(orderItems).where(eq(orderItems.orderId, orderId)).orderBy(asc(orderItems.createdAt)),
     db.select().from(payments).where(eq(payments.orderId, orderId)).orderBy(asc(payments.createdAt)),
     db
@@ -672,6 +835,11 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
       .from(orderStatusHistory)
       .where(eq(orderStatusHistory.orderId, orderId))
       .orderBy(asc(orderStatusHistory.createdAt)),
+    db
+      .select()
+      .from(cartEvents)
+      .where(eq(cartEvents.orderId, orderId))
+      .orderBy(asc(cartEvents.createdAt)),
   ]);
 
   const paymentIds = paymentRows.map((p) => p.id);
@@ -749,6 +917,13 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
       at: c.disputedAt ?? c.createdAt,
       source: "chargeback",
     })),
+    ...eventRows.map((e): TimelineEvent => ({
+      key: `cart_event_${e.id}`,
+      label: CART_EVENT_LABEL[e.type] ?? e.type,
+      detail: e.message ?? undefined,
+      at: e.createdAt,
+      source: "recovery",
+    })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
   return {
@@ -756,7 +931,7 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
       id: orderRow.id,
       reference: orderRow.reference,
       status: orderRow.status,
-      category: resolveCartCategory(orderRow.status, hoursSinceUpdate),
+      category: resolveCartCategory(orderRow.status, hoursSinceUpdate, orderRow.recoveredManuallyAt),
       currency: orderRow.currency,
       subtotalCents: Number(orderRow.subtotalCents),
       discountCents: Number(orderRow.discountCents),
@@ -776,6 +951,11 @@ export async function getCartDetail(orderId: string): Promise<CartDetail | null>
       paidAt: orderRow.paidAt,
       cancelledAt: orderRow.cancelledAt,
       lastReminderSentAt: orderRow.lastReminderSentAt,
+      lastReminderChannel: orderRow.lastReminderChannel,
+      reminderCount: orderRow.reminderCount,
+      checkoutUrl: orderRow.checkoutUrl,
+      recoveredManuallyAt: orderRow.recoveredManuallyAt,
+      archivedAt: orderRow.archivedAt,
     },
     customer: customerRow
       ? {

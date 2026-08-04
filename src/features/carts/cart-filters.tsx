@@ -18,6 +18,10 @@ export interface CartFiltersState {
   productId: string;
   from: string;
   to: string;
+  /** "1" mostra só os importados de planilha. */
+  imported: string;
+  /** "1" inclui os arquivados na listagem. */
+  archived: string;
 }
 
 export const EMPTY_CART_FILTERS: CartFiltersState = {
@@ -29,7 +33,18 @@ export const EMPTY_CART_FILTERS: CartFiltersState = {
   productId: "",
   from: "",
   to: "",
+  imported: "",
+  archived: "",
 };
+
+/** Opções de ordenação, na forma `campo:direção` usada na query string. */
+export const SORT_OPTIONS = [
+  { value: "createdAt:desc", label: "Mais recentes" },
+  { value: "createdAt:asc", label: "Mais antigos" },
+  { value: "totalCents:desc", label: "Maior valor" },
+  { value: "totalCents:asc", label: "Menor valor" },
+  { value: "lastReminderSentAt:desc", label: "Último lembrete enviado" },
+] as const;
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -50,12 +65,17 @@ export function CartFilters({
   onClear,
   products,
   hasActiveFilters,
+  sort,
+  onSortChange,
 }: {
   value: CartFiltersState;
   onChange: (patch: Partial<CartFiltersState>) => void;
   onClear: () => void;
   products: ProductOption[];
   hasActiveFilters: boolean;
+  /** `campo:direção`, ex.: `totalCents:desc`. */
+  sort: string;
+  onSortChange: (sort: string) => void;
 }) {
   const [searchDraft, setSearchDraft] = React.useState(value.q);
 
@@ -183,6 +203,22 @@ export function CartFilters({
           />
         </div>
 
+        <div className="space-y-1">
+          <Label className="text-muted-foreground text-xs font-normal">Ordenar por</Label>
+          <select
+            value={sort}
+            onChange={(e) => onSortChange(e.target.value)}
+            className={selectClass}
+            aria-label="Ordenar carrinhos"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex gap-1.5 pb-0.5">
           <Button type="button" variant="outline" size="sm" onClick={() => onChange(quickRange(1))}>
             Hoje
@@ -192,6 +228,27 @@ export function CartFilters({
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => onChange(quickRange(30))}>
             30 dias
+          </Button>
+        </div>
+
+        <div className="flex gap-1.5 pb-0.5">
+          <Button
+            type="button"
+            variant={value.imported === "1" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={value.imported === "1"}
+            onClick={() => onChange({ imported: value.imported === "1" ? "" : "1" })}
+          >
+            Importados
+          </Button>
+          <Button
+            type="button"
+            variant={value.archived === "1" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={value.archived === "1"}
+            onClick={() => onChange({ archived: value.archived === "1" ? "" : "1" })}
+          >
+            Com arquivados
           </Button>
         </div>
 

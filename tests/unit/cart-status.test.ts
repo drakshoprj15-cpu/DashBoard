@@ -36,6 +36,25 @@ describe("resolveCartCategory", () => {
     expect(resolveCartCategory("refunded", 0)).toBe("refunded");
     expect(resolveCartCategory("chargeback", 0)).toBe("chargeback");
   });
+
+  it("marcação manual de recuperação tem precedência sobre abandono e recusa", () => {
+    const at = new Date();
+    expect(resolveCartCategory("awaiting_payment", 999, at)).toBe("recovered");
+    expect(resolveCartCategory("refused", 0, at)).toBe("recovered");
+    expect(resolveCartCategory("processing", 0, at)).toBe("recovered");
+  });
+
+  it("pagamento confirmado pelo gateway vence a marcação manual", () => {
+    // "Pago" vem do webhook e é o que alimenta a receita — uma marcação
+    // manual nunca pode mascarar uma venda real já confirmada.
+    expect(resolveCartCategory("paid", 0, new Date())).toBe("paid");
+    expect(resolveCartCategory("delivered", 0, new Date())).toBe("paid");
+  });
+
+  it("sem marcação manual, o comportamento antigo permanece", () => {
+    expect(resolveCartCategory("awaiting_payment", 999, null)).toBe("abandoned");
+    expect(resolveCartCategory("awaiting_payment", 999, undefined)).toBe("abandoned");
+  });
 });
 
 describe("canTransitionOrderStatus", () => {

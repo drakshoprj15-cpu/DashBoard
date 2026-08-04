@@ -60,6 +60,23 @@ export const orders = pgTable(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** Último lembrete de pagamento enviado — evita reenviar em intervalo curto */
     lastReminderSentAt: timestamp("last_reminder_sent_at", { withTimezone: true }),
+    /** Link para o cliente retomar o pagamento — usado nos lembretes */
+    checkoutUrl: text("checkout_url"),
+    /** Quantos lembretes já foram disparados (qualquer canal) */
+    reminderCount: integer("reminder_count").default(0).notNull(),
+    /** email | whatsapp — canal do último lembrete */
+    lastReminderChannel: text("last_reminder_channel"),
+    /**
+     * "Marcar como convertido" feito à mão pelo operador. Deliberadamente
+     * separado de `status`: receita em todo o painel é `status in
+     * ('paid','shipped','delivered')` e só o webhook do gateway pode gravar
+     * isso. Aqui é só uma marcação de recuperação, exibida em Carrinhos e
+     * invisível para o Financeiro.
+     */
+    recoveredManuallyAt: timestamp("recovered_manually_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** Lote de importação de planilha que originou este registo */
+    importBatchId: uuid("import_batch_id"),
     ...timestamps,
   },
   (t) => [
@@ -68,6 +85,8 @@ export const orders = pgTable(
     index("orders_status_idx").on(t.workspaceId, t.status),
     index("orders_customer_idx").on(t.customerId),
     index("orders_created_idx").on(t.workspaceId, t.createdAt),
+    index("orders_archived_idx").on(t.workspaceId, t.archivedAt),
+    index("orders_import_batch_idx").on(t.importBatchId),
   ],
 );
 
@@ -109,6 +128,43 @@ export const orderItems = pgTable(
     ...timestamps,
   },
   (t) => [index("order_items_order_idx").on(t.orderId)],
+);
+
+/**
+ * Histórico de recuperação de um carrinho. Complementa
+ * `order_status_history` (que só regista transições de status) com os eventos
+ * operacionais da central de recuperação: lembrete enviado, WhatsApp aberto,
+ * importação, exportação e arquivamento.
+ *
+ * Vive aqui, e não em `carts.ts`, porque aponta para `orders` — os
+ * "carrinhos" desta operação são pedidos (ver cabeçalho de
+ * `features/carts/queries.ts`) — e `orders.ts` já importa `carts.ts`, então
+ * declarar a tabela do outro lado criaria um ciclo de importação.
+ */
+export const cartEvents = pgTable(
+  "cart_events",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    /** created | status_changed | email_sent | whatsapp_opened | imported | exported | archived | reminder_failed */
+    type: text("type").notNull(),
+    /** email | whatsapp | null (evento sem canal) */
+    channel: text("channel"),
+    /** Resumo legível do evento — nunca o corpo da mensagem com dados pessoais */
+    message: text("message"),
+    metadata: jsonb("metadata").default({}).notNull(),
+    createdBy: uuid("created_by"),
+    ...timestamps,
+  },
+  (t) => [
+    index("cart_events_order_idx").on(t.orderId, t.createdAt),
+    index("cart_events_workspace_idx").on(t.workspaceId, t.type),
+  ],
 );
 
 export const orderStatusHistory = pgTable(
