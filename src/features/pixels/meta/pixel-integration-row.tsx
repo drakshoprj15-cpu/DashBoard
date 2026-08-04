@@ -49,7 +49,9 @@ export function PixelIntegrationRow({
     <div className="space-y-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-semibold">
-          {row.type === "meta_capi" ? "Meta Conversions API" : "Meta Pixel"}
+          {row.type === "meta_capi"
+            ? "Meta Pixel + API de Conversões"
+            : "Meta Pixel (somente navegador)"}
         </span>
         <div className="flex items-center gap-2">
           <MetaConnectionStatusBadge status={row.connectionStatus} />
@@ -80,7 +82,9 @@ export function PixelIntegrationRow({
         <div className="space-y-1">
           <Label htmlFor={`pixel-token-${row.key}`}>
             Token da API de Conversões
-            {row.type === "meta_capi" ? "" : " (opcional)"}
+            {row.type === "meta_capi"
+              ? ""
+              : " (adicione uma nova integração para usar CAPI)"}
           </Label>
           <div className="relative">
             <Input

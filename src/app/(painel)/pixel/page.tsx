@@ -31,6 +31,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePixelPermission } from "@/features/pixels/access";
 
 export const metadata: Metadata = { title: "Pixel" };
 export const dynamic = "force-dynamic";
@@ -56,14 +57,16 @@ export default async function PixelPage(props: PageProps<"/pixel">) {
     );
   }
 
+  const { workspaceId } = await requirePixelPermission("view");
+
   const searchParams = await props.searchParams;
 
   const [rows, stats, landingPageRows, workspaceMetaSettings] =
     await Promise.all([
-      listPixels(),
-      getPixelOverviewStats(),
-      listLandingPages(),
-      getWorkspaceMetaSettings(),
+      listPixels(workspaceId),
+      getPixelOverviewStats(workspaceId),
+      listLandingPages(workspaceId),
+      getWorkspaceMetaSettings(workspaceId),
     ]);
   const appUrl = getAppUrl();
 
@@ -114,6 +117,7 @@ export default async function PixelPage(props: PageProps<"/pixel">) {
             <MetaEventLogs
               searchParams={searchParams}
               landingPages={landingPagesForPicker}
+              workspaceId={workspaceId}
             />
           </>
         }

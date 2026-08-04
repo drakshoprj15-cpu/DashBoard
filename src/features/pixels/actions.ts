@@ -4,8 +4,12 @@ import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { landingPages, pixelEvents, pixels, workspaces } from "@/database/schema";
-import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import {
+  landingPages,
+  pixelEvents,
+  pixels,
+  workspaces,
+} from "@/database/schema";
 import { encryptSecret, maskTokenPreview } from "@/lib/crypto";
 import { pixelSchema, ID_PATTERNS } from "@/validations/pixel";
 import { withTrackingDefaults } from "@/features/landing-pages/defaults";
@@ -14,6 +18,7 @@ import {
   testMetaConnection,
 } from "@/features/pixels/meta-capi";
 import type { PixelConnectionStatus } from "@/features/pixels/types";
+import { requirePixelPermission } from "@/features/pixels/access";
 
 export interface PixelActionResult {
   ok: boolean;
@@ -46,7 +51,7 @@ export async function savePixelAction(
 
   try {
     const db = getDb();
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const { workspaceId } = await requirePixelPermission("manage");
     const data = parsed.data;
 
     await db.insert(pixels).values({
@@ -79,7 +84,7 @@ export async function togglePixelAction(formData: FormData): Promise<void> {
   if (!id || !isDatabaseConfigured()) return;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requirePixelPermission("manage");
 
   await db
     .update(pixels)
@@ -94,7 +99,7 @@ export async function deletePixelAction(formData: FormData): Promise<void> {
   if (!id || !isDatabaseConfigured()) return;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requirePixelPermission("manage");
 
   await db
     .update(pixels)
@@ -134,7 +139,7 @@ export async function saveLandingPagePixelsAction(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requirePixelPermission("manage");
 
   const [lp] = await db
     .select({ id: landingPages.id })
@@ -181,7 +186,7 @@ export async function saveLandingPagePixelsAction(
       return { ok: false, error: `Linha ${i + 1}: ${pattern.message}.` };
     }
 
-    const key = `${row.type}:${pixelId}`;
+    const key = pixelId;
     if (seen.has(key)) {
       return {
         ok: false,
@@ -191,8 +196,7 @@ export async function saveLandingPagePixelsAction(
     seen.add(key);
 
     const collidesWithUntouched = existingRows.some(
-      (e) =>
-        !submittedIds.has(e.id) && e.type === row.type && e.pixelId === pixelId,
+      (e) => !submittedIds.has(e.id) && e.pixelId === pixelId,
     );
     if (collidesWithUntouched) {
       return {
@@ -301,7 +305,7 @@ export async function updatePurchaseRuleAction(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requirePixelPermission("manage");
 
   try {
     if (!landingPageId) {
@@ -363,7 +367,7 @@ export async function testPixelConnectionAction(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requirePixelPermission("manage");
 
   const [pixel] = await db
     .select()
@@ -413,7 +417,7 @@ export async function reprocessPixelEventAction(
   if (!eventRowId || !isDatabaseConfigured()) return;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requirePixelPermission("manage");
 
   const [event] = await db
     .select({ id: pixelEvents.id, status: pixelEvents.status })

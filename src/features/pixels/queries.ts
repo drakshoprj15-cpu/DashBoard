@@ -1,7 +1,13 @@
 import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { landingPages, orders, pixelEvents, pixels, workspaces } from "@/database/schema";
+import {
+  landingPages,
+  orders,
+  pixelEvents,
+  pixels,
+  workspaces,
+} from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { withTrackingDefaults } from "@/features/landing-pages/defaults";
 import type {
@@ -53,11 +59,14 @@ function toPixelRow(p: typeof pixels.$inferSelect): PixelRow {
 }
 
 /** Pixels globais do workspace (aba "Geral" — GTM/GA4/Ads/TikTok/UTMify/Meta). */
-export async function listPixels(): Promise<PixelRow[]> {
+export async function listPixels(
+  requestedWorkspaceId?: string,
+): Promise<PixelRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const rows = await db
     .select()
@@ -77,11 +86,13 @@ export async function listPixels(): Promise<PixelRow[]> {
 /** Confirma que a landing page pertence ao workspace atual — nunca confiar num id vindo do cliente. */
 export async function landingPageBelongsToWorkspace(
   landingPageId: string,
+  requestedWorkspaceId?: string,
 ): Promise<boolean> {
   if (!isDatabaseConfigured()) return false;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [lp] = await db
     .select({ id: landingPages.id })
@@ -105,11 +116,13 @@ export async function landingPageBelongsToWorkspace(
  */
 export async function listLandingPagePixels(
   landingPageId: string,
+  requestedWorkspaceId?: string,
 ): Promise<PixelRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [lp] = await db
     .select({ id: landingPages.id })
@@ -151,11 +164,16 @@ export async function listLandingPagePixels(
 export async function resolveEffectivePixelRows(
   landingPageId: string | null,
   type: PixelType,
+  requestedWorkspaceId?: string,
 ): Promise<(typeof pixels.$inferSelect)[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId = await resolvePublicWorkspaceId(
+    landingPageId,
+    requestedWorkspaceId,
+  );
+  if (!workspaceId) return [];
 
   const candidates = await db
     .select()
@@ -164,6 +182,73 @@ export async function resolveEffectivePixelRows(
       and(
         eq(pixels.workspaceId, workspaceId),
         eq(pixels.type, type),
+        isNull(pixels.deletedAt),
+        landingPageId
+          ? or(
+              eq(pixels.landingPageId, landingPageId),
+              isNull(pixels.landingPageId),
+            )
+          : isNull(pixels.landingPageId),
+      ),
+    );
+
+  return pickEffectivePixels(candidates, landingPageId);
+}
+
+/**
+ * Resolve o tenant a partir da própria landing page pública. Quando um
+ * chamador interno informa o workspace esperado, uma página de outro tenant
+ * é recusada em vez de trocar silenciosamente de contexto.
+ */
+async function resolvePublicWorkspaceId(
+  landingPageId: string | null,
+  requestedWorkspaceId?: string,
+): Promise<string | null> {
+  if (!landingPageId) {
+    return requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
+  }
+
+  const db = getDb();
+  const [page] = await db
+    .select({ workspaceId: landingPages.workspaceId })
+    .from(landingPages)
+    .where(
+      and(eq(landingPages.id, landingPageId), isNull(landingPages.deletedAt)),
+    )
+    .limit(1);
+
+  if (
+    !page ||
+    (requestedWorkspaceId && page.workspaceId !== requestedWorkspaceId)
+  ) {
+    return null;
+  }
+  return page.workspaceId;
+}
+
+/** Resolve o conjunto Meta como um todo, para o fallback ser por página e
+ * não por tipo. Um pixel CAPI é também um pixel de navegador; o token apenas
+ * habilita o envio server-side. */
+export async function resolveEffectiveMetaRows(
+  landingPageId: string | null,
+  requestedWorkspaceId?: string,
+): Promise<(typeof pixels.$inferSelect)[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  const workspaceId = await resolvePublicWorkspaceId(
+    landingPageId,
+    requestedWorkspaceId,
+  );
+  if (!workspaceId) return [];
+
+  const db = getDb();
+  const candidates = await db
+    .select()
+    .from(pixels)
+    .where(
+      and(
+        eq(pixels.workspaceId, workspaceId),
+        inArray(pixels.type, META_PIXEL_TYPES),
         isNull(pixels.deletedAt),
         landingPageId
           ? or(
@@ -197,12 +282,10 @@ export async function getActivePixelsForPublic(
 
   try {
     const db = getDb();
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const workspaceId = await resolvePublicWorkspaceId(landingPageId ?? null);
+    if (!workspaceId) return [];
 
-    const metaRows = await resolveEffectivePixelRows(
-      landingPageId ?? null,
-      "meta_pixel",
-    );
+    const metaRows = await resolveEffectiveMetaRows(landingPageId ?? null);
 
     const otherRows = includeOtherGlobals
       ? await db
@@ -220,9 +303,22 @@ export async function getActivePixelsForPublic(
       : [];
 
     return [
-      ...metaRows.map((r) => ({ type: r.type as PixelType, pixelId: r.pixelId })),
+      ...metaRows.map((r) => ({
+        type: "meta_pixel" as PixelType,
+        pixelId: r.pixelId,
+      })),
       ...otherRows,
-    ].filter((r): r is { type: PixelType; pixelId: string } => Boolean(r.pixelId));
+    ]
+      .filter((r): r is { type: PixelType; pixelId: string } =>
+        Boolean(r.pixelId),
+      )
+      .filter(
+        (row, index, all) =>
+          all.findIndex(
+            (candidate) =>
+              candidate.type === row.type && candidate.pixelId === row.pixelId,
+          ) === index,
+      );
   } catch {
     // Páginas públicas nunca podem quebrar por causa de rastreamento.
     return [];
@@ -242,11 +338,14 @@ const DEFAULT_WORKSPACE_META_SETTINGS: WorkspaceMetaSettings = {
   countGeneratedOrdersAsPurchase: false,
 };
 
-export async function getWorkspaceMetaSettings(): Promise<WorkspaceMetaSettings> {
+export async function getWorkspaceMetaSettings(
+  requestedWorkspaceId?: string,
+): Promise<WorkspaceMetaSettings> {
   if (!isDatabaseConfigured()) return DEFAULT_WORKSPACE_META_SETTINGS;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [row] = await db
     .select({ settings: workspaces.settings })
@@ -271,8 +370,15 @@ export interface LandingPageMetaSettings {
 /** Valida que a landing page pertence ao workspace atual antes de ler tracking. */
 export async function getLandingPageMetaSettings(
   landingPageId: string | null,
+  requestedWorkspaceId?: string,
 ): Promise<LandingPageMetaSettings> {
-  const workspaceSettings = await getWorkspaceMetaSettings();
+  const workspaceId = await resolvePublicWorkspaceId(
+    landingPageId,
+    requestedWorkspaceId,
+  );
+  const workspaceSettings = await getWorkspaceMetaSettings(
+    workspaceId ?? requestedWorkspaceId,
+  );
 
   if (!landingPageId || !isDatabaseConfigured()) {
     return {
@@ -285,7 +391,15 @@ export async function getLandingPageMetaSettings(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  if (!workspaceId) {
+    return {
+      rule: resolvePurchaseRule(
+        workspaceSettings.countGeneratedOrdersAsPurchase,
+        null,
+      ),
+      hasOverride: false,
+    };
+  }
 
   const [row] = await db
     .select({ tracking: landingPages.tracking })
@@ -322,7 +436,9 @@ export interface PixelOverviewStats {
   eventsWithError: number;
 }
 
-export async function getPixelOverviewStats(): Promise<PixelOverviewStats> {
+export async function getPixelOverviewStats(
+  requestedWorkspaceId?: string,
+): Promise<PixelOverviewStats> {
   if (!isDatabaseConfigured()) {
     return {
       activePixels: 0,
@@ -333,7 +449,8 @@ export async function getPixelOverviewStats(): Promise<PixelOverviewStats> {
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [activePixelsRows, lpConfiguredRows, events24hRows, errorsRows] =
@@ -423,13 +540,14 @@ export interface PixelEventRow {
 }
 
 /** Pixels do workspace (globais e por landing page) para o filtro do log. */
-export async function listAllPixelsForFilter(): Promise<
-  { id: string; name: string }[]
-> {
+export async function listAllPixelsForFilter(
+  requestedWorkspaceId?: string,
+): Promise<{ id: string; name: string }[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   return db
     .select({ id: pixels.id, name: pixels.name })
@@ -442,16 +560,26 @@ const DEFAULT_EVENT_PAGE_SIZE = 20;
 
 export async function listPixelEvents(
   filters: PixelEventFilters,
-): Promise<{ rows: PixelEventRow[]; total: number; page: number; pageSize: number }> {
+  requestedWorkspaceId?: string,
+): Promise<{
+  rows: PixelEventRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
   const page = Math.max(1, filters.page ?? 1);
-  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? DEFAULT_EVENT_PAGE_SIZE));
+  const pageSize = Math.min(
+    100,
+    Math.max(1, filters.pageSize ?? DEFAULT_EVENT_PAGE_SIZE),
+  );
 
   if (!isDatabaseConfigured()) {
     return { rows: [], total: 0, page, pageSize };
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const conditions = [eq(pixelEvents.workspaceId, workspaceId)];
   if (filters.landingPageId) {

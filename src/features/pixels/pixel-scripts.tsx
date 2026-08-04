@@ -1,4 +1,5 @@
 import Script from "next/script";
+import { randomUUID } from "node:crypto";
 
 import { getActivePixelsForPublic } from "@/features/pixels/queries";
 import type { PixelType } from "@/features/pixels/types";
@@ -53,30 +54,66 @@ export async function PixelScripts({
   const googleAds = byType("google_ads");
   const tiktok = byType("tiktok_pixel");
 
-  const value = content ? (content.valueCents / 100).toFixed(2) : undefined;
+  const value = content ? content.valueCents / 100 : undefined;
+  const metaConfig = {
+    pixelIds: metaPixels.map((pixel) => pixel.pixelId),
+    pageViewEventId: `page_view_${randomUUID()}`,
+    contentEventId: event ? `${event.toLowerCase()}_${randomUUID()}` : null,
+    event: event ?? null,
+    content:
+      event && content
+        ? {
+            content_ids: [content.id],
+            content_name: content.name,
+            content_type: "product",
+            value,
+            currency: content.currency,
+          }
+        : null,
+  };
+  const serializedMetaConfig = JSON.stringify(metaConfig).replace(
+    /</g,
+    "\\u003c",
+  );
+  const metaScriptId = [
+    "infinity-meta-pixels",
+    landingPageId ?? "global",
+    event ?? "page-view",
+    content?.id ?? "page",
+    ...metaConfig.pixelIds,
+  ]
+    .join("-")
+    .replace(/[^a-zA-Z0-9_-]/g, "-");
 
   return (
     <ConsentGate>
-      {metaPixels.map((p) => (
-        <Script
-          key={`meta-${p.pixelId}`}
-          id={`meta-pixel-${p.pixelId}`}
-          strategy="afterInteractive"
-        >
+      {metaPixels.length > 0 ? (
+        <Script id={metaScriptId} strategy="afterInteractive">
           {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
 n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
 document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','${p.pixelId}');
-fbq('track','PageView');
-${
-  event && content
-    ? `fbq('track','${event}',{content_ids:['${content.id}'],content_name:${JSON.stringify(content.name)},content_type:'product',value:${value},currency:'${content.currency}'});`
-    : ""
-}`}
+var c=${serializedMetaConfig};
+window.__infinityMetaPixelIds=c.pixelIds;
+window.__infinityMetaTracked=window.__infinityMetaTracked||{};
+c.pixelIds.forEach(function(id){
+  fbq('init',id);
+  var pvKey=id+':'+c.pageViewEventId;
+  if(!window.__infinityMetaTracked[pvKey]){
+    window.__infinityMetaTracked[pvKey]=true;
+    fbq('trackSingle',id,'PageView',{}, {eventID:c.pageViewEventId});
+  }
+  if(c.event&&c.content){
+    var contentKey=id+':'+c.contentEventId;
+    if(!window.__infinityMetaTracked[contentKey]){
+      window.__infinityMetaTracked[contentKey]=true;
+      fbq('trackSingle',id,c.event,c.content,{eventID:c.contentEventId});
+    }
+  }
+});`}
         </Script>
-      ))}
+      ) : null}
 
       {gtm.map((p) => (
         <Script

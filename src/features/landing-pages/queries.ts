@@ -115,11 +115,14 @@ function findThumbnail(content: LandingContentDoc): string | null {
 }
 
 /** Listagem do painel, com métricas reais agregadas dos eventos. */
-export async function listLandingPages(): Promise<LandingPageRow[]> {
+export async function listLandingPages(
+  requestedWorkspaceId?: string,
+): Promise<LandingPageRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const rows = await db
     .select({
@@ -233,7 +236,7 @@ async function aggregateMetrics(
         and(
           eq(orders.workspaceId, workspaceId),
           inArray(orders.status, ["paid", "shipped", "delivered"]),
-          sql`${orders.utm} ->> 'lp' = any(${pageIds}::text[])`,
+          inArray(sql<string>`${orders.utm} ->> 'lp'`, pageIds),
         ),
       )
       .groupBy(sql`${orders.utm} ->> 'lp'`),
