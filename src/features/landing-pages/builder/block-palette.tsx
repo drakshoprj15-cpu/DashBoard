@@ -35,13 +35,16 @@ export function BlockPalette({
 
   const groups = React.useMemo(() => {
     const term = query.trim().toLowerCase();
+    const editableBlocks = BLOCK_LIST.filter(
+      (block) => block.type !== "header" && block.type !== "footer",
+    );
     const filtered = term
-      ? BLOCK_LIST.filter(
+      ? editableBlocks.filter(
           (block) =>
             block.label.toLowerCase().includes(term) ||
             block.description.toLowerCase().includes(term),
         )
-      : BLOCK_LIST;
+      : editableBlocks;
 
     const byGroup = new Map<BlockGroup, BlockDef[]>();
     for (const block of filtered) {

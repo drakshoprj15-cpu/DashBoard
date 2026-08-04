@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
@@ -33,12 +33,7 @@ export {
 /** Tipos geridos pela aba Meta — os únicos que podem ser específicos de landing page. */
 const META_PIXEL_TYPES = ["meta_pixel", "meta_capi"] as const;
 /** Tipos que continuam só globais (fora do escopo desta feature). */
-const OTHER_PUBLIC_PIXEL_TYPES = [
-  "gtm",
-  "ga4",
-  "google_ads",
-  "tiktok_pixel",
-] as const;
+const OTHER_PUBLIC_PIXEL_TYPES = ["gtm", "ga4", "google_ads"] as const;
 
 function toPixelRow(p: typeof pixels.$inferSelect): PixelRow {
   return {
@@ -58,7 +53,7 @@ function toPixelRow(p: typeof pixels.$inferSelect): PixelRow {
   };
 }
 
-/** Pixels globais do workspace (aba "Geral" — GTM/GA4/Ads/TikTok/UTMify/Meta). */
+/** Pixels globais do workspace disponíveis na aba Geral. */
 export async function listPixels(
   requestedWorkspaceId?: string,
 ): Promise<PixelRow[]> {
@@ -76,6 +71,7 @@ export async function listPixels(
         eq(pixels.workspaceId, workspaceId),
         isNull(pixels.landingPageId),
         isNull(pixels.deletedAt),
+        ne(pixels.type, "tiktok_pixel"),
       ),
     )
     .orderBy(desc(pixels.createdAt));

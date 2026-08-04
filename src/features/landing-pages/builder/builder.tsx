@@ -16,6 +16,7 @@ import {
   Layers,
   Loader2,
   Monitor,
+  MoreHorizontal,
   Package,
   Palette,
   Radar,
@@ -30,6 +31,12 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -72,6 +79,16 @@ const TABS = [
   { id: "historico", label: "Histórico", icon: History },
   { id: "metricas", label: "Métricas", icon: BarChart3 },
 ] as const;
+
+const PRIMARY_TAB_IDS = new Set([
+  "conteudo",
+  "produto",
+  "pixels",
+  "dominio",
+  "publicacao",
+]);
+const PRIMARY_TABS = TABS.filter((item) => PRIMARY_TAB_IDS.has(item.id));
+const ADVANCED_TABS = TABS.filter((item) => !PRIMARY_TAB_IDS.has(item.id));
 
 type TabId = (typeof TABS)[number]["id"];
 
@@ -256,7 +273,7 @@ export function LandingBuilder({
 
       {/* Abas */}
       <nav className="flex gap-1 overflow-x-auto border-b px-3 py-1.5">
-        {TABS.map((item) => (
+        {PRIMARY_TABS.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -273,6 +290,31 @@ export function LandingBuilder({
             {item.label}
           </button>
         ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-current={ADVANCED_TABS.some((item) => item.id === tab)}
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                ADVANCED_TABS.some((item) => item.id === tab)
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent",
+              )}
+            >
+              <MoreHorizontal className="size-4" />
+              {ADVANCED_TABS.find((item) => item.id === tab)?.label ?? "Mais"}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {ADVANCED_TABS.map((item) => (
+              <DropdownMenuItem key={item.id} onSelect={() => setTab(item.id)}>
+                <item.icon />
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
 
       <div className="min-h-0 flex-1 overflow-hidden">

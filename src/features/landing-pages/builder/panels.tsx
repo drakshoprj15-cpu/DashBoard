@@ -117,26 +117,6 @@ export function DesignPanel({ state }: { state: BuilderState }) {
             state={state}
           />
           <ThemeColor
-            label="Fundo do cabeçalho"
-            field="headerBackground"
-            state={state}
-          />
-          <ThemeColor
-            label="Texto do cabeçalho"
-            field="headerTextColor"
-            state={state}
-          />
-          <ThemeColor
-            label="Fundo do rodapé"
-            field="footerBackground"
-            state={state}
-          />
-          <ThemeColor
-            label="Texto do rodapé"
-            field="footerTextColor"
-            state={state}
-          />
-          <ThemeColor
             label="Variação selecionada"
             field="variantSelectedColor"
             state={state}
@@ -455,16 +435,6 @@ export function PixelsPanel({ state }: { state: BuilderState }) {
               inputMode="numeric"
               onChange={(event) =>
                 state.setTracking({ metaPixelId: event.target.value })
-              }
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="tiktok-pixel">TikTok Pixel</Label>
-            <Input
-              id="tiktok-pixel"
-              value={tracking.tiktokPixelId}
-              onChange={(event) =>
-                state.setTracking({ tiktokPixelId: event.target.value })
               }
             />
           </div>

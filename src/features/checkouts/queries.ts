@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { checkouts, orders, products } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { STANDARD_STOREFRONT } from "@/features/storefront/standard-brand";
 
 export interface CheckoutTheme {
   primaryColor: string;
@@ -14,10 +15,10 @@ export interface CheckoutTheme {
 }
 
 export const DEFAULT_CHECKOUT_THEME: CheckoutTheme = {
-  primaryColor: "#7c3aed",
-  buttonColor: "#f97316",
-  bannerColor: "#09090b",
-  logoUrl: null,
+  primaryColor: STANDARD_STOREFRONT.primaryColor,
+  buttonColor: STANDARD_STOREFRONT.buttonColor,
+  bannerColor: STANDARD_STOREFRONT.headerBackground,
+  logoUrl: STANDARD_STOREFRONT.logoUrl,
 };
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;

@@ -8,20 +8,19 @@ import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { CookieBanner } from "@/features/consent/cookie-banner";
 import { listActiveShippingMethods } from "@/features/shipping/queries";
-import { getWorkspaceBranding } from "@/features/branding/queries";
 import {
   DEFAULT_CHECKOUT_THEME,
   getPublishedCheckoutBySlug,
 } from "@/features/checkouts/queries";
+import { STANDARD_STOREFRONT } from "@/features/storefront/standard-brand";
 import {
   listCheckoutVariants,
   pickDefaultVariant,
 } from "@/features/variants/resolve";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const branding = await getWorkspaceBranding();
-  return { title: `Checkout · ${branding.storeName}` };
-}
+export const metadata: Metadata = {
+  title: `Checkout · ${STANDARD_STOREFRONT.name}`,
+};
 
 /**
  * Checkout público (/checkout/[slug]).
@@ -36,20 +35,13 @@ export default async function CheckoutSlugPage(
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const [checkout, shippingMethods, branding] = await Promise.all([
+  const [checkout, shippingMethods] = await Promise.all([
     getPublishedCheckoutBySlug(slug),
     listActiveShippingMethods(),
-    getWorkspaceBranding(),
   ]);
 
   const product = await getProductBySlug(checkout?.productSlug ?? slug);
   if (!product) notFound();
-
-  // Logo do checkout específico tem prioridade; sem uma configurada, cai na
-  // logo da loja (mesmo padrão já usado na landing pública) — mesmo um
-  // checkout antigo ou sem tema próprio mostra a marca da loja, não um
-  // banner vazio.
-  const logoUrl = checkout?.theme.logoUrl ?? branding.logoUrl;
 
   const qtyRaw = Number(
     typeof searchParams.qty === "string" ? searchParams.qty : "1",
@@ -106,25 +98,16 @@ export default async function CheckoutSlugPage(
       {/* Cabeçalho — a logo (ou nome da loja) fica sempre centralizada. */}
       <header
         className="py-6 md:py-7"
-        style={{
-          backgroundColor: (checkout?.theme ?? DEFAULT_CHECKOUT_THEME)
-            .bannerColor,
-        }}
+        style={{ backgroundColor: DEFAULT_CHECKOUT_THEME.bannerColor }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-center px-4">
           <Link href={`/p/${product.slug}`} className="flex items-center">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt={branding.storeName}
-                className="h-10 max-w-[220px] object-contain md:h-12"
-              />
-            ) : (
-              <span className="text-xl font-black tracking-tight text-white">
-                {branding.storeName}
-              </span>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={STANDARD_STOREFRONT.logoUrl}
+              alt={STANDARD_STOREFRONT.name}
+              className="h-10 max-w-[220px] object-contain md:h-12"
+            />
           </Link>
         </div>
       </header>
@@ -134,9 +117,9 @@ export default async function CheckoutSlugPage(
           product={product}
           initialQuantity={quantity}
           shippingMethods={shippingMethods}
-          theme={checkout?.theme ?? DEFAULT_CHECKOUT_THEME}
+          theme={DEFAULT_CHECKOUT_THEME}
           utm={utm}
-          storeName={branding.storeName}
+          storeName={STANDARD_STOREFRONT.name}
           landingPageId={asString(searchParams.lp)}
           variants={variants}
           initialVariantId={selectedVariant?.publicId ?? ""}
@@ -145,8 +128,8 @@ export default async function CheckoutSlugPage(
 
       <footer className="border-t bg-white py-5 text-center text-xs text-zinc-500">
         <p>
-          © {new Date().getFullYear()} {branding.storeName} · Pagamento seguro
-          por MB WAY e Multibanco
+          © {new Date().getFullYear()} {STANDARD_STOREFRONT.name} · Pagamento
+          seguro por MB WAY e Multibanco
         </p>
         <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
           <Link href="/legal/termos" className="hover:text-zinc-800">
