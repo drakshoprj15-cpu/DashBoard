@@ -10,11 +10,14 @@ import {
 
 describe("renderTemplate", () => {
   it("substitui as variáveis pelos valores fornecidos", () => {
-    const out = renderTemplate("Olá {{nome}}, o seu {{produto}} custa {{valor}}.", {
-      nome: "Maria",
-      produto: "Cadeira",
-      valor: "39,90 €",
-    });
+    const out = renderTemplate(
+      "Olá {{nome}}, o seu {{produto}} custa {{valor}}.",
+      {
+        nome: "Maria",
+        produto: "Cadeira",
+        valor: "39,90 €",
+      },
+    );
     expect(out).toBe("Olá Maria, o seu Cadeira custa 39,90 €.");
   });
 
@@ -23,7 +26,9 @@ describe("renderTemplate", () => {
   });
 
   it("nunca deixa o placeholder cru chegar ao cliente", () => {
-    const out = renderTemplate("Olá {{nome}}, veja {{checkout_url}}", { nome: "Ana" });
+    const out = renderTemplate("Olá {{nome}}, veja {{checkout_url}}", {
+      nome: "Ana",
+    });
     expect(out).not.toContain("{{");
   });
 
@@ -48,10 +53,13 @@ describe("renderTemplate", () => {
 
 describe("findMissingVariables", () => {
   it("aponta só as variáveis conhecidas sem valor", () => {
-    const missing = findMissingVariables("{{nome}} {{checkout_url}} {{valor}}", {
-      nome: "Ana",
-      valor: "10 €",
-    });
+    const missing = findMissingVariables(
+      "{{nome}} {{checkout_url}} {{valor}}",
+      {
+        nome: "Ana",
+        valor: "10 €",
+      },
+    );
     expect(missing).toEqual(["checkout_url"]);
   });
 
@@ -60,7 +68,9 @@ describe("findMissingVariables", () => {
   });
 
   it("trata string vazia como valor em falta", () => {
-    expect(findMissingVariables("{{checkout_url}}", { checkout_url: "" })).toEqual(["checkout_url"]);
+    expect(
+      findMissingVariables("{{checkout_url}}", { checkout_url: "" }),
+    ).toEqual(["checkout_url"]);
   });
 });
 
@@ -142,9 +152,13 @@ describe("suggestTemplate", () => {
     expect(suggestTemplate("pending")).toBe("pending");
   });
 
+  it("sugere o modelo de confirmação para pedidos pagos ou recuperados", () => {
+    expect(suggestTemplate("paid")).toBe("paid");
+    expect(suggestTemplate("recovered")).toBe("paid");
+  });
+
   it("cai num modelo válido para categorias sem sugestão própria", () => {
     expect(CART_TEMPLATES[suggestTemplate("chargeback")]).toBeDefined();
-    expect(CART_TEMPLATES[suggestTemplate("paid")]).toBeDefined();
   });
 });
 
@@ -171,7 +185,16 @@ describe("qualidade dos modelos", () => {
     for (const t of templates) {
       expect(t.whatsappBody).toContain("TechNébula");
       expect(t.whatsappBody).toContain("PARAR");
-      expect(t.whatsappBody).toContain("{{checkout_url}}");
+    }
+  });
+
+  it("WhatsApp de recuperação leva o link do checkout — o de confirmação não precisa", () => {
+    for (const t of templates) {
+      if (t.hasPaymentCta) {
+        expect(t.whatsappBody).toContain("{{checkout_url}}");
+      } else {
+        expect(t.whatsappBody).not.toContain("{{checkout_url}}");
+      }
     }
   });
 
@@ -185,5 +208,18 @@ describe("qualidade dos modelos", () => {
     for (const t of templates) {
       expect(t.emailBody.split(/\s+/).length).toBeLessThan(125);
     }
+  });
+
+  it("só os modelos de pagamento em aberto mostram o botão de pagamento", () => {
+    expect(CART_TEMPLATES.pending.hasPaymentCta).toBe(true);
+    expect(CART_TEMPLATES.abandoned.hasPaymentCta).toBe(true);
+    expect(CART_TEMPLATES.declined.hasPaymentCta).toBe(true);
+    expect(CART_TEMPLATES.paid.hasPaymentCta).toBe(false);
+  });
+
+  it("modelo de confirmação não menciona pagamento pendente", () => {
+    const paid = CART_TEMPLATES.paid;
+    expect(paid.emailBody.toLowerCase()).not.toContain("pendente");
+    expect(paid.emailBody.toLowerCase()).not.toContain("aguardando");
   });
 });

@@ -21,6 +21,8 @@ import { maskDocument } from "@/lib/mask";
 import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_STATUS_LABEL,
+  isConvertedCategory,
+  isEmailableCategory,
   isRecoverableCategory,
 } from "@/features/carts/status";
 import { whatsAppUrl } from "@/features/carts/phone";
@@ -183,14 +185,17 @@ export function CartDetailSheet({
 
               {/* Ações rápidas de recuperação */}
               <div className="flex flex-wrap gap-2">
-                {isRecoverableCategory(data.order.category) && (
+                {isEmailableCategory(data.order.category) && (
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={() => onSendReminder(data.order.id)}
                   >
-                    <Mail /> Enviar lembrete
+                    <Mail />{" "}
+                    {isConvertedCategory(data.order.category)
+                      ? "Enviar confirmação"
+                      : "Enviar lembrete"}
                   </Button>
                 )}
                 {data.customer?.phone && whatsAppUrl(data.customer.phone) && (

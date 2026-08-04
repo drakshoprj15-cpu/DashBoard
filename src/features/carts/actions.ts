@@ -69,17 +69,23 @@ function reminderHtml(
   totalCents: number,
   currency: string,
   checkoutUrl: string | null,
+  hasPaymentCta: boolean,
 ): string {
   const amount = formatMoney(totalCents, currency, "pt-PT");
   const safeBody = escapeHtml(body).replace(/\n/g, "<br>");
 
-  // Sem link de pagamento não há botão — e o corpo do modelo remete a "o
-  // botão abaixo". Nesse caso a mensagem tem de oferecer um caminho real,
-  // senão o e-mail pede uma ação que não existe.
-  const hasCheckout = checkoutUrl && /^https?:\/\//.test(checkoutUrl);
-  const cta = hasCheckout
-    ? `<p style="margin:0 0 20px"><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;background:#d61f69;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">Concluir meu pedido</a></p>`
-    : `<p style="margin:0 0 20px;line-height:1.6">Responda a este e-mail e enviamos o link de pagamento em seguida.</p>`;
+  // Só os modelos de pagamento em aberto mostram o botão — o de confirmação
+  // (pedido já pago) não tem ação nenhuma para o cliente fazer aqui.
+  let cta = "";
+  if (hasPaymentCta) {
+    // Sem link de pagamento não há botão — e o corpo do modelo remete a "o
+    // botão abaixo". Nesse caso a mensagem tem de oferecer um caminho real,
+    // senão o e-mail pede uma ação que não existe.
+    const hasCheckout = checkoutUrl && /^https?:\/\//.test(checkoutUrl);
+    cta = hasCheckout
+      ? `<p style="margin:0 0 20px"><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;background:#d61f69;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">Concluir meu pedido</a></p>`
+      : `<p style="margin:0 0 20px;line-height:1.6">Responda a este e-mail e enviamos o link de pagamento em seguida.</p>`;
+  }
 
   // Preheader: o que a caixa de entrada mostra depois do assunto. Fica
   // escondido no corpo (display:none + altura zero) e é seguido de espaços
@@ -157,7 +163,9 @@ async function checkReminderEligibility(
 }
 
 /**
- * Envia um lembrete de pagamento pendente para o cliente de um carrinho.
+ * Envia um e-mail para o cliente de um carrinho — lembrete de pagamento
+ * (aguardando, pendente, recusado) ou confirmação de compra (pago,
+ * recuperado), conforme o template escolhido ou sugerido pela categoria.
  * Respeita opt-out/bloqueio/supressão e nunca reenvia dentro do intervalo
  * de cooldown — mesma regra usada no envio em massa.
  */
@@ -248,6 +256,7 @@ export async function sendCartReminderAction(
     Number(order.totalCents),
     order.currency,
     order.checkoutUrl,
+    template.hasPaymentCta,
   );
 
   const result = await sendEmail({

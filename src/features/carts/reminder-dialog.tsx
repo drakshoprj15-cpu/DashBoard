@@ -115,7 +115,7 @@ export function ReminderDialog({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Mail className="size-4" aria-hidden="true" />
-            Disparar lembrete
+            Disparar mensagem
           </SheetTitle>
           <SheetDescription>
             Revise antes de enviar — nada é disparado automaticamente.

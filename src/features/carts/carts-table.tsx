@@ -22,6 +22,8 @@ import { formatDateTime, formatMoney } from "@/lib/format";
 import { maskDocument } from "@/lib/mask";
 import {
   PAYMENT_METHOD_LABEL,
+  isConvertedCategory,
+  isEmailableCategory,
   isRecoverableCategory,
 } from "@/features/carts/status";
 import { whatsAppUrl } from "@/features/carts/phone";
@@ -533,14 +535,20 @@ export function CartsTable({
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
-                        {isRecoverableCategory(r.category) && (
+                        {isEmailableCategory(r.category) && (
                           <DropdownMenuItem onClick={() => onSendReminder(r)}>
-                            <Mail /> Enviar lembrete de pagamento
+                            <Mail />{" "}
+                            {isConvertedCategory(r.category)
+                              ? "Enviar confirmação por e-mail"
+                              : "Enviar lembrete de pagamento"}
                           </DropdownMenuItem>
                         )}
                         {whatsAppUrl(r.customerPhone) && (
                           <DropdownMenuItem onClick={() => onOpenWhatsApp(r)}>
-                            <MessageCircle /> Recuperar por WhatsApp
+                            <MessageCircle />{" "}
+                            {isConvertedCategory(r.category)
+                              ? "Enviar por WhatsApp"
+                              : "Recuperar por WhatsApp"}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />

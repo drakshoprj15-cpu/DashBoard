@@ -10,7 +10,7 @@ import { CATEGORY_LABEL } from "@/features/carts/status";
 import { company } from "@/lib/company";
 import { formatDate, formatMoney } from "@/lib/format";
 
-export type CartTemplateKey = "pending" | "abandoned" | "declined";
+export type CartTemplateKey = "pending" | "abandoned" | "declined" | "paid";
 
 export interface CartTemplate {
   key: CartTemplateKey;
@@ -27,6 +27,13 @@ export interface CartTemplate {
   preview: string;
   emailBody: string;
   whatsappBody: string;
+  /**
+   * Se o layout do e-mail deve mostrar o botão "Concluir meu pedido" (ou o
+   * aviso de fallback quando não há link). Falso para o modelo de pedido já
+   * pago: mostrar um botão de pagamento para quem já pagou é confuso e mina
+   * a confiança no e-mail.
+   */
+  hasPaymentCta: boolean;
 }
 
 /**
@@ -48,7 +55,8 @@ export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number];
 export type TemplateVars = Partial<Record<TemplateVariable, string>>;
 
 /**
- * Os três modelos de recuperação.
+ * Os quatro modelos disponíveis: três de recuperação (pagamento ainda em
+ * aberto) e um de confirmação (pedido já pago).
  *
  * O corpo segue a estrutura da skill `emails`: gancho, contexto, valor, uma
  * única ação. Todos ficam bem abaixo dos 125 palavras recomendados para
@@ -77,6 +85,7 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
       ". Vi que seu pedido de {{produto}} ({{valor}}) ainda está pendente. " +
       "Você pode finalizar com segurança por aqui: {{checkout_url}}\n\n" +
       "Se preferir não receber estas mensagens, é só responder PARAR.",
+    hasPaymentCta: true,
   },
   abandoned: {
     key: "abandoned",
@@ -95,6 +104,7 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
       ". Seu carrinho com {{produto}} ({{valor}}) ainda está disponível. " +
       "Para continuar sua compra, é só acessar: {{checkout_url}}\n\n" +
       "Se preferir não receber estas mensagens, é só responder PARAR.",
+    hasPaymentCta: true,
   },
   declined: {
     key: "declined",
@@ -113,6 +123,25 @@ export const CART_TEMPLATES: Record<CartTemplateKey, CartTemplate> = {
       ". O pagamento do seu pedido de {{produto}} ({{valor}}) não foi aprovado. " +
       "Você pode tentar de novo com outro método por aqui: {{checkout_url}}\n\n" +
       "Se preferir não receber estas mensagens, é só responder PARAR.",
+    hasPaymentCta: true,
+  },
+  paid: {
+    key: "paid",
+    label: "Pagamento confirmado",
+    suggestedFor: ["paid", "recovered"],
+    subject: "Recebemos seu pagamento — pedido confirmado",
+    preview: "Seu pedido de {{produto}} está confirmado. Aqui está o resumo.",
+    emailBody:
+      "Olá {{nome}}, seu pagamento foi confirmado e o pedido de {{produto}} já está com a gente. " +
+      "Você vai receber as próximas atualizações por aqui.\n\n" +
+      "Qualquer dúvida sobre o pedido, é só responder este e-mail que a gente ajuda.",
+    whatsappBody:
+      "Olá {{nome}}, aqui é da " +
+      company.tradeName +
+      ". Seu pagamento do pedido de {{produto}} ({{valor}}) foi confirmado, obrigado pela compra! " +
+      "Qualquer dúvida, é só responder por aqui.\n\n" +
+      "Se preferir não receber estas mensagens, é só responder PARAR.",
+    hasPaymentCta: false,
   },
 };
 
@@ -120,6 +149,7 @@ export const CART_TEMPLATE_LIST: CartTemplate[] = [
   CART_TEMPLATES.abandoned,
   CART_TEMPLATES.pending,
   CART_TEMPLATES.declined,
+  CART_TEMPLATES.paid,
 ];
 
 /** Template mais adequado à categoria do carrinho, com fallback seguro. */

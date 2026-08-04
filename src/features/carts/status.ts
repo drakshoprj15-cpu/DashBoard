@@ -191,6 +191,29 @@ export function isRecoverableCategory(category: CartCategory): boolean {
   return RECOVERABLE_CATEGORIES.includes(category);
 }
 
+/** Categorias com uma compra concluída — pagas de verdade ou marcadas como recuperadas. */
+export const CONVERTED_CATEGORIES: CartCategory[] = ["paid", "recovered"];
+
+export function isConvertedCategory(category: CartCategory): boolean {
+  return CONVERTED_CATEGORIES.includes(category);
+}
+
+/**
+ * Categorias para as quais um e-mail manual faz sentido: as recuperáveis
+ * (ainda dá para cobrar/retomar) mais as convertidas (dá para agradecer,
+ * enviar recibo ou fazer pós-venda). Os estados residuais — expirado,
+ * cancelado, reembolsado, chargeback — ficam de fora: não há mensagem de
+ * template que sirva para eles hoje.
+ */
+const EMAILABLE_CATEGORIES: CartCategory[] = [
+  ...RECOVERABLE_CATEGORIES,
+  ...CONVERTED_CATEGORIES,
+];
+
+export function isEmailableCategory(category: CartCategory): boolean {
+  return EMAILABLE_CATEGORIES.includes(category);
+}
+
 const VALID_TABS: readonly string[] = CART_TABS.map((t) => t.key);
 
 export function isCartTab(value: string | null | undefined): value is CartTab {

@@ -4,6 +4,9 @@ import {
   ABANDON_THRESHOLD_HOURS,
   canTransitionOrderStatus,
   isCartTab,
+  isConvertedCategory,
+  isEmailableCategory,
+  isRecoverableCategory,
   resolveCartCategory,
 } from "@/features/carts/status";
 
@@ -14,9 +17,15 @@ describe("resolveCartCategory", () => {
   });
 
   it("vira abandonado depois do limiar de horas sem atualização", () => {
-    expect(resolveCartCategory("awaiting_payment", ABANDON_THRESHOLD_HOURS - 1)).toBe("awaiting_payment");
-    expect(resolveCartCategory("awaiting_payment", ABANDON_THRESHOLD_HOURS)).toBe("abandoned");
-    expect(resolveCartCategory("awaiting_payment", ABANDON_THRESHOLD_HOURS + 10)).toBe("abandoned");
+    expect(
+      resolveCartCategory("awaiting_payment", ABANDON_THRESHOLD_HOURS - 1),
+    ).toBe("awaiting_payment");
+    expect(
+      resolveCartCategory("awaiting_payment", ABANDON_THRESHOLD_HOURS),
+    ).toBe("abandoned");
+    expect(
+      resolveCartCategory("awaiting_payment", ABANDON_THRESHOLD_HOURS + 10),
+    ).toBe("abandoned");
   });
 
   it("processing nunca vira abandonado, mesmo depois de muito tempo", () => {
@@ -52,8 +61,12 @@ describe("resolveCartCategory", () => {
   });
 
   it("sem marcação manual, o comportamento antigo permanece", () => {
-    expect(resolveCartCategory("awaiting_payment", 999, null)).toBe("abandoned");
-    expect(resolveCartCategory("awaiting_payment", 999, undefined)).toBe("abandoned");
+    expect(resolveCartCategory("awaiting_payment", 999, null)).toBe(
+      "abandoned",
+    );
+    expect(resolveCartCategory("awaiting_payment", 999, undefined)).toBe(
+      "abandoned",
+    );
   });
 });
 
@@ -93,5 +106,70 @@ describe("isCartTab", () => {
     expect(isCartTab("qualquer-coisa")).toBe(false);
     expect(isCartTab(null)).toBe(false);
     expect(isCartTab(undefined)).toBe(false);
+  });
+});
+
+describe("isEmailableCategory", () => {
+  it("libera e-mail para quem ainda pode ser recuperado", () => {
+    for (const category of [
+      "awaiting_payment",
+      "pending",
+      "abandoned",
+      "declined",
+    ] as const) {
+      expect(isEmailableCategory(category)).toBe(true);
+      expect(isRecoverableCategory(category)).toBe(true);
+    }
+  });
+
+  it("libera e-mail para quem já converteu — pago ou marcado como recuperado", () => {
+    // O pedido de "mandar e-mail para quem pagou" depende disto: pago não
+    // era mais recuperável, mas continua elegível para receber e-mail.
+    expect(isEmailableCategory("paid")).toBe(true);
+    expect(isEmailableCategory("recovered")).toBe(true);
+    expect(isConvertedCategory("paid")).toBe(true);
+    expect(isConvertedCategory("recovered")).toBe(true);
+  });
+
+  it("bloqueia e-mail para os estados residuais sem template — expirado, cancelado, reembolsado, chargeback", () => {
+    for (const category of [
+      "expired",
+      "cancelled",
+      "refunded",
+      "chargeback",
+    ] as const) {
+      expect(isEmailableCategory(category)).toBe(false);
+    }
+  });
+
+  it("recuperável e convertido nunca se sobrepõem", () => {
+    const categories: (
+      | "awaiting_payment"
+      | "pending"
+      | "paid"
+      | "recovered"
+      | "declined"
+      | "abandoned"
+      | "expired"
+      | "cancelled"
+      | "refunded"
+      | "chargeback"
+    )[] = [
+      "awaiting_payment",
+      "pending",
+      "paid",
+      "recovered",
+      "declined",
+      "abandoned",
+      "expired",
+      "cancelled",
+      "refunded",
+      "chargeback",
+    ];
+    for (const category of categories) {
+      expect(
+        isRecoverableCategory(category) && isConvertedCategory(category),
+      ).toBe(false);
+    }
   });
 });

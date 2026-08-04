@@ -5,7 +5,10 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import type { CartRowDTO } from "@/features/carts/client-types";
-import { isRecoverableCategory } from "@/features/carts/status";
+import {
+  isConvertedCategory,
+  isEmailableCategory,
+} from "@/features/carts/status";
 import { whatsAppUrl } from "@/features/carts/phone";
 import {
   CART_TEMPLATES,
@@ -59,16 +62,19 @@ export function CartRecoveryActions({
   onOpenDetail,
   className,
 }: CartRecoveryActionsProps) {
-  const recoverable = isRecoverableCategory(row.category);
+  const emailable = isEmailableCategory(row.category);
+  const converted = isConvertedCategory(row.category);
   const hasWhatsApp = Boolean(whatsAppUrl(row.customerPhone));
 
   const emailReason = !row.customerEmail
     ? "Sem e-mail no cadastro"
     : row.marketingOptOut
       ? "Cliente pediu para não receber comunicações"
-      : !recoverable
-        ? "Este carrinho já não está em recuperação"
-        : "Enviar lembrete por e-mail";
+      : !emailable
+        ? "E-mail não disponível para este status"
+        : converted
+          ? "Enviar confirmação por e-mail"
+          : "Enviar lembrete por e-mail";
 
   const whatsAppReason = !hasWhatsApp
     ? "Telefone ausente ou inválido"
@@ -95,10 +101,8 @@ export function CartRecoveryActions({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Enviar lembrete por e-mail"
-              disabled={
-                !row.customerEmail || row.marketingOptOut || !recoverable
-              }
+              aria-label="Enviar e-mail"
+              disabled={!row.customerEmail || row.marketingOptOut || !emailable}
               onClick={() => onSendEmail(row)}
             >
               <Mail />
@@ -115,7 +119,7 @@ export function CartRecoveryActions({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Enviar lembrete por WhatsApp"
+              aria-label="Abrir conversa no WhatsApp"
               className={
                 hasWhatsApp && !row.marketingOptOut
                   ? "hover:text-success"
