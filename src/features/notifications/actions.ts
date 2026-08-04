@@ -27,7 +27,7 @@ export async function markNotificationReadAction(
       ),
     );
 
-  revalidatePath("/notificacoes");
+  revalidatePath("/pushcuts");
 }
 
 export async function markAllNotificationsReadAction(): Promise<void> {
@@ -46,5 +46,5 @@ export async function markAllNotificationsReadAction(): Promise<void> {
       ),
     );
 
-  revalidatePath("/notificacoes");
+  revalidatePath("/pushcuts");
 }

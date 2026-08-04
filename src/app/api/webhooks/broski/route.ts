@@ -395,7 +395,7 @@ export async function POST(request: Request) {
           }
 
           const notice = NOTIFICATION_BY_STATUS[event.status];
-          if (notice) {
+          if (notice && statusTransitionApplied) {
             const amount = (orderRow.totalCents / 100).toLocaleString("pt-PT", {
               style: "currency",
               currency: orderRow.currency,
@@ -417,6 +417,7 @@ export async function POST(request: Request) {
             // Push no telemóvel, pelo canal que o utilizador atribuiu a
             // este evento (venda gerada / venda aprovada).
             await pushEvent(
+              orderRow.workspaceId,
               notice.eventType,
               `${notice.title} · ${amount}`,
               detail,

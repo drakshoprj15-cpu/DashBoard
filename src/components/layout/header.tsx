@@ -31,8 +31,6 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 interface HeaderProps {
   user: SessionUser;
   demoMode: boolean;
-  /** Notificações por ler, para o contador do sino */
-  unreadCount: number;
 }
 
 function usePageTitle(): string {
@@ -49,7 +47,7 @@ function usePageTitle(): string {
   return "Painel";
 }
 
-export function Header({ user, demoMode, unreadCount }: HeaderProps) {
+export function Header({ user, demoMode }: HeaderProps) {
   const title = usePageTitle();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
@@ -107,21 +105,11 @@ export function Header({ user, demoMode, unreadCount }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={
-            unreadCount > 0
-              ? `Notificações (${unreadCount} por ler)`
-              : "Notificações"
-          }
-          className="relative"
+          aria-label="Configurar notificações Pushcut"
           asChild
         >
-          <Link href="/notificacoes">
+          <Link href="/pushcuts">
             <Bell className="size-4.5" />
-            {unreadCount > 0 && (
-              <span className="bg-primary text-primary-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-bold">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
           </Link>
         </Button>
 

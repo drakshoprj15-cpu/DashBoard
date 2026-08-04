@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { isDatabaseConfigured } from "@/database/client";
+import { getSession } from "@/lib/auth/session";
 import {
   getPushcutStatus,
   PUSHCUT_SLOTS,
@@ -34,6 +35,11 @@ export async function savePushcutAction(
   _prev: PushcutActionResult | null,
   formData: FormData,
 ): Promise<PushcutActionResult> {
+  const session = await getSession();
+  if (!session) {
+    return { ok: false, error: "Sua sessão expirou. Entre novamente." };
+  }
+
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Banco de dados não configurado." };
   }
@@ -104,76 +110,65 @@ export async function savePushcutAction(
     return { ok: false, error: message };
   }
 
-  // Validação real: envia um push de confirmação por cada canal ativo. Se a
-  // URL estiver errada, o utilizador descobre agora e não numa venda.
-  const results: { label: string; ok: boolean; error?: string }[] = [];
-  for (const slot of parsedSlots) {
-    if (slot.events.length === 0) continue;
-    const label =
-      PUSHCUT_SLOTS.find((s) => s.key === slot.key)?.label ?? slot.key;
-    const test = await sendPushcutNotification(
-      slot.key,
-      `Infinity · ${label} ✅`,
-      `Se recebeu este alerta, o canal "${label}" está a funcionar.`,
-      { force: true },
-    );
-    results.push({ label, ok: test.ok, error: test.error });
-  }
-
-  revalidatePath("/notificacoes");
-
-  const failures = results.filter((r) => !r.ok);
-  const successes = results.filter((r) => r.ok);
-
-  if (failures.length > 0 && successes.length > 0) {
-    // Nunca reportar sucesso total quando só um canal funcionou.
-    return {
-      ok: false,
-      error: `Integração salva. O canal ${successes.map((s) => s.label).join(", ")} funcionou, mas o canal ${failures
-        .map((f) => `${f.label} falhou (${f.error})`)
-        .join(", ")}.`,
-    };
-  }
-
-  if (failures.length > 0) {
-    return {
-      ok: false,
-      error: `Configuração guardada, mas o envio de teste falhou — ${failures
-        .map((f) => `${f.label}: ${f.error}`)
-        .join(" · ")}`,
-    };
-  }
+  revalidatePath("/pushcuts");
 
   return {
     ok: true,
     message:
       warnings.length > 0
-        ? `Ligado! Verifique os pushes que acabou de receber no telemóvel. Aviso: ${warnings.join(" · ")}`
-        : "Ligado! Verifique os pushes que acabou de receber no telemóvel.",
+        ? `Configuração salva. Aviso: ${warnings.join(" · ")}`
+        : "Configuração salva. Agora envie um teste para confirmar cada canal.",
   };
 }
 
 export async function togglePushcutAction(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+
   const active = formData.get("active") === "true";
   if (!isDatabaseConfigured()) return;
 
   await setPushcutActive(active);
-  revalidatePath("/notificacoes");
+  revalidatePath("/pushcuts");
 }
 
-export async function testPushcutAction(formData: FormData): Promise<void> {
+export async function testPushcutAction(
+  _prev: PushcutActionResult | null,
+  formData: FormData,
+): Promise<PushcutActionResult> {
+  const session = await getSession();
+  if (!session) {
+    return { ok: false, error: "Sua sessão expirou. Entre novamente." };
+  }
+
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Banco de dados não configurado." };
+  }
+
   const raw = String(formData.get("slot") ?? "");
   const parsed = slotKeyEnum.safeParse(raw);
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    return { ok: false, error: "Canal Pushcut inválido." };
+  }
 
   const slotKey: PushcutSlotKey = parsed.data;
   const label = PUSHCUT_SLOTS.find((s) => s.key === slotKey)?.label ?? slotKey;
 
-  await sendPushcutNotification(
+  const result = await sendPushcutNotification(
     slotKey,
     `Teste do Infinity · ${label} 🔔`,
     "Notificação de teste enviada a partir do painel.",
     { force: true },
   );
-  revalidatePath("/notificacoes");
+  revalidatePath("/pushcuts");
+
+  return result.ok
+    ? {
+        ok: true,
+        message: `Teste enviado para o canal “${label}”. Confira o celular.`,
+      }
+    : {
+        ok: false,
+        error: result.error ?? `Não foi possível testar o canal “${label}”.`,
+      };
 }

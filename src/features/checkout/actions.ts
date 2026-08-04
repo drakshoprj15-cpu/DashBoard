@@ -411,7 +411,12 @@ export async function submitCheckoutAction(
         metadata: { orderId: order.id, reference },
       });
 
-      await pushEvent("order_created", `Venda gerada · ${amount}`, detail);
+      await pushEvent(
+        workspaceId,
+        "order_created",
+        `Venda gerada · ${amount}`,
+        detail,
+      );
     } catch (error) {
       console.error("[checkout] falha ao notificar venda gerada:", error);
     }

@@ -36,25 +36,20 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Smartphone className="size-4" /> Pushcut — push no telemóvel
+          <Smartphone className="size-4" /> Configuração dos alertas
         </CardTitle>
         <CardDescription>
-          Dois canais separados: um alerta quando a venda é gerada e outro
-          quando o pagamento é confirmado.
+          Use um canal para a venda gerada e outro para a venda aprovada.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert variant="info">
           <AlertCircle />
           <AlertDescription>
-            Na app Pushcut, crie <strong>duas Notifications</strong> (ex.:{" "}
-            <code className="font-mono text-xs">Venda gerada</code> e{" "}
-            <code className="font-mono text-xs">Venda aprovada</code>) para cada
-            uma poder ter som e ícone próprios. Em cada Notification, abra{" "}
-            <strong>Webhook URL</strong> e copie o endereço completo —
-            <em> não</em> é a &ldquo;Account → API key&rdquo;. Cole aqui a URL
-            copiada diretamente do aplicativo Pushcut; ela será guardada de
-            forma criptografada e nunca mostrada de novo por completo.
+            No app Pushcut, crie duas Notifications:{" "}
+            <strong>Venda gerada</strong> e <strong>Venda aprovada</strong>.
+            Abra <strong>Webhook URL</strong> em cada uma e cole os endereços
+            abaixo. Não use a API key da conta.
           </AlertDescription>
         </Alert>
 
@@ -157,11 +152,11 @@ export function PushcutForm({ status }: { status: PushcutStatus }) {
           </div>
 
           <Button type="submit" loading={pending}>
-            {status.configured ? "Atualizar e testar" : "Ligar e enviar teste"}
+            {status.configured ? "Salvar alterações" : "Salvar configuração"}
           </Button>
           <p className="text-muted-foreground text-xs">
-            Ao guardar, enviamos um push real por cada canal ativo — se algo
-            estiver errado, você descobre agora e não numa venda.
+            Depois de salvar, use o botão de teste de cada canal para confirmar
+            o recebimento no celular.
           </p>
         </form>
       </CardContent>

@@ -244,19 +244,22 @@ function emptyStatus(): PushcutStatus {
 }
 
 /** Estado atual da integração, para exibir no painel. Nunca devolve a URL completa. */
-export async function getPushcutStatus(): Promise<PushcutStatus> {
+export async function getPushcutStatus(
+  workspaceId?: string,
+): Promise<PushcutStatus> {
   if (!isDatabaseConfigured()) return emptyStatus();
 
   try {
     const db = getDb();
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const resolvedWorkspaceId =
+      workspaceId ?? (await getOrCreateDefaultWorkspace());
 
     const [row] = await db
       .select()
       .from(integrations)
       .where(
         and(
-          eq(integrations.workspaceId, workspaceId),
+          eq(integrations.workspaceId, resolvedWorkspaceId),
           eq(integrations.key, INTEGRATION_KEY),
         ),
       )
@@ -318,16 +321,18 @@ export interface PushcutSlotInput {
 /** Guarda os webhooks (cifrados) e a configuração de cada canal. */
 export async function savePushcutCredentials(
   inputs: PushcutSlotInput[],
+  workspaceId?: string,
 ): Promise<void> {
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const resolvedWorkspaceId =
+    workspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [existing] = await db
     .select()
     .from(integrations)
     .where(
       and(
-        eq(integrations.workspaceId, workspaceId),
+        eq(integrations.workspaceId, resolvedWorkspaceId),
         eq(integrations.key, INTEGRATION_KEY),
       ),
     )
@@ -349,7 +354,7 @@ export async function savePushcutCredentials(
   }
 
   const values = {
-    workspaceId,
+    workspaceId: resolvedWorkspaceId,
     key: INTEGRATION_KEY,
     name: "Pushcut",
     category: "automation" as const,
@@ -374,9 +379,13 @@ export async function savePushcutCredentials(
     });
 }
 
-export async function setPushcutActive(active: boolean): Promise<void> {
+export async function setPushcutActive(
+  active: boolean,
+  workspaceId?: string,
+): Promise<void> {
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const resolvedWorkspaceId =
+    workspaceId ?? (await getOrCreateDefaultWorkspace());
 
   await db
     .update(integrations)
@@ -386,7 +395,7 @@ export async function setPushcutActive(active: boolean): Promise<void> {
     })
     .where(
       and(
-        eq(integrations.workspaceId, workspaceId),
+        eq(integrations.workspaceId, resolvedWorkspaceId),
         eq(integrations.key, INTEGRATION_KEY),
       ),
     );
@@ -406,7 +415,7 @@ export async function sendPushcutNotification(
   slotKey: PushcutSlotKey,
   title: string,
   text: string,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; workspaceId?: string } = {},
 ): Promise<PushcutSendResult> {
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Banco de dados não configurado." };
@@ -414,7 +423,8 @@ export async function sendPushcutNotification(
 
   try {
     const db = getDb();
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const workspaceId =
+      options.workspaceId ?? (await getOrCreateDefaultWorkspace());
 
     const [row] = await db
       .select()
@@ -525,15 +535,16 @@ export async function sendPushcutNotification(
  * Sem canal configurado para o evento, não faz nada (não é erro).
  */
 export async function pushEvent(
+  workspaceId: string,
   eventType: string,
   title: string,
   text: string,
 ): Promise<void> {
-  const status = await getPushcutStatus();
+  const status = await getPushcutStatus(workspaceId);
   if (!status.configured || !status.isActive) return;
 
   for (const slot of Object.values(status.slots)) {
     if (!slot.configured || !slot.events.includes(eventType)) continue;
-    await sendPushcutNotification(slot.key, title, text);
+    await sendPushcutNotification(slot.key, title, text, { workspaceId });
   }
 }

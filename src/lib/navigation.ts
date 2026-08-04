@@ -87,10 +87,7 @@ export const navigation: NavItem[] = [
     title: "Notificações",
     icon: Bell,
     phase: 9,
-    items: [
-      { title: "Todas", href: "/notificacoes" },
-      { title: "Pushcut", href: "/notificacoes#pushcut" },
-    ],
+    items: [{ title: "Pushcut", href: "/pushcuts" }],
   },
   {
     title: "Landing pages",

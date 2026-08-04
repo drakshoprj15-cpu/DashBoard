@@ -64,13 +64,13 @@
 ### Ainda em placeholder (não implementados)
 
 `/checkouts` (CRUD) · `/editor/loja` · `/editor/landing-page` · `/editor/checkout` ·
-`/notificacoes` · `/campanhas` · `/carrinhos` · `/clientes` · `/emails` ·
+`/campanhas` · `/carrinhos` · `/clientes` · `/emails` ·
 `/catalogo/*` · `/financeiro/*` · `/integracoes` · `/webhooks` · `/logs`
 
 ### Rotas do menu que ainda não existem
 
 `/editor/pagina-produto` · `/editor/pagina-categoria` · `/editor/carrinho` ·
-`/editor/fretes` · `/notificacoes/pushcut`
+`/editor/fretes`
 
 ### Bugs corrigidos nesta rodada
 
@@ -104,7 +104,7 @@
 ### Ainda em placeholder (não implementados)
 
 `/checkouts` (CRUD) · `/editor/loja` · `/editor/landing-page` · `/editor/checkout` ·
-`/notificacoes` · `/campanhas` · `/carrinhos` · `/clientes` ·
+`/campanhas` · `/carrinhos` · `/clientes` ·
 `/catalogo/produtos,categorias,estoque,cupons` · `/financeiro/*` ·
 `/integracoes` · `/webhooks` · `/logs`
 
