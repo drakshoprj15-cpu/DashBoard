@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
+  customerActivities,
   customers,
   ledgerEntries,
   orderItems,
@@ -113,6 +114,7 @@ export async function POST(request: Request) {
     if (paymentRows.length > 0) {
       const { id: paymentId, orderId } = paymentRows[0];
       const now = new Date();
+      let statusTransitionApplied = false;
 
       await db
         .update(payments)
@@ -162,6 +164,7 @@ export async function POST(request: Request) {
               eventType: event.type,
             },
           });
+          statusTransitionApplied = true;
         }
       }
 
@@ -195,6 +198,42 @@ export async function POST(request: Request) {
           .limit(1);
 
         if (orderRow) {
+          if (orderRow.customerId && statusTransitionApplied) {
+            const activityType =
+              event.status === "approved"
+                ? "payment_approved"
+                : event.status === "refused"
+                  ? "payment_refused"
+                  : event.status === "refunded"
+                    ? "payment_refunded"
+                    : event.status === "chargeback"
+                      ? "payment_chargeback"
+                      : "order_updated";
+            await db.transaction(async (tx) => {
+              await tx
+                .update(customers)
+                .set({
+                  lastActivityAt: now,
+                  firstPurchaseAt:
+                    event.status === "approved"
+                      ? sql`coalesce(${customers.firstPurchaseAt}, ${now})`
+                      : undefined,
+                  lastPurchaseAt: event.status === "approved" ? now : undefined,
+                  updatedAt: now,
+                })
+                .where(eq(customers.id, orderRow.customerId as string));
+              await tx.insert(customerActivities).values({
+                workspaceId: orderRow.workspaceId,
+                customerId: orderRow.customerId as string,
+                type: activityType,
+                source: "webhook",
+                referenceType: "order",
+                referenceId: orderId,
+                metadata: { provider: "broski" },
+              });
+            });
+          }
+
           // Estoque: a baixa acontece aqui, na confirmação do pagamento —
           // nunca no clique do cliente. Reembolso e chargeback devolvem as
           // unidades. As duas operações são idempotentes (o histórico em

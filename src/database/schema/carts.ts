@@ -49,6 +49,7 @@ export const carts = pgTable(
     index("carts_workspace_idx").on(t.workspaceId),
     index("carts_status_idx").on(t.workspaceId, t.status),
     index("carts_session_idx").on(t.sessionId),
+    index("carts_customer_idx").on(t.customerId),
   ],
 );
 
@@ -73,7 +74,10 @@ export const cartItems = pgTable(
     isOrderBump: boolean("is_order_bump").default(false).notNull(),
     ...timestamps,
   },
-  (t) => [index("cart_items_cart_idx").on(t.cartId)],
+  (t) => [
+    index("cart_items_cart_idx").on(t.cartId),
+    index("cart_items_product_idx").on(t.productId),
+  ],
 );
 
 /**

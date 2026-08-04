@@ -3,7 +3,11 @@ import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { customers, landingPages } from "@/database/schema";
+import { customerActivities, customers, landingPages } from "@/database/schema";
+import {
+  normalizeEmail,
+  normalizePhone,
+} from "@/features/customers/customer-utils";
 import { checkRateLimit } from "@/features/landing-pages/events";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +60,14 @@ export async function POST(request: Request) {
     }
 
     const { pageId, email, name, phone } = parsed.data;
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = phone ? normalizePhone(phone) : null;
+    if (!normalizedEmail || (phone && !normalizedPhone)) {
+      return NextResponse.json(
+        { ok: false, error: "E-mail ou telefone inválido." },
+        { status: 400 },
+      );
+    }
     const db = getDb();
 
     const [page] = await db
@@ -73,24 +85,55 @@ export async function POST(request: Request) {
 
     const [firstName, ...restName] = name.split(" ").filter(Boolean);
 
-    await db
+    const now = new Date();
+    const [customer] = await db
       .insert(customers)
       .values({
         workspaceId: page.workspaceId,
-        email,
+        email: normalizedEmail,
+        normalizedEmail,
+        emailStatus: "valid",
         firstName: firstName ?? null,
         lastName: restName.join(" ") || null,
         phone: phone || null,
+        normalizedPhone,
         tags: ["landing-page", page.slug],
+        source: "landing_page",
+        firstSource: "landing_page",
+        firstLandingPageId: pageId,
+        lastLandingPageId: pageId,
+        acceptsEmail: true,
+        marketingOptOut: false,
+        firstSeenAt: now,
+        lastActivityAt: now,
       })
       .onConflictDoUpdate({
         target: [customers.workspaceId, customers.email],
         set: {
           ...(firstName ? { firstName } : {}),
-          ...(phone ? { phone } : {}),
-          updatedAt: new Date(),
+          ...(phone ? { phone, normalizedPhone } : {}),
+          normalizedEmail,
+          emailStatus: "valid",
+          lastLandingPageId: pageId,
+          lastActivityAt: now,
+          acceptsEmail: true,
+          marketingOptOut: false,
+          updatedAt: now,
         },
+      })
+      .returning({ id: customers.id });
+
+    if (customer) {
+      await db.insert(customerActivities).values({
+        workspaceId: page.workspaceId,
+        customerId: customer.id,
+        type: "landing_page_lead",
+        source: "landing_page",
+        referenceType: "landing_page",
+        referenceId: pageId,
+        metadata: { slug: page.slug },
       });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

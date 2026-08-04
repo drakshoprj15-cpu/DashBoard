@@ -104,6 +104,7 @@ export const orders = pgTable(
     index("orders_workspace_idx").on(t.workspaceId),
     index("orders_status_idx").on(t.workspaceId, t.status),
     index("orders_customer_idx").on(t.customerId),
+    index("orders_campaign_idx").on(t.workspaceId, t.campaignId),
     index("orders_created_idx").on(t.workspaceId, t.createdAt),
     index("orders_archived_idx").on(t.workspaceId, t.archivedAt),
     index("orders_import_batch_idx").on(t.importBatchId),
@@ -147,7 +148,10 @@ export const orderItems = pgTable(
     downloadCount: integer("download_count").default(0).notNull(),
     ...timestamps,
   },
-  (t) => [index("order_items_order_idx").on(t.orderId)],
+  (t) => [
+    index("order_items_order_idx").on(t.orderId),
+    index("order_items_product_idx").on(t.productId),
+  ],
 );
 
 /**

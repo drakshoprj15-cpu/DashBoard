@@ -8,12 +8,17 @@ import {
 } from "@/features/shipping/queries";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
+  customerActivities,
   customers,
   orderItems,
   orders,
   payments,
   products,
 } from "@/database/schema";
+import {
+  normalizeEmail,
+  normalizePhone,
+} from "@/features/customers/customer-utils";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 import { getRequestUrl } from "@/lib/request-url";
 import {
@@ -33,7 +38,7 @@ import {
   type VariantResolution,
 } from "@/features/variants/resolve";
 import { formatMoney } from "@/lib/format";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 
 export type CheckoutActionResult =
   | { status: "validation_error"; error: string }
@@ -200,6 +205,11 @@ export async function submitCheckoutAction(
 
   try {
     const workspaceId = await getOrCreateDefaultWorkspace();
+    const normalizedEmail =
+      normalizeEmail(data.email) ?? data.email.toLowerCase();
+    const normalizedPhone = phone ? normalizePhone(phone) : null;
+    const customerSource = data.landingPageId ? "landing_page" : "checkout";
+    const now = new Date();
 
     // Cliente: upsert por e-mail dentro do workspace
     const existingCustomer = await db
@@ -208,7 +218,10 @@ export async function submitCheckoutAction(
       .where(
         and(
           eq(customers.workspaceId, workspaceId),
-          eq(customers.email, data.email),
+          or(
+            eq(customers.normalizedEmail, normalizedEmail),
+            eq(customers.email, normalizedEmail),
+          ),
         ),
       )
       .limit(1);
@@ -222,7 +235,12 @@ export async function submitCheckoutAction(
           firstName: data.firstName,
           lastName: data.lastName,
           phone,
-          updatedAt: new Date(),
+          normalizedEmail,
+          normalizedPhone,
+          source: customerSource,
+          lastLandingPageId: data.landingPageId || undefined,
+          lastActivityAt: now,
+          updatedAt: now,
         })
         .where(eq(customers.id, customerId));
     } else {
@@ -230,11 +248,20 @@ export async function submitCheckoutAction(
         .insert(customers)
         .values({
           workspaceId,
-          email: data.email,
+          email: normalizedEmail,
+          normalizedEmail,
+          emailStatus: "valid",
           firstName: data.firstName,
           lastName: data.lastName,
           phone,
+          normalizedPhone,
           country: "PT",
+          source: customerSource,
+          firstSource: customerSource,
+          firstLandingPageId: data.landingPageId || null,
+          lastLandingPageId: data.landingPageId || null,
+          firstSeenAt: now,
+          lastActivityAt: now,
         })
         .returning({ id: customers.id });
       customerId = created.id;
@@ -279,6 +306,16 @@ export async function submitCheckoutAction(
         utm,
       })
       .returning({ id: orders.id });
+
+    await db.insert(customerActivities).values({
+      workspaceId,
+      customerId,
+      type: "checkout_started",
+      source: customerSource,
+      referenceType: "order",
+      referenceId: order.id,
+      metadata: {},
+    });
 
     // Cópia congelada: nome, opções, SKU, imagem e preço como estavam agora.
     // Editar a variação amanhã não altera o que este cliente comprou.
@@ -416,7 +453,10 @@ export async function submitCheckoutAction(
         });
       }
     } catch (error) {
-      console.error("[checkout] falha ao processar atribuição/Purchase Meta:", error);
+      console.error(
+        "[checkout] falha ao processar atribuição/Purchase Meta:",
+        error,
+      );
     }
 
     return {

@@ -9,6 +9,10 @@ export interface RecordAuditLogInput {
   entityId?: string;
   /** Contexto da mudança — nunca dados sensíveis (senha, token, cartão). */
   changes?: Record<string, unknown>;
+  /** Workspace já validado pelo chamador. Evita atribuir logs multi-tenant ao workspace padrão. */
+  workspaceId?: string;
+  /** Utilizador autenticado quando a feature já resolveu a sessão. */
+  actorId?: string;
 }
 
 /**
@@ -16,9 +20,8 @@ export interface RecordAuditLogInput {
  *
  * Nunca pode quebrar a ação que a chamou: uma falha aqui é só logada no
  * console, o mesmo princípio já usado nos efeitos pós-pagamento do webhook
- * do Broski. `actorId` fica sempre nulo — nenhuma action do painel resolve
- * a sessão do utilizador hoje, então não há "quem" real para registar ainda,
- * só o "quê" e o "quando".
+ * do Broski. Features que já resolveram sessão/workspace podem informá-los;
+ * as rotas legadas continuam usando o workspace padrão e ator nulo.
  */
 export async function recordAuditLog(
   input: RecordAuditLogInput,
@@ -27,11 +30,12 @@ export async function recordAuditLog(
 
   try {
     const db = getDb();
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const workspaceId =
+      input.workspaceId ?? (await getOrCreateDefaultWorkspace());
 
     await db.insert(auditLogs).values({
       workspaceId,
-      actorId: null,
+      actorId: input.actorId ?? null,
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId ?? null,
