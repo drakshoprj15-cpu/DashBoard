@@ -87,7 +87,7 @@ export function PixelForm() {
               <Input
                 id="name"
                 name="name"
-                placeholder="Ex.: Meta — TechNébula"
+                placeholder="Ex.: Meta — PCG VIP"
                 required
               />
             </div>

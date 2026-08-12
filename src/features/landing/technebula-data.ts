@@ -1,5 +1,5 @@
 /**
- * Conteúdo da landing page TechNébula — cadeira ALPHA GAMER Nébula.
+ * Conteúdo da landing page PCG VIP — cadeira ALPHA GAMER Nébula.
  *
  * Edite este arquivo para ajustar preço, estoque e textos.
  * IMPORTANTE: preencha avaliações e estoque apenas com dados REAIS da sua
@@ -7,9 +7,9 @@
  */
 
 export const techNebulaStore = {
-  name: "TechNébula",
+  name: "PCG VIP",
   tagline: "Tecnologia e gaming com entrega rápida em todo Portugal",
-  supportEmail: "apoio@technebula.pt",
+  supportEmail: "aquiencomenda@encomendapcgvip.site",
 } as const;
 
 export interface ProductReview {
