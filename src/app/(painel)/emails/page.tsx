@@ -1,15 +1,28 @@
 import type { Metadata } from "next";
-import { Database, Info, XCircle, CheckCircle2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock3,
+  Database,
+  Info,
+  MailCheck,
+  MailX,
+  Send,
+  XCircle,
+} from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
+import { getEmailDashboardOverview } from "@/features/emails/campaigns";
+import { CampaignHistory } from "@/features/emails/campaign-history";
 import {
   getCustomRecipients,
   getSegmentCounts,
+  getSegmentRecipients,
 } from "@/features/emails/segments";
 import { isResendConfigured } from "@/features/emails/resend-provider";
 import { CampaignForm } from "@/features/emails/campaign-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = { title: "Emails" };
@@ -37,25 +50,37 @@ export default async function EmailsPage({
   const { recipients: recipientsParamRaw } = await searchParams;
   const customerIds = (recipientsParamRaw ?? "")
     .split(",")
-    .map((s) => s.trim())
-    .filter((s) => UUID_REGEX.test(s))
+    .map((value) => value.trim())
+    .filter((value) => UUID_REGEX.test(value))
     .slice(0, 500);
 
-  const [counts, customRecipients] = await Promise.all([
-    getSegmentCounts(),
-    customerIds.length > 0
-      ? getCustomRecipients(customerIds)
-      : Promise.resolve(null),
-  ]);
+  const [counts, customRecipients, overview, pendingRecipients] =
+    await Promise.all([
+      getSegmentCounts(),
+      customerIds.length > 0
+        ? getCustomRecipients(customerIds)
+        : Promise.resolve(null),
+      getEmailDashboardOverview(),
+      getSegmentRecipients("pending").then((recipients) =>
+        recipients.slice(0, 12),
+      ),
+    ]);
   const resendReady = isResendConfigured();
+  const summary = [
+    { label: "Total", value: overview.stats.total, icon: Send },
+    { label: "Enviados", value: overview.stats.sent, icon: MailCheck },
+    { label: "Falhados", value: overview.stats.failed, icon: MailX },
+    { label: "Em fila", value: overview.stats.queued, icon: Clock3 },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Emails</h2>
+          <h2 className="text-xl font-bold">Emails</h2>
           <p className="text-muted-foreground text-sm">
-            Disparos para os seus clientes, segmentados por estado do pagamento
+            Recuperação de carrinhos e disparos segmentados para os seus
+            clientes
           </p>
         </div>
         <Badge variant={resendReady ? "success" : "muted"}>
@@ -76,31 +101,50 @@ export default async function EmailsPage({
           <Info />
           <AlertTitle>Envio ainda não ativo</AlertTitle>
           <AlertDescription>
-            Os segmentos abaixo já são reais (vêm do seu banco de dados), mas
-            para enviar é preciso criar conta em resend.com, verificar o seu
-            domínio e definir <code className="font-mono">RESEND_API_KEY</code>{" "}
-            e <code className="font-mono">RESEND_FROM_EMAIL</code> na Vercel.
-            Nenhum e-mail é enviado enquanto isso.
+            Conclua a ligação do Resend nas configurações de implantação. A
+            chave de envio fica protegida no servidor.
           </AlertDescription>
         </Alert>
       )}
 
-      <Alert variant="info">
-        <Info />
-        <AlertTitle>Quem nunca recebe</AlertTitle>
-        <AlertDescription>
-          Clientes que pediram para não receber comunicações, que estão
-          bloqueados ou que se descadastraram são automaticamente excluídos de
-          todos os segmentos — exigência do RGPD.
-        </AlertDescription>
-      </Alert>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {summary.map((item) => (
+          <Card key={item.label}>
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <p className="text-muted-foreground text-xs font-medium uppercase">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">
+                  {item.value}
+                </p>
+              </div>
+              <item.icon className="text-muted-foreground size-5" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <CampaignForm
         counts={counts}
         resendReady={resendReady}
         customRecipients={customRecipients}
         customerIdsParam={customerIds.join(",")}
+        pendingRecipients={pendingRecipients}
+        initialDispatchId={crypto.randomUUID()}
       />
+
+      <CampaignHistory campaigns={overview.history} />
+
+      <Alert variant="info">
+        <Info />
+        <AlertTitle>Proteção automática</AlertTitle>
+        <AlertDescription>
+          Clientes bloqueados, descadastrados ou sem consentimento são
+          excluídos. Cada disparo usa uma chave única para impedir reenvios
+          duplicados.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

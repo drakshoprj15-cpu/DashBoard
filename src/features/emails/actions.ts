@@ -1,7 +1,16 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { getDb, isDatabaseConfigured } from "@/database/client";
+import {
+  emailCampaigns,
+  emailEvents,
+  emailRecipients,
+} from "@/database/schema";
+import { refreshCampaignStats } from "@/features/emails/campaigns";
 import {
   getCustomRecipients,
   getSegmentRecipients,
@@ -10,18 +19,31 @@ import {
 import type { SegmentKey } from "@/features/emails/types";
 import {
   isResendConfigured,
+  MAX_EMAILS_PER_BATCH,
   sendEmail,
+  sendEmailBatch,
   testResendConnection,
 } from "@/features/emails/resend-provider";
+import {
+  buildCampaignHtml,
+  renderCampaignText,
+  type CampaignTemplateVars,
+} from "@/features/emails/template";
 import { company } from "@/lib/company";
 import { getAppUrl } from "@/lib/app-url";
+import { getSession } from "@/lib/auth/session";
+import { formatMoney } from "@/lib/format";
+import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+
+const MAX_CAMPAIGN_RECIPIENTS = 500;
 
 const campaignSchema = z.object({
+  dispatchId: z.string().uuid(),
   segment: z.enum(["paid", "pending", "refused", "no_orders", "all", "custom"]),
-  /** Ids de cliente separados por vírgula — só usado quando segment="custom". */
   customerIds: z.string().trim().optional().or(z.literal("")),
-  subject: z.string().trim().min(3, "Escreva um assunto"),
-  body: z.string().trim().min(10, "Escreva a mensagem"),
+  subject: z.string().trim().min(3, "Escreva um assunto").max(160),
+  preheader: z.string().trim().max(180).optional().or(z.literal("")),
+  body: z.string().trim().min(10, "Escreva a mensagem").max(10_000),
   testEmail: z
     .string()
     .trim()
@@ -31,69 +53,113 @@ const campaignSchema = z.object({
   mode: z.enum(["test", "send"]),
 });
 
-/** Resolve a lista final de destinatários — segmento fixo ou seleção manual de Carrinhos. */
 async function resolveRecipients(
   segment: SegmentKey,
   customerIdsRaw: string | undefined,
 ): Promise<Recipient[]> {
-  if (segment === "custom") {
-    const ids = (customerIdsRaw ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const result = await getCustomRecipients(ids);
-    return result.recipients;
+  const recipients =
+    segment === "custom"
+      ? (
+          await getCustomRecipients(
+            (customerIdsRaw ?? "")
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean)
+              .slice(0, MAX_CAMPAIGN_RECIPIENTS),
+          )
+        ).recipients
+      : await getSegmentRecipients(segment);
+
+  const unique = new Map<string, Recipient>();
+  for (const recipient of recipients) {
+    const key = recipient.email.trim().toLowerCase();
+    if (key && !unique.has(key)) unique.set(key, recipient);
   }
-  return getSegmentRecipients(segment);
+  return Array.from(unique.values());
 }
 
 export interface EmailActionResult {
   ok: boolean;
   error?: string;
   message?: string;
+  campaignId?: string;
+  total?: number;
   sent?: number;
   failed?: number;
+  queued?: number;
 }
 
-/** Substitui as variáveis disponíveis no corpo da mensagem. */
-function renderTemplate(
-  template: string,
-  vars: { nome: string; primeiroNome: string; email: string },
-): string {
-  return template
-    .replaceAll("{{NOME}}", vars.nome)
-    .replaceAll("{{PRIMEIRO_NOME}}", vars.primeiroNome)
-    .replaceAll("{{EMAIL}}", vars.email);
+function templateVars(
+  recipient: Recipient,
+  appUrl: string,
+): CampaignTemplateVars {
+  const primeiroNome = recipient.name.trim().split(/\s+/)[0] || "Cliente";
+  return {
+    nome: recipient.name,
+    primeiroNome,
+    email: recipient.email,
+    produto: recipient.productName ?? "o seu produto",
+    pedido: recipient.orderReference ?? "o seu pedido",
+    valor:
+      recipient.orderTotalCents === null
+        ? ""
+        : formatMoney(
+            recipient.orderTotalCents,
+            recipient.currency ?? "EUR",
+            "pt-PT",
+          ),
+    checkoutUrl: recipient.checkoutUrl ?? appUrl,
+    lojaUrl: appUrl,
+  };
 }
 
-/** Envolve o texto num HTML simples e legível, com rodapé de descadastro. */
-function wrapHtml(bodyText: string): string {
-  const paragraphs = bodyText
-    .split("\n")
-    .filter((l) => l.trim())
-    .map((l) => `<p style="margin:0 0 14px;line-height:1.6">${l}</p>`)
-    .join("");
+function sampleVars(email: string, appUrl: string): CampaignTemplateVars {
+  return {
+    nome: "Cliente Exemplo",
+    primeiroNome: "Cliente",
+    email,
+    produto: "Produto Exemplo",
+    pedido: "PED-1234",
+    valor: "49,90 €",
+    checkoutUrl: `${appUrl.replace(/\/$/, "")}/checkout/exemplo`,
+    lojaUrl: appUrl,
+  };
+}
 
-  return `<!doctype html><html lang="pt"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
-<p style="margin:0 0 20px;font-size:20px;font-weight:800">${company.tradeName}</p>
-${paragraphs}
-<hr style="margin:24px 0;border:none;border-top:1px solid #e4e4e7">
-<p style="margin:0;font-size:12px;color:#71717a">
-Recebeu este e-mail porque comprou ou iniciou uma compra em ${company.tradeName}.<br>
-Para deixar de receber, responda a este e-mail com "REMOVER".
-</p>
-</div></body></html>`;
+async function duplicateCampaignResult(
+  campaignId: string,
+): Promise<EmailActionResult> {
+  const stats = await refreshCampaignStats(campaignId);
+  return {
+    ok: stats.sent > 0 && stats.failed === 0,
+    campaignId,
+    ...stats,
+    message:
+      stats.sent > 0
+        ? "Este disparo já foi processado. Nenhum e-mail foi duplicado."
+        : undefined,
+    error:
+      stats.sent === 0
+        ? "Este disparo já está em processamento ou falhou. Consulte o histórico."
+        : undefined,
+  };
 }
 
 export async function sendCampaignAction(
   _prev: EmailActionResult | null,
   formData: FormData,
 ): Promise<EmailActionResult> {
+  const session = await getSession();
+  if (!session || session.demoMode) {
+    return { ok: false, error: "Não autenticado." };
+  }
+
   const parsed = campaignSchema.safeParse({
+    dispatchId: formData.get("dispatchId"),
     segment: formData.get("segment"),
     customerIds: formData.get("customerIds") ?? "",
     subject: formData.get("subject"),
+    preheader: formData.get("preheader") ?? "",
     body: formData.get("body"),
     testEmail: formData.get("testEmail") ?? "",
     mode: formData.get("mode"),
@@ -102,95 +168,233 @@ export async function sendCampaignAction(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0].message };
   }
-
-  const { segment, customerIds, subject, body, testEmail, mode } = parsed.data;
-
   if (!isResendConfigured()) {
     return {
       ok: false,
       error:
-        "O envio de e-mails ainda não está ativo: configure RESEND_API_KEY e RESEND_FROM_EMAIL. Nenhum e-mail foi enviado.",
+        "O envio ainda não está ativo. Configure RESEND_API_KEY e RESEND_FROM_EMAIL na Vercel.",
     };
   }
 
-  // Envio de teste: um único destinatário, sem tocar na base de clientes.
+  const {
+    dispatchId,
+    segment,
+    customerIds,
+    subject,
+    preheader,
+    body,
+    testEmail,
+    mode,
+  } = parsed.data;
+  const appUrl = getAppUrl();
+
   if (mode === "test") {
     if (!testEmail) {
       return { ok: false, error: "Informe o e-mail para receber o teste." };
     }
-    const html = wrapHtml(
-      renderTemplate(body, {
-        nome: "Cliente Exemplo",
-        primeiroNome: "Cliente",
-        email: testEmail,
-      }),
-    );
+    const vars = sampleVars(testEmail, appUrl);
     const result = await sendEmail({
       to: testEmail,
-      subject: `[TESTE] ${subject}`,
-      html,
+      subject: `[TESTE] ${renderCampaignText(subject, vars)}`,
+      html: buildCampaignHtml({ body, preheader, vars }),
       replyTo: company.email,
+      idempotencyKey: `test/${dispatchId}`,
     });
     return result.ok
       ? { ok: true, message: `E-mail de teste enviado para ${testEmail}.` }
       : { ok: false, error: result.error };
   }
 
-  const recipients = await resolveRecipients(
-    segment as SegmentKey,
-    customerIds,
-  );
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Banco de dados não configurado." };
+  }
+
+  const recipients = await resolveRecipients(segment, customerIds);
   if (recipients.length === 0) {
     return {
       ok: false,
-      error:
-        segment === "custom"
-          ? "Nenhum dos contatos selecionados pode receber e-mail (sem consentimento, bloqueado ou suprimido)."
-          : "Este segmento não tem destinatários.",
+      error: "Este recorte não tem destinatários elegíveis.",
+    };
+  }
+  if (recipients.length > MAX_CAMPAIGN_RECIPIENTS) {
+    return {
+      ok: false,
+      error: `Este disparo tem ${recipients.length} contatos. O limite por operação é ${MAX_CAMPAIGN_RECIPIENTS}.`,
     };
   }
 
-  let sent = 0;
-  let failed = 0;
-  const appUrl = getAppUrl();
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+  const [created] = await db
+    .insert(emailCampaigns)
+    .values({
+      id: dispatchId,
+      workspaceId,
+      name: subject.slice(0, 120),
+      subject,
+      preheader: preheader || null,
+      fromEmail: process.env.RESEND_FROM_EMAIL,
+      replyTo: company.email,
+      content: { body },
+      audienceFilter: { segment, customerIds: customerIds || null },
+      status: "sending",
+      stats: {
+        total: recipients.length,
+        sent: 0,
+        failed: 0,
+        queued: recipients.length,
+      },
+    })
+    .onConflictDoNothing()
+    .returning({ id: emailCampaigns.id });
 
-  for (const r of recipients) {
-    const html = wrapHtml(
-      renderTemplate(body, {
-        nome: r.name,
-        primeiroNome: r.name.split(" ")[0],
-        email: r.email,
-      }).replaceAll("{{LOJA_URL}}", appUrl),
+  if (!created) return duplicateCampaignResult(dispatchId);
+
+  await db.insert(emailRecipients).values(
+    recipients.map((recipient) => ({
+      workspaceId,
+      campaignId: dispatchId,
+      customerId: recipient.id,
+      email: recipient.email,
+      status: "queued",
+    })),
+  );
+
+  let queued = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (
+    let offset = 0;
+    offset < recipients.length;
+    offset += MAX_EMAILS_PER_BATCH
+  ) {
+    const chunk = recipients.slice(offset, offset + MAX_EMAILS_PER_BATCH);
+    const result = await sendEmailBatch(
+      chunk.map((recipient) => {
+        const vars = templateVars(recipient, appUrl);
+        return {
+          to: recipient.email,
+          subject: renderCampaignText(subject, vars),
+          html: buildCampaignHtml({ body, preheader, vars }),
+          replyTo: company.email,
+        };
+      }),
+      `campaign/${dispatchId}/${Math.floor(offset / MAX_EMAILS_PER_BATCH)}`,
     );
 
-    const result = await sendEmail({
-      to: r.email,
-      subject,
-      html,
-      replyTo: company.email,
-      // Evita duplicar se a ação for reenviada por engano no mesmo minuto.
-      idempotencyKey: `campanha_${segment}_${r.id}_${new Date().toISOString().slice(0, 16)}`,
-    });
+    if (result.ok && result.externalIds?.length === chunk.length) {
+      const now = new Date();
+      await db
+        .insert(emailRecipients)
+        .values(
+          chunk.map((recipient, index) => ({
+            workspaceId,
+            campaignId: dispatchId,
+            customerId: recipient.id,
+            email: recipient.email,
+            externalId: result.externalIds![index],
+            status: "queued",
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [emailRecipients.campaignId, emailRecipients.email],
+          set: {
+            externalId: sql`excluded.external_id`,
+            status: "queued",
+            updatedAt: now,
+          },
+        });
+      queued += chunk.length;
+      continue;
+    }
 
-    if (result.ok) sent += 1;
-    else failed += 1;
+    const error = result.error ?? "O Resend não confirmou o lote enviado.";
+    errors.push(error);
+    failed += chunk.length;
+    const emails = chunk.map((recipient) => recipient.email);
+    await db
+      .update(emailRecipients)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(
+        and(
+          eq(emailRecipients.campaignId, dispatchId),
+          inArray(emailRecipients.email, emails),
+        ),
+      );
+
+    const failedRecipients = await db
+      .select({ id: emailRecipients.id })
+      .from(emailRecipients)
+      .where(
+        and(
+          eq(emailRecipients.campaignId, dispatchId),
+          inArray(emailRecipients.email, emails),
+        ),
+      );
+    if (failedRecipients.length > 0) {
+      await db.insert(emailEvents).values(
+        failedRecipients.map((recipient) => ({
+          workspaceId,
+          recipientId: recipient.id,
+          campaignId: dispatchId,
+          type: "failed" as const,
+          externalEventId: `local:${dispatchId}:${recipient.id}`,
+          metadata: { error: error.slice(0, 500) },
+        })),
+      );
+    }
+  }
+
+  const now = new Date();
+  await db
+    .update(emailCampaigns)
+    .set({
+      status: "sent",
+      sentAt: now,
+      stats: {
+        total: recipients.length,
+        sent: 0,
+        failed,
+        queued,
+        errors: errors.slice(0, 5),
+      },
+      updatedAt: now,
+    })
+    .where(eq(emailCampaigns.id, dispatchId));
+
+  revalidatePath("/emails");
+  if (failed > 0) {
+    console.error("Falha parcial no disparo de e-mail", {
+      campaignId: dispatchId,
+      queued,
+      failed,
+      errors: errors.slice(0, 3),
+    });
   }
 
   return {
     ok: failed === 0,
-    sent,
+    campaignId: dispatchId,
+    total: recipients.length,
+    sent: 0,
     failed,
+    queued,
     message:
       failed === 0
-        ? `Campanha enviada para ${sent} ${sent === 1 ? "cliente" : "clientes"}.`
+        ? `Disparo colocado na fila do Resend para ${queued} ${queued === 1 ? "cliente" : "clientes"}.`
         : undefined,
     error:
       failed > 0
-        ? `Enviados ${sent}, falharam ${failed}. Verifique os endereços e o domínio verificado no Resend.`
+        ? `Em fila ${queued}; falharam ${failed}. Consulte o histórico para acompanhar.`
         : undefined,
   };
 }
 
-export async function testResendAction(): Promise<void> {
-  await testResendConnection();
+export async function testResendAction() {
+  const session = await getSession();
+  if (!session || session.demoMode) {
+    return { ok: false, message: "Não autenticado." };
+  }
+  return testResendConnection();
 }

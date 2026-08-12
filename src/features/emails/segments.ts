@@ -1,7 +1,12 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
-import { customers, emailSuppressions, orders } from "@/database/schema";
+import {
+  customers,
+  emailSuppressions,
+  orderItems,
+  orders,
+} from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
 import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
@@ -26,6 +31,75 @@ export interface Recipient {
   name: string;
   orderCount: number;
   totalSpentCents: number;
+  orderId: string | null;
+  orderReference: string | null;
+  productName: string | null;
+  checkoutUrl: string | null;
+  orderTotalCents: number | null;
+  currency: string | null;
+}
+
+type RecipientWithoutContext = Omit<
+  Recipient,
+  | "orderId"
+  | "orderReference"
+  | "productName"
+  | "checkoutUrl"
+  | "orderTotalCents"
+  | "currency"
+>;
+
+async function addOrderContext(
+  recipients: RecipientWithoutContext[],
+  statuses?: string[],
+): Promise<Recipient[]> {
+  if (recipients.length === 0) return [];
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+  const rows = await db
+    .select({
+      customerId: orders.customerId,
+      orderId: orders.id,
+      reference: orders.reference,
+      productName: orderItems.productName,
+      checkoutUrl: orders.checkoutUrl,
+      totalCents: orders.totalCents,
+      currency: orders.currency,
+    })
+    .from(orders)
+    .leftJoin(orderItems, eq(orderItems.orderId, orders.id))
+    .where(
+      and(
+        eq(orders.workspaceId, workspaceId),
+        inArray(
+          orders.customerId,
+          recipients.map((recipient) => recipient.id),
+        ),
+        statuses ? inArray(orders.status, statuses as never) : undefined,
+      ),
+    )
+    .orderBy(desc(orders.createdAt), desc(orderItems.createdAt));
+
+  const latestByCustomer = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    if (row.customerId && !latestByCustomer.has(row.customerId)) {
+      latestByCustomer.set(row.customerId, row);
+    }
+  }
+
+  return recipients.map((recipient) => {
+    const context = latestByCustomer.get(recipient.id);
+    return {
+      ...recipient,
+      orderId: context?.orderId ?? null,
+      orderReference: context?.reference ?? null,
+      productName: context?.productName ?? null,
+      checkoutUrl: context?.checkoutUrl ?? null,
+      orderTotalCents: context ? Number(context.totalCents) : null,
+      currency: context?.currency ?? null,
+    };
+  });
 }
 
 /**
@@ -37,6 +111,7 @@ export interface Recipient {
  */
 export async function getSegmentRecipients(
   segment: SegmentKey,
+  includeOrderContext = true,
 ): Promise<Recipient[]> {
   if (!isDatabaseConfigured()) return [];
 
@@ -81,7 +156,7 @@ export async function getSegmentRecipients(
   const filtered =
     segment === "no_orders" ? rows.filter((r) => r.orderCount === 0) : rows;
 
-  return filtered
+  const recipients = filtered
     .filter((r) => !blocked.has(r.email.toLowerCase()))
     .map((r) => ({
       id: r.id,
@@ -90,13 +165,87 @@ export async function getSegmentRecipients(
       orderCount: r.orderCount,
       totalSpentCents: r.totalSpentCents,
     }));
+
+  return includeOrderContext
+    ? addOrderContext(recipients, statuses)
+    : recipients.map((recipient) => ({
+        ...recipient,
+        orderId: null,
+        orderReference: null,
+        productName: null,
+        checkoutUrl: null,
+        orderTotalCents: null,
+        currency: null,
+      }));
+}
+
+/** Busca leve para o seletor manual da aba Emails. */
+export async function searchEmailRecipients(
+  query: string,
+  limit = 20,
+): Promise<Recipient[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  const term = query.trim().slice(0, 120);
+  if (term.length < 2) return [];
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+  const safeLimit = Math.min(Math.max(limit, 1), 30);
+  const pattern = `%${term}%`;
+  const [suppressed, rows] = await Promise.all([
+    db
+      .select({ email: emailSuppressions.email })
+      .from(emailSuppressions)
+      .where(eq(emailSuppressions.workspaceId, workspaceId)),
+    db
+      .select({
+        id: customers.id,
+        email: customers.email,
+        firstName: customers.firstName,
+        lastName: customers.lastName,
+      })
+      .from(customers)
+      .where(
+        and(
+          eq(customers.workspaceId, workspaceId),
+          isNull(customers.deletedAt),
+          eq(customers.marketingOptOut, false),
+          eq(customers.isBlocked, false),
+          or(
+            ilike(customers.email, pattern),
+            ilike(customers.firstName, pattern),
+            ilike(customers.lastName, pattern),
+            sql`concat_ws(' ', ${customers.firstName}, ${customers.lastName}) ilike ${pattern}`,
+          ),
+        ),
+      )
+      .orderBy(desc(customers.lastActivityAt))
+      .limit(safeLimit),
+  ]);
+
+  const suppressedEmails = new Set(
+    suppressed.map((row) => row.email.toLowerCase()),
+  );
+  const recipients: RecipientWithoutContext[] = rows
+    .filter((row) => !suppressedEmails.has(row.email.toLowerCase()))
+    .map((row) => ({
+      id: row.id,
+      email: row.email,
+      name:
+        [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email,
+      orderCount: 0,
+      totalSpentCents: 0,
+    }));
+
+  return addOrderContext(recipients);
 }
 
 /** Contagem de cada segmento, para exibir no painel. */
 export async function getSegmentCounts(): Promise<Record<SegmentKey, number>> {
   const entries = await Promise.all(
     SEGMENTS.map(async (s) => {
-      const list = await getSegmentRecipients(s.key);
+      const list = await getSegmentRecipients(s.key, false);
       return [s.key, list.length] as const;
     }),
   );
@@ -182,7 +331,7 @@ export async function getCustomRecipients(
   let excludedNoConsent = 0;
   let excludedSuppressed = 0;
   const seenEmails = new Set<string>();
-  const recipients: Recipient[] = [];
+  const recipients: RecipientWithoutContext[] = [];
 
   for (const r of rows) {
     if (r.marketingOptOut || r.isBlocked) {
@@ -206,7 +355,7 @@ export async function getCustomRecipients(
   }
 
   return {
-    recipients,
+    recipients: await addOrderContext(recipients),
     totalSelected,
     excludedNoConsent,
     excludedSuppressed,
