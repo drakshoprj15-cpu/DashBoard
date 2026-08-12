@@ -8,14 +8,17 @@ import {
   Check,
   CheckCircle2,
   Eye,
+  Link2,
   LoaderCircle,
   Mail,
   Plus,
   Search,
   Send,
+  ShoppingCart,
   TestTube,
   UserRound,
   Users,
+  WandSparkles,
   X,
 } from "lucide-react";
 
@@ -32,10 +35,10 @@ import type {
 import {
   EMAIL_VARIABLES,
   buildCampaignHtml,
+  DEFAULT_CAMPAIGN_TEMPLATE,
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
-import { CART_TEMPLATES } from "@/features/carts/templates";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,7 +57,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const DEFAULT_TEMPLATE = CART_TEMPLATES.pending;
 const PREVIEW_VARS: CampaignTemplateVars = {
   nome: "Maria Oliveira",
   primeiroNome: "Maria",
@@ -65,6 +67,20 @@ const PREVIEW_VARS: CampaignTemplateVars = {
   checkoutUrl: "https://loja.exemplo.pt/checkout/pedido",
   lojaUrl: "https://loja.exemplo.pt",
 };
+
+function recipientPreviewVars(recipient: Recipient): CampaignTemplateVars {
+  return {
+    nome: recipient.name,
+    primeiroNome: recipient.name.trim().split(/\s+/)[0] || "Cliente",
+    email: recipient.email,
+    produto: recipient.productName ?? "o seu produto",
+    pedido: recipient.orderReference ?? "o seu pedido",
+    valor: money(recipient.orderTotalCents, recipient.currency),
+    checkoutUrl:
+      recipient.checkoutUrl ?? "https://loja.exemplo.pt/checkout/pedido",
+    lojaUrl: "https://loja.exemplo.pt",
+  };
+}
 
 function money(value: number | null, currency: string | null) {
   if (value === null) return "—";
@@ -110,9 +126,27 @@ export function CampaignForm({
   const [customerResults, setCustomerResults] = React.useState<Recipient[]>([]);
   const [searchingCustomers, setSearchingCustomers] = React.useState(false);
   const [customerSearchError, setCustomerSearchError] = React.useState("");
-  const [subject, setSubject] = React.useState(DEFAULT_TEMPLATE.subject);
-  const [preheader, setPreheader] = React.useState(DEFAULT_TEMPLATE.preview);
-  const [body, setBody] = React.useState(DEFAULT_TEMPLATE.emailBody);
+  const [subject, setSubject] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.subject,
+  );
+  const [preheader, setPreheader] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.preheader,
+  );
+  const [title, setTitle] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.title,
+  );
+  const [body, setBody] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.body,
+  );
+  const [ctaLabel, setCtaLabel] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
+  );
+  const [ctaUrl, setCtaUrl] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
+  );
+  const [previewRecipientId, setPreviewRecipientId] = React.useState(
+    pendingRecipients[0]?.id ?? "",
+  );
   const dispatchId = React.useMemo(
     () => (state ? crypto.randomUUID() : initialDispatchId),
     [initialDispatchId, state],
@@ -163,12 +197,43 @@ export function CampaignForm({
   const activeCustomIds = selectedCustomerIds;
   const total =
     segment === "custom" ? activeCustomIds.length : (counts[segment] ?? 0);
-  const renderedSubject = renderCampaignText(subject, PREVIEW_VARS);
+  const previewRecipients = React.useMemo(() => {
+    const unique = new Map<string, Recipient>();
+    for (const recipient of [
+      ...pendingRecipients,
+      ...(customRecipients?.recipients ?? []),
+      ...customerResults,
+    ]) {
+      unique.set(recipient.id, recipient);
+    }
+    return Array.from(unique.values());
+  }, [customRecipients, customerResults, pendingRecipients]);
+  const selectedPreviewRecipient =
+    previewRecipients.find(
+      (recipient) => recipient.id === previewRecipientId,
+    ) ??
+    previewRecipients.find((recipient) =>
+      selectedCustomerIds.includes(recipient.id),
+    ) ??
+    previewRecipients[0];
+  const previewVars = selectedPreviewRecipient
+    ? recipientPreviewVars(selectedPreviewRecipient)
+    : PREVIEW_VARS;
+  const renderedSubject = renderCampaignText(subject, previewVars);
   const previewHtml = buildCampaignHtml({
     body,
     preheader,
-    vars: PREVIEW_VARS,
+    title,
+    ctaLabel,
+    ctaUrl,
+    vars: previewVars,
   });
+
+  function selectAllPending() {
+    setSelectedCustomerIds([]);
+    setSegment("pending");
+    if (pendingRecipients[0]) setPreviewRecipientId(pendingRecipients[0].id);
+  }
 
   function toggleRecipient(customerId: string) {
     setSelectedCustomerIds((current) =>
@@ -177,11 +242,13 @@ export function CampaignForm({
         : [...current, customerId],
     );
     setSegment("custom");
+    setPreviewRecipientId(customerId);
   }
 
   function prepareIndividual(customerId: string) {
     setSelectedCustomerIds([customerId]);
     setSegment("custom");
+    setPreviewRecipientId(customerId);
   }
 
   return (
@@ -218,6 +285,62 @@ export function CampaignForm({
 
             <div className="space-y-2">
               <Label>Destinatários</Label>
+              <button
+                type="button"
+                onClick={selectAllPending}
+                aria-pressed={segment === "pending"}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-md border p-4 text-left transition-colors",
+                  segment === "pending"
+                    ? "border-primary bg-primary/5 ring-primary/15 ring-2"
+                    : "border-border hover:bg-muted/40",
+                )}
+              >
+                <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-md">
+                  <ShoppingCart className="size-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">
+                    Selecionar todos os carrinhos pendentes
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block text-xs">
+                    Inclui apenas clientes elegíveis e personaliza cada e-mail
+                    automaticamente.
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <Badge variant={segment === "pending" ? "success" : "muted"}>
+                    {counts.pending ?? 0}
+                  </Badge>
+                  {segment === "pending" && (
+                    <CheckCircle2 className="text-primary size-5" />
+                  )}
+                </span>
+              </button>
+
+              {segment === "pending" && (
+                <div className="border-primary/20 bg-primary/5 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+                  <p className="text-sm">
+                    <strong>{counts.pending ?? 0}</strong>{" "}
+                    {(counts.pending ?? 0) === 1
+                      ? "cliente sera incluido"
+                      : "clientes serao incluidos"}{" "}
+                    neste disparo.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSegment("custom");
+                      setSelectedCustomerIds([]);
+                    }}
+                  >
+                    Selecionar manualmente
+                  </Button>
+                </div>
+              )}
+
               {hasCustomRecipients && customRecipients && (
                 <button
                   type="button"
@@ -244,6 +367,9 @@ export function CampaignForm({
                 </button>
               )}
 
+              <p className="text-muted-foreground pt-2 text-xs font-medium">
+                Outros publicos
+              </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {SEGMENTS.map((item) => (
                   <button
@@ -279,7 +405,9 @@ export function CampaignForm({
             <div className="space-y-2">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <Label htmlFor="customer-search">Escolher cliente</Label>
+                  <Label htmlFor="customer-search">
+                    Selecao individual (opcional)
+                  </Label>
                   <p className="text-muted-foreground mt-1 text-xs">
                     Busque por nome ou e-mail para preparar um disparo
                     individual ou uma seleção manual.
@@ -406,11 +534,77 @@ export function CampaignForm({
                   <div>
                     <Label>Carrinhos pendentes recentes</Label>
                     <p className="text-muted-foreground mt-1 text-xs">
-                      Marque um ou vários clientes para um disparo direcionado.
+                      Use o icone de e-mail para preparar um disparo individual.
                     </p>
                   </div>
+                  <Button
+                    type="button"
+                    variant={segment === "pending" ? "default" : "outline"}
+                    size="sm"
+                    onClick={selectAllPending}
+                  >
+                    <Check /> Selecionar todos ({counts.pending ?? 0})
+                  </Button>
                 </div>
-                <div className="overflow-x-auto rounded-md border">
+                <div className="divide-border divide-y rounded-md border sm:hidden">
+                  {pendingRecipients.map((recipient) => {
+                    const selected = selectedCustomerIds.includes(recipient.id);
+                    return (
+                      <div
+                        key={recipient.id}
+                        className="flex items-start gap-3 p-3"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={segment === "pending" || selected}
+                          disabled={segment === "pending"}
+                          onChange={() => toggleRecipient(recipient.id)}
+                          aria-label={`Selecionar ${recipient.name}`}
+                          className="accent-primary mt-1 size-4 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {recipient.name}
+                          </p>
+                          <p className="text-muted-foreground truncate text-xs">
+                            {recipient.email}
+                          </p>
+                          <p className="mt-2 line-clamp-2 text-xs">
+                            {recipient.productName ?? "Produto nao informado"}
+                          </p>
+                          <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 text-[11px]">
+                            <span className="font-mono">
+                              {recipient.orderReference ?? "Sem pedido"}
+                            </span>
+                            <span className="font-semibold">
+                              {money(
+                                recipient.orderTotalCents,
+                                recipient.currency,
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Preparar e-mail para ${recipient.name}`}
+                              onClick={() => prepareIndividual(recipient.id)}
+                            >
+                              <Mail />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Preparar envio individual
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden overflow-x-auto rounded-md border sm:block">
                   <table className="w-full min-w-[660px] text-sm">
                     <thead className="bg-muted/50 text-muted-foreground">
                       <tr>
@@ -434,7 +628,8 @@ export function CampaignForm({
                             <td className="px-3 py-2">
                               <input
                                 type="checkbox"
-                                checked={selected}
+                                checked={segment === "pending" || selected}
+                                disabled={segment === "pending"}
                                 onChange={() => toggleRecipient(recipient.id)}
                                 aria-label={`Selecionar ${recipient.name}`}
                                 className="accent-primary size-4"
@@ -489,8 +684,12 @@ export function CampaignForm({
               </div>
             )}
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
+            <div className="grid items-start gap-6 border-t pt-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(460px,1.1fr)]">
               <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <WandSparkles className="text-primary size-4" />
+                  <h3 className="text-sm font-semibold">Personalizar e-mail</h3>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Assunto</Label>
                   <Input
@@ -509,6 +708,17 @@ export function CampaignForm({
                     value={preheader}
                     onChange={(event) => setPreheader(event.target.value)}
                     maxLength={180}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Titulo interno</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    maxLength={160}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -541,22 +751,82 @@ export function CampaignForm({
                     ))}
                   </div>
                 </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ctaLabel">Texto do botao</Label>
+                    <Input
+                      id="ctaLabel"
+                      name="ctaLabel"
+                      value={ctaLabel}
+                      onChange={(event) => setCtaLabel(event.target.value)}
+                      maxLength={80}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ctaUrl">Link do botao</Label>
+                    <div className="relative">
+                      <Link2
+                        className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                        aria-hidden="true"
+                      />
+                      <Input
+                        id="ctaUrl"
+                        name="ctaUrl"
+                        value={ctaUrl}
+                        onChange={(event) => setCtaUrl(event.target.value)}
+                        placeholder="{{CHECKOUT_URL}}"
+                        className="pl-9 font-mono text-xs"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Eye className="text-muted-foreground size-4" />
-                  <Label>Preview do e-mail</Label>
+              <div className="space-y-3 xl:sticky xl:top-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Eye className="text-primary size-4" />
+                    <h3 className="text-sm font-semibold">Preview do e-mail</h3>
+                    <Badge variant="success">Ao vivo</Badge>
+                  </div>
+                  {previewRecipients.length > 0 && (
+                    <label className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">
+                        Cliente
+                      </span>
+                      <select
+                        value={selectedPreviewRecipient?.id ?? ""}
+                        onChange={(event) =>
+                          setPreviewRecipientId(event.target.value)
+                        }
+                        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-8 max-w-56 rounded-md border px-2 text-xs outline-none focus-visible:ring-[3px]"
+                      >
+                        {previewRecipients.map((recipient) => (
+                          <option key={recipient.id} value={recipient.id}>
+                            {recipient.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
-                <div className="bg-muted/20 overflow-hidden rounded-md border">
-                  <div className="text-muted-foreground border-b px-3 py-2 text-[11px]">
-                    Assunto: {renderedSubject || "Assunto do e-mail"}
+                <div className="bg-muted/20 overflow-hidden rounded-md border shadow-sm">
+                  <div className="bg-card border-b px-3 py-2.5">
+                    <p className="truncate text-xs font-medium">
+                      {renderedSubject || "Assunto do e-mail"}
+                    </p>
+                    <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                      Para: {previewVars.email}
+                    </p>
                   </div>
                   <iframe
                     title="Preview do e-mail"
                     srcDoc={previewHtml}
                     sandbox=""
-                    className="h-[440px] w-full bg-white"
+                    className="h-[620px] w-full bg-white"
                   />
                 </div>
               </div>
