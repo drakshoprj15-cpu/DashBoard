@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCampaignHtml,
+  isValidCtaUrlTemplate,
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
@@ -31,12 +32,25 @@ describe("email campaign template", () => {
     const html = buildCampaignHtml({
       body: "Olá {{NOME}}, o seu {{PRODUTO}} está reservado.",
       preheader: "Retome o pedido {{PEDIDO}}.",
+      title: "Atualização da encomenda {{PEDIDO}}",
+      ctaLabel: "Confirmar dados de entrega",
+      ctaUrl: "{{CHECKOUT_URL}}",
       vars,
     });
 
+    expect(html).toContain("PCG VIP");
     expect(html).toContain("Maria Oliveira");
     expect(html).toContain("Curso &lt;Avançado&gt;");
     expect(html).toContain('href="https://example.com/checkout/PED-42"');
+    expect(html).toContain("Confirmar dados de entrega");
     expect(html).not.toContain("{{");
+  });
+
+  it("accepts a dynamic checkout link and rejects unsafe protocols", () => {
+    expect(isValidCtaUrlTemplate("{{CHECKOUT_URL}}")).toBe(true);
+    expect(isValidCtaUrlTemplate("https://example.com/p/{{PEDIDO}}")).toBe(
+      true,
+    );
+    expect(isValidCtaUrlTemplate("javascript:alert(1)")).toBe(false);
   });
 });

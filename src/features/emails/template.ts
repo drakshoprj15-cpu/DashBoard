@@ -1,14 +1,24 @@
-import { company } from "@/lib/company";
+export const EMAIL_BRAND_NAME = "PCG VIP";
+
+export const DEFAULT_CAMPAIGN_TEMPLATE = {
+  subject: "{{PRIMEIRO_NOME}}, confirme os dados da sua encomenda",
+  preheader:
+    "Retome o seu pedido e confirme os dados de entrega em poucos segundos.",
+  title: "Atualizacao da sua encomenda",
+  body: "Ola {{PRIMEIRO_NOME}},\n\nVimos que a sua encomenda ainda nao foi concluida. Para retomar o pedido, confirme os seus dados de entrega no botao abaixo.",
+  ctaLabel: "Confirmar dados de entrega",
+  ctaUrl: "{{CHECKOUT_URL}}",
+} as const;
 
 export const EMAIL_VARIABLES = [
   { token: "{{PRIMEIRO_NOME}}", label: "Primeiro nome" },
   { token: "{{NOME}}", label: "Nome completo" },
   { token: "{{EMAIL}}", label: "E-mail" },
   { token: "{{PRODUTO}}", label: "Produto" },
-  { token: "{{PEDIDO}}", label: "Número do pedido" },
+  { token: "{{PEDIDO}}", label: "Numero do pedido" },
   { token: "{{VALOR}}", label: "Valor do pedido" },
   { token: "{{CHECKOUT_URL}}", label: "Link para concluir" },
-  { token: "{{LOJA_URL}}", label: "Endereço da loja" },
+  { token: "{{LOJA_URL}}", label: "Endereco da loja" },
 ] as const;
 
 export interface CampaignTemplateVars {
@@ -20,6 +30,13 @@ export interface CampaignTemplateVars {
   valor: string;
   checkoutUrl: string;
   lojaUrl: string;
+}
+
+export interface CampaignTemplateContent {
+  body: string;
+  title?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
 }
 
 const VARIABLE_ALIASES: Record<string, keyof CampaignTemplateVars> = {
@@ -72,9 +89,26 @@ function validHttpUrl(value: string): boolean {
   }
 }
 
+export function isValidCtaUrlTemplate(value: string): boolean {
+  const sampleVars: CampaignTemplateVars = {
+    nome: "Cliente Exemplo",
+    primeiroNome: "Cliente",
+    email: "cliente@example.com",
+    produto: "Produto",
+    pedido: "PED-1234",
+    valor: "49,90 EUR",
+    checkoutUrl: "https://example.com/checkout/PED-1234",
+    lojaUrl: "https://example.com",
+  };
+  return validHttpUrl(renderCampaignText(value, sampleVars));
+}
+
 export function buildCampaignHtml(input: {
   body: string;
   preheader?: string;
+  title?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
   vars: CampaignTemplateVars;
 }): string {
   const renderedBody = renderCampaignText(input.body, input.vars);
@@ -83,34 +117,49 @@ export function buildCampaignHtml(input: {
     .filter(Boolean)
     .map(
       (paragraph) =>
-        `<p style="margin:0 0 16px;line-height:1.65">${paragraph.replace(/\n/g, "<br>")}</p>`,
+        `<p style="margin:0 0 18px;line-height:1.65">${paragraph.replace(/\n/g, "<br>")}</p>`,
     )
     .join("");
   const preheader = input.preheader
     ? renderCampaignText(input.preheader, input.vars)
     : "";
-  const hasCheckoutUrl = validHttpUrl(input.vars.checkoutUrl);
-  const checkoutButton = hasCheckoutUrl
-    ? `<div style="margin:28px 0 20px;text-align:center"><a href="${escapeHtml(input.vars.checkoutUrl)}" style="display:inline-block;background:#d61f69;color:#ffffff;text-decoration:none;padding:13px 24px;border-radius:4px;font-weight:700">Retomar pedido</a></div>
-<p style="margin:0 0 18px;line-height:1.55;color:#52525b;font-size:12px">Se o botão não funcionar, copie e cole este link no navegador:<br><a href="${escapeHtml(input.vars.checkoutUrl)}" style="color:#d61f69;word-break:break-all">${escapeHtml(input.vars.checkoutUrl)}</a></p>`
+  const title = renderCampaignText(
+    input.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
+    input.vars,
+  );
+  const ctaLabel = renderCampaignText(
+    input.ctaLabel ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
+    input.vars,
+  );
+  const ctaUrl = renderCampaignText(
+    input.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
+    input.vars,
+  );
+  const hasCtaUrl = validHttpUrl(ctaUrl);
+  const checkoutButton = hasCtaUrl
+    ? `<p style="margin:26px 0 18px;line-height:1.65">Para prosseguirmos com o pedido, confirme os seus dados atraves do botao abaixo:</p>
+<div style="margin:0 0 28px;text-align:center"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#cc0000;color:#ffffff;text-decoration:none;padding:15px 28px;border-radius:4px;font-weight:700">${escapeHtml(ctaLabel)}</a></div>
+<p style="margin:0 0 26px;line-height:1.55;color:#4b5563;font-size:12px">Se o botao nao funcionar, copie e cole o seguinte endereco na barra do navegador:<br><a href="${escapeHtml(ctaUrl)}" style="color:#cc0000;word-break:break-all">${escapeHtml(ctaUrl)}</a></p>`
     : "";
   const orderValue = input.vars.valor
     ? `<br><strong>Valor:</strong> ${escapeHtml(input.vars.valor)}`
     : "";
 
-  return `<!doctype html><html lang="pt"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f4f4f5;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#18181b">
+  return `<!doctype html><html lang="pt"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:14px">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
-<div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #d61f69">
-<div style="padding:30px 28px 24px">
-<p style="margin:0 0 8px;color:#d61f69;font-size:18px;font-weight:800;text-transform:uppercase">${escapeHtml(company.tradeName)}</p>
-<p style="margin:0 0 24px;color:#52525b;font-size:13px">Retome o seu pedido</p>
+<div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #cc0000">
+<div style="padding:34px 32px 30px">
+<p style="margin:0 0 8px;color:#cc0000;font-size:20px;font-weight:700">${EMAIL_BRAND_NAME}</p>
+<p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
-<p style="margin:20px 0;line-height:1.65"><strong>Produto:</strong> ${escapeHtml(input.vars.produto)}<br><strong>Pedido:</strong> ${escapeHtml(input.vars.pedido)}${orderValue}</p>
-${checkoutButton}
-<p style="margin:20px 0 0;line-height:1.6;color:#52525b;font-size:13px">Após a confirmação, o pedido será processado normalmente.<br>Qualquer dúvida, responda a este e-mail.</p>
+<div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">
+<strong>Encomenda:</strong> ${escapeHtml(input.vars.pedido)}<br><strong>Artigo:</strong> ${escapeHtml(input.vars.produto)}${orderValue}
 </div>
-<div style="background:#fafafa;border-top:1px solid #e4e4e7;padding:20px 28px;text-align:center">
-<p style="margin:0;font-size:11px;line-height:1.55;color:#71717a">${escapeHtml(company.tradeName)} · ${escapeHtml(company.country)}<br>Recebeu este e-mail porque comprou ou iniciou uma compra na nossa loja.<br>Para deixar de receber, responda com “REMOVER”.</p>
+${checkoutButton}
+<p style="margin:0;line-height:1.65">Depois da confirmacao, o pedido podera prosseguir normalmente.</p>
+</div>
+<div style="border-top:1px solid #e5e7eb;padding:20px 32px;text-align:left">
+<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${EMAIL_BRAND_NAME}<br>Este e-mail foi enviado porque existe uma compra iniciada associada a este endereco.<br>Para deixar de receber, responda com "REMOVER".</p>
 </div>
 </div></body></html>`;
 }

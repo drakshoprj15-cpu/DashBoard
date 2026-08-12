@@ -26,6 +26,7 @@ import {
 } from "@/features/emails/resend-provider";
 import {
   buildCampaignHtml,
+  isValidCtaUrlTemplate,
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
@@ -43,7 +44,18 @@ const campaignSchema = z.object({
   customerIds: z.string().trim().optional().or(z.literal("")),
   subject: z.string().trim().min(3, "Escreva um assunto").max(160),
   preheader: z.string().trim().max(180).optional().or(z.literal("")),
+  title: z.string().trim().min(3, "Escreva o titulo do e-mail").max(160),
   body: z.string().trim().min(10, "Escreva a mensagem").max(10_000),
+  ctaLabel: z.string().trim().min(2, "Escreva o texto do botao").max(80),
+  ctaUrl: z
+    .string()
+    .trim()
+    .min(1, "Informe o link do botao")
+    .max(2_048)
+    .refine(
+      isValidCtaUrlTemplate,
+      "Use um link http(s) valido ou {{CHECKOUT_URL}}.",
+    ),
   testEmail: z
     .string()
     .trim()
@@ -160,7 +172,10 @@ export async function sendCampaignAction(
     customerIds: formData.get("customerIds") ?? "",
     subject: formData.get("subject"),
     preheader: formData.get("preheader") ?? "",
+    title: formData.get("title"),
     body: formData.get("body"),
+    ctaLabel: formData.get("ctaLabel"),
+    ctaUrl: formData.get("ctaUrl"),
     testEmail: formData.get("testEmail") ?? "",
     mode: formData.get("mode"),
   });
@@ -182,7 +197,10 @@ export async function sendCampaignAction(
     customerIds,
     subject,
     preheader,
+    title,
     body,
+    ctaLabel,
+    ctaUrl,
     testEmail,
     mode,
   } = parsed.data;
@@ -196,7 +214,14 @@ export async function sendCampaignAction(
     const result = await sendEmail({
       to: testEmail,
       subject: `[TESTE] ${renderCampaignText(subject, vars)}`,
-      html: buildCampaignHtml({ body, preheader, vars }),
+      html: buildCampaignHtml({
+        body,
+        preheader,
+        title,
+        ctaLabel,
+        ctaUrl,
+        vars,
+      }),
       replyTo: company.email,
       idempotencyKey: `test/${dispatchId}`,
     });
@@ -235,7 +260,7 @@ export async function sendCampaignAction(
       preheader: preheader || null,
       fromEmail: process.env.RESEND_FROM_EMAIL,
       replyTo: company.email,
-      content: { body },
+      content: { body, title, ctaLabel, ctaUrl },
       audienceFilter: { segment, customerIds: customerIds || null },
       status: "sending",
       stats: {
@@ -276,7 +301,14 @@ export async function sendCampaignAction(
         return {
           to: recipient.email,
           subject: renderCampaignText(subject, vars),
-          html: buildCampaignHtml({ body, preheader, vars }),
+          html: buildCampaignHtml({
+            body,
+            preheader,
+            title,
+            ctaLabel,
+            ctaUrl,
+            vars,
+          }),
           replyTo: company.email,
         };
       }),

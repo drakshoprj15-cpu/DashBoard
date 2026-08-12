@@ -62,7 +62,7 @@ export default async function EmailsPage({
         : Promise.resolve(null),
       getEmailDashboardOverview(),
       getSegmentRecipients("pending").then((recipients) =>
-        recipients.slice(0, 12),
+        recipients.slice(0, 25),
       ),
     ]);
   const resendReady = isResendConfigured();

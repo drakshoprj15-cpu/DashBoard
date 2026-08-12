@@ -4,6 +4,8 @@ import { getDb, isDatabaseConfigured } from "@/database/client";
 import { emailCampaigns, emailRecipients } from "@/database/schema";
 import {
   buildCampaignHtml,
+  DEFAULT_CAMPAIGN_TEMPLATE,
+  type CampaignTemplateContent,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
 import { getAppUrl } from "@/lib/app-url";
@@ -40,11 +42,17 @@ function countFor(statuses: string[]) {
   return sql<number>`count(${emailRecipients.id}) filter (where ${inArray(emailRecipients.status, statuses)})::int`;
 }
 
-function campaignBody(content: unknown): string {
-  if (!content || typeof content !== "object" || !("body" in content)) {
-    return "";
+function campaignContent(content: unknown): CampaignTemplateContent {
+  if (!content || typeof content !== "object") {
+    return { body: "" };
   }
-  return typeof content.body === "string" ? content.body : "";
+  const value = content as Record<string, unknown>;
+  return {
+    body: typeof value.body === "string" ? value.body : "",
+    title: typeof value.title === "string" ? value.title : undefined,
+    ctaLabel: typeof value.ctaLabel === "string" ? value.ctaLabel : undefined,
+    ctaUrl: typeof value.ctaUrl === "string" ? value.ctaUrl : undefined,
+  };
 }
 
 function previewVars(appUrl: string): CampaignTemplateVars {
@@ -127,7 +135,7 @@ export async function getEmailDashboardOverview(): Promise<EmailDashboardOvervie
       queued: stats.queued ?? 0,
     },
     history: historyRows.map((row) => {
-      const body = campaignBody(row.content);
+      const content = campaignContent(row.content);
       const preheader = row.preheader ?? "";
       return {
         id: row.id,
@@ -135,8 +143,11 @@ export async function getEmailDashboardOverview(): Promise<EmailDashboardOvervie
         subject: row.subject,
         preheader,
         previewHtml: buildCampaignHtml({
-          body: body || "O conteúdo deste disparo não está disponível.",
+          body: content.body || "O conteudo deste disparo nao esta disponivel.",
           preheader,
+          title: content.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
+          ctaLabel: content.ctaLabel ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
+          ctaUrl: content.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
           vars: previewVars(appUrl),
         }),
         status: row.status,
