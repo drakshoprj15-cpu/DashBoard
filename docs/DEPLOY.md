@@ -71,7 +71,14 @@ Criar buckets (privados): `product-files`, `product-images` (público), `attachm
 - Configurar domínio próprio na Vercel.
 - Configurar webhooks dos gateways apontando para `https://seu-dominio.com/api/webhooks/<gateway>` (rotas criadas na Fase 4).
 - Definir `PANEL_HOST` (secção 9) antes de apontar qualquer domínio de loja.
-- Configurar Resend (domínio verificado + `RESEND_API_KEY`).
+- Configurar Resend:
+  1. Verificar o domínio de envio no painel do Resend.
+  2. Definir `RESEND_API_KEY` e `RESEND_FROM_EMAIL` na Vercel.
+  3. Criar um webhook para `https://seu-dominio.com/api/webhooks/resend`.
+  4. Selecionar os eventos `email.sent`, `email.delivered`, `email.opened`,
+     `email.clicked`, `email.bounced`, `email.complained`, `email.failed`,
+     `email.suppressed` e `email.delivery_delayed`.
+  5. Copiar o segredo de assinatura para `RESEND_WEBHOOK_SECRET` na Vercel.
 - Validar: login, criação de produto, checkout sandbox (fases correspondentes).
 
 ## 9. Domínios próprios das lojas

@@ -1,23 +1,12 @@
-/**
- * Adapter do Resend para envio de e-mails.
- *
- * Implementado a partir da documentação oficial:
- * POST https://api.resend.com/emails
- * Cabeçalhos: Authorization: Bearer re_… + Content-Type: application/json
- * Campos obrigatórios: from, to (máx. 50 por chamada), subject
- * Opcionais usados aqui: html, reply_to, Idempotency-Key
- */
+import { Resend, type WebhookEventPayload } from "resend";
 
-const RESEND_URL = "https://api.resend.com/emails";
-/** Limite oficial de destinatários por chamada. */
-export const MAX_RECIPIENTS_PER_CALL = 50;
+export const MAX_EMAILS_PER_BATCH = 100;
 
 export interface SendEmailInput {
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
-  /** Evita envio duplicado em caso de retry */
   idempotencyKey?: string;
 }
 
@@ -27,8 +16,37 @@ export interface SendEmailResult {
   error?: string;
 }
 
+export interface SendEmailBatchResult {
+  ok: boolean;
+  externalIds?: string[];
+  error?: string;
+}
+
+let resendClient: Resend | null = null;
+
+function getResend(): Resend {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY não configurada.");
+  if (!resendClient) resendClient = new Resend(apiKey);
+  return resendClient;
+}
+
 export function isResendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
+}
+
+export function isResendWebhookConfigured(): boolean {
+  return Boolean(
+    process.env.RESEND_API_KEY && process.env.RESEND_WEBHOOK_SECRET,
+  );
+}
+
+function providerError(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = String(error.message).trim();
+    if (message) return message.slice(0, 500);
+  }
+  return "Falha desconhecida ao enviar e-mail.";
 }
 
 export async function sendEmail(
@@ -43,52 +61,78 @@ export async function sendEmail(
   }
 
   try {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    };
-    if (input.idempotencyKey) {
-      headers["Idempotency-Key"] = input.idempotencyKey;
-    }
-
-    const response = await fetch(RESEND_URL, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL,
+    const { data, error } = await getResend().emails.send(
+      {
+        from: process.env.RESEND_FROM_EMAIL!,
         to: input.to,
         subject: input.subject,
         html: input.html,
-        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
-      }),
-    });
+        ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+      },
+      input.idempotencyKey
+        ? { idempotencyKey: input.idempotencyKey }
+        : undefined,
+    );
 
-    const json = (await response.json().catch(() => ({}))) as {
-      id?: string;
-      message?: string;
-      name?: string;
-    };
-
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: json.message ?? `Erro HTTP ${response.status} no Resend`,
-      };
-    }
-
-    return { ok: true, externalId: json.id };
+    if (error) return { ok: false, error: providerError(error) };
+    return { ok: true, externalId: data?.id };
   } catch (error) {
-    return {
-      ok: false,
-      error:
-        error instanceof Error
-          ? `Falha ao contactar o Resend: ${error.message}`
-          : "Falha desconhecida ao enviar e-mail.",
-    };
+    return { ok: false, error: providerError(error) };
   }
 }
 
-/** Verifica a chave fazendo uma chamada real (sem enviar e-mail a ninguém). */
+export async function sendEmailBatch(
+  inputs: Omit<SendEmailInput, "idempotencyKey">[],
+  idempotencyKey: string,
+): Promise<SendEmailBatchResult> {
+  if (!isResendConfigured()) {
+    return {
+      ok: false,
+      error:
+        "Resend não configurado (faltam RESEND_API_KEY e RESEND_FROM_EMAIL).",
+    };
+  }
+  if (inputs.length === 0 || inputs.length > MAX_EMAILS_PER_BATCH) {
+    return {
+      ok: false,
+      error: `O lote deve ter entre 1 e ${MAX_EMAILS_PER_BATCH} e-mails.`,
+    };
+  }
+
+  try {
+    const { data, error } = await getResend().batch.send(
+      inputs.map((input) => ({
+        from: process.env.RESEND_FROM_EMAIL!,
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+      })),
+      { idempotencyKey },
+    );
+
+    if (error) return { ok: false, error: providerError(error) };
+    return { ok: true, externalIds: data?.data.map((item) => item.id) ?? [] };
+  } catch (error) {
+    return { ok: false, error: providerError(error) };
+  }
+}
+
+export function verifyResendWebhook(
+  payload: string,
+  headers: { id: string; timestamp: string; signature: string },
+): WebhookEventPayload {
+  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+  if (!webhookSecret) throw new Error("RESEND_WEBHOOK_SECRET não configurado.");
+
+  return getResend().webhooks.verify({
+    payload,
+    headers,
+    webhookSecret,
+  });
+}
+
+/** Verifica a chave fazendo uma chamada real sem enviar e-mail. */
 export async function testResendConnection(): Promise<{
   ok: boolean;
   message: string;
@@ -101,24 +145,10 @@ export async function testResendConnection(): Promise<{
   }
 
   try {
-    const res = await fetch("https://api.resend.com/domains", {
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-    });
-    if (res.status === 401) {
-      return { ok: false, message: "Chave de API inválida." };
-    }
-    if (!res.ok) {
-      return {
-        ok: false,
-        message: `Resposta inesperada (HTTP ${res.status}).`,
-      };
-    }
+    const { error } = await getResend().domains.list();
+    if (error) return { ok: false, message: providerError(error) };
     return { ok: true, message: "Ligação ao Resend validada." };
   } catch (error) {
-    return {
-      ok: false,
-      message:
-        error instanceof Error ? error.message : "Falha ao contactar o Resend.",
-    };
+    return { ok: false, message: providerError(error) };
   }
 }
