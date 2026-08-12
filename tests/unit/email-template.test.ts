@@ -32,18 +32,36 @@ describe("email campaign template", () => {
     const html = buildCampaignHtml({
       body: "Olá {{NOME}}, o seu {{PRODUTO}} está reservado.",
       preheader: "Retome o pedido {{PEDIDO}}.",
+      headerName: "Minha Loja",
       title: "Atualização da encomenda {{PEDIDO}}",
       ctaLabel: "Confirmar dados de entrega",
       ctaUrl: "{{CHECKOUT_URL}}",
       vars,
     });
 
-    expect(html).toContain("PCG VIP");
+    expect(html).toContain("Minha Loja");
     expect(html).toContain("Maria Oliveira");
     expect(html).toContain("Curso &lt;Avançado&gt;");
     expect(html).toContain('href="https://example.com/checkout/PED-42"');
     expect(html).toContain("Confirmar dados de entrega");
     expect(html).not.toContain("{{");
+  });
+
+  it("allows an empty or custom red email header without a fixed brand", () => {
+    const withoutHeader = buildCampaignHtml({
+      body: "Olá {{PRIMEIRO_NOME}}.",
+      headerName: "",
+      vars,
+    });
+    const customHeader = buildCampaignHtml({
+      body: "Olá {{PRIMEIRO_NOME}}.",
+      headerName: "Loja <Principal>",
+      vars,
+    });
+
+    expect(withoutHeader).not.toContain("PCG VIP");
+    expect(customHeader).toContain("Loja &lt;Principal&gt;");
+    expect(customHeader).toContain("color:#cc0000");
   });
 
   it("accepts a dynamic checkout link and rejects unsafe protocols", () => {

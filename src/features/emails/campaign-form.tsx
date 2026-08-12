@@ -132,6 +132,9 @@ export function CampaignForm({
   const [preheader, setPreheader] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.preheader,
   );
+  const [headerName, setHeaderName] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.headerName,
+  );
   const [title, setTitle] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.title,
   );
@@ -223,6 +226,7 @@ export function CampaignForm({
   const previewHtml = buildCampaignHtml({
     body,
     preheader,
+    headerName,
     title,
     ctaLabel,
     ctaUrl,
@@ -708,6 +712,26 @@ export function CampaignForm({
                     value={preheader}
                     onChange={(event) => setPreheader(event.target.value)}
                     maxLength={180}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="headerName"
+                    className="flex items-center gap-2"
+                  >
+                    <span
+                      className="size-3 rounded-sm bg-[#cc0000]"
+                      aria-hidden="true"
+                    />
+                    Nome no cabecalho (opcional)
+                  </Label>
+                  <Input
+                    id="headerName"
+                    name="headerName"
+                    value={headerName}
+                    onChange={(event) => setHeaderName(event.target.value)}
+                    placeholder="Nome da sua marca"
+                    maxLength={80}
                   />
                 </div>
                 <div className="space-y-2">

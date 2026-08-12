@@ -44,6 +44,7 @@ const campaignSchema = z.object({
   customerIds: z.string().trim().optional().or(z.literal("")),
   subject: z.string().trim().min(3, "Escreva um assunto").max(160),
   preheader: z.string().trim().max(180).optional().or(z.literal("")),
+  headerName: z.string().trim().max(80).optional().or(z.literal("")),
   title: z.string().trim().min(3, "Escreva o titulo do e-mail").max(160),
   body: z.string().trim().min(10, "Escreva a mensagem").max(10_000),
   ctaLabel: z.string().trim().min(2, "Escreva o texto do botao").max(80),
@@ -172,6 +173,7 @@ export async function sendCampaignAction(
     customerIds: formData.get("customerIds") ?? "",
     subject: formData.get("subject"),
     preheader: formData.get("preheader") ?? "",
+    headerName: formData.get("headerName") ?? "",
     title: formData.get("title"),
     body: formData.get("body"),
     ctaLabel: formData.get("ctaLabel"),
@@ -197,6 +199,7 @@ export async function sendCampaignAction(
     customerIds,
     subject,
     preheader,
+    headerName,
     title,
     body,
     ctaLabel,
@@ -217,6 +220,7 @@ export async function sendCampaignAction(
       html: buildCampaignHtml({
         body,
         preheader,
+        headerName,
         title,
         ctaLabel,
         ctaUrl,
@@ -260,7 +264,7 @@ export async function sendCampaignAction(
       preheader: preheader || null,
       fromEmail: process.env.RESEND_FROM_EMAIL,
       replyTo: company.email,
-      content: { body, title, ctaLabel, ctaUrl },
+      content: { body, headerName, title, ctaLabel, ctaUrl },
       audienceFilter: { segment, customerIds: customerIds || null },
       status: "sending",
       stats: {
@@ -304,6 +308,7 @@ export async function sendCampaignAction(
           html: buildCampaignHtml({
             body,
             preheader,
+            headerName,
             title,
             ctaLabel,
             ctaUrl,

@@ -1,9 +1,8 @@
-export const EMAIL_BRAND_NAME = "PCG VIP";
-
 export const DEFAULT_CAMPAIGN_TEMPLATE = {
   subject: "{{PRIMEIRO_NOME}}, confirme os dados da sua encomenda",
   preheader:
     "Retome o seu pedido e confirme os dados de entrega em poucos segundos.",
+  headerName: "",
   title: "Atualizacao da sua encomenda",
   body: "Ola {{PRIMEIRO_NOME}},\n\nVimos que a sua encomenda ainda nao foi concluida. Para retomar o pedido, confirme os seus dados de entrega no botao abaixo.",
   ctaLabel: "Confirmar dados de entrega",
@@ -34,6 +33,7 @@ export interface CampaignTemplateVars {
 
 export interface CampaignTemplateContent {
   body: string;
+  headerName?: string;
   title?: string;
   ctaLabel?: string;
   ctaUrl?: string;
@@ -106,6 +106,7 @@ export function isValidCtaUrlTemplate(value: string): boolean {
 export function buildCampaignHtml(input: {
   body: string;
   preheader?: string;
+  headerName?: string;
   title?: string;
   ctaLabel?: string;
   ctaUrl?: string;
@@ -122,6 +123,13 @@ export function buildCampaignHtml(input: {
     .join("");
   const preheader = input.preheader
     ? renderCampaignText(input.preheader, input.vars)
+    : "";
+  const headerName = renderCampaignText(
+    input.headerName ?? DEFAULT_CAMPAIGN_TEMPLATE.headerName,
+    input.vars,
+  );
+  const header = headerName
+    ? `<p style="margin:0 0 8px;color:#cc0000;font-size:20px;font-weight:700">${escapeHtml(headerName)}</p>`
     : "";
   const title = renderCampaignText(
     input.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
@@ -149,7 +157,7 @@ export function buildCampaignHtml(input: {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
 <div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #cc0000">
 <div style="padding:34px 32px 30px">
-<p style="margin:0 0 8px;color:#cc0000;font-size:20px;font-weight:700">${EMAIL_BRAND_NAME}</p>
+${header}
 <p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
 <div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">
@@ -159,7 +167,7 @@ ${checkoutButton}
 <p style="margin:0;line-height:1.65">Depois da confirmacao, o pedido podera prosseguir normalmente.</p>
 </div>
 <div style="border-top:1px solid #e5e7eb;padding:20px 32px;text-align:left">
-<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${EMAIL_BRAND_NAME}<br>Este e-mail foi enviado porque existe uma compra iniciada associada a este endereco.<br>Para deixar de receber, responda com "REMOVER".</p>
+<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${headerName ? `${escapeHtml(headerName)}<br>` : ""}Este e-mail foi enviado porque existe uma compra iniciada associada a este endereco.<br>Para deixar de receber, responda com "REMOVER".</p>
 </div>
 </div></body></html>`;
 }
