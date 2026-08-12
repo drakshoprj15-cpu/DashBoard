@@ -11,7 +11,7 @@ export const company = {
   /** Denominação social (ex.: "Victor Silva, Unipessoal Lda.") */
   legalName: "",
   /** Nome comercial exibido ao cliente */
-  tradeName: "TechNébula",
+  tradeName: "PCG VIP",
   /** NIF / NIPC português (9 dígitos) */
   taxId: "",
   /** Morada da sede */
@@ -20,7 +20,7 @@ export const company = {
   city: "",
   country: "Portugal",
   /** Contactos de apoio ao cliente */
-  email: "apoio@technebula.pt",
+  email: "aquiencomenda@encomendapcgvip.site",
   phone: "",
 } as const;
 

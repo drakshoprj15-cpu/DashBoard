@@ -183,7 +183,7 @@ describe("qualidade dos modelos", () => {
   it("mensagem de WhatsApp identifica a marca e oferece saída", () => {
     // O destinatário vê só um número desconhecido: sem marca, parece golpe.
     for (const t of templates) {
-      expect(t.whatsappBody).toContain("TechNébula");
+      expect(t.whatsappBody).toContain("PCG VIP");
       expect(t.whatsappBody).toContain("PARAR");
     }
   });
