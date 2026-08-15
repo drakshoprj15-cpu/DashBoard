@@ -25,7 +25,7 @@ function CustomersLoading() {
         </div>
         <Skeleton className="h-10 w-36" />
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 2xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         {Array.from({ length: 8 }, (_, index) => (
           <Skeleton key={index} className="h-28 rounded-xl" />
         ))}
