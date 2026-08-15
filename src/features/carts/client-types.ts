@@ -26,8 +26,6 @@ export interface CartRowDTO {
   paymentStatus: string | null;
   gateway: string | null;
   externalId: string | null;
-  cardBrand: string | null;
-  cardLast4: string | null;
   failureReason: string | null;
   createdAt: string;
   updatedAt: string;
@@ -149,10 +147,6 @@ export interface CartDetailDTO {
     netCents: number | null;
     currency: string;
     gateway: string | null;
-    cardBrand: string | null;
-    cardLast4: string | null;
-    pixQrCode: string | null;
-    boletoUrl: string | null;
     failureReason: string | null;
     approvedAt: string | null;
     expiresAt: string | null;

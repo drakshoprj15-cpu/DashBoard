@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, CreditCard, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Landmark, Loader2, XCircle } from "lucide-react";
 
 import { testBroskiConnectionAction } from "@/features/payment-providers/actions";
 import type { ConnectionTestResult } from "@/payment-providers/types";
@@ -74,7 +74,7 @@ export function ProcessorView({
           <div className="flex items-start justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2 text-base">
-                <CreditCard className="size-4" />
+                <Landmark className="size-4" />
                 Broski
               </CardTitle>
               <CardDescription>

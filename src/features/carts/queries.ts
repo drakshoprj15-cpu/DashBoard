@@ -304,8 +304,6 @@ export interface CartRow {
   paymentStatus: string | null;
   gateway: string | null;
   externalId: string | null;
-  cardBrand: string | null;
-  cardLast4: string | null;
   failureReason: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -369,8 +367,6 @@ interface LatestPayment {
   method: string;
   status: string;
   externalId: string | null;
-  cardBrand: string | null;
-  cardLast4: string | null;
   failureReason: string | null;
   metadata: unknown;
 }
@@ -388,8 +384,6 @@ async function fetchLatestPaymentByOrder(
       method: payments.method,
       status: payments.status,
       externalId: payments.externalId,
-      cardBrand: payments.cardBrand,
-      cardLast4: payments.cardLast4,
       failureReason: payments.failureReason,
       metadata: payments.metadata,
     })
@@ -504,8 +498,6 @@ export async function listCarts(filters: CartFilters): Promise<CartListResult> {
       paymentStatus: payment?.status ?? null,
       gateway: payment ? gatewayFromMetadata(payment.metadata) : null,
       externalId: payment?.externalId ?? null,
-      cardBrand: payment?.cardBrand ?? null,
-      cardLast4: payment?.cardLast4 ?? null,
       failureReason: payment?.failureReason ?? null,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
@@ -840,10 +832,6 @@ export interface CartDetail {
     netCents: number | null;
     currency: string;
     gateway: string | null;
-    cardBrand: string | null;
-    cardLast4: string | null;
-    pixQrCode: string | null;
-    boletoUrl: string | null;
     failureReason: string | null;
     approvedAt: Date | null;
     expiresAt: Date | null;
@@ -1104,10 +1092,6 @@ export async function getCartDetail(
       netCents: p.netCents === null ? null : Number(p.netCents),
       currency: p.currency,
       gateway: gatewayFromMetadata(p.metadata),
-      cardBrand: p.cardBrand,
-      cardLast4: p.cardLast4,
-      pixQrCode: p.pixQrCode,
-      boletoUrl: p.boletoUrl,
       failureReason: p.failureReason,
       approvedAt: p.approvedAt,
       expiresAt: p.expiresAt,

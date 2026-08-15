@@ -127,14 +127,8 @@ export const PAYMENT_STATUS_LABEL: Record<string, string> = {
 };
 
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  card: "Cartão",
-  pix: "Pix",
-  boleto: "Boleto",
   mbway: "MB WAY",
   multibanco: "Multibanco",
-  sepa_debit: "Débito SEPA",
-  apple_pay: "Apple Pay",
-  google_pay: "Google Pay",
 };
 
 /** Abas da página Carrinhos, na ordem de exibição. */

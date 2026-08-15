@@ -548,11 +548,6 @@ export function CartDetailSheet({
                           ? formatDateTime(p.approvedAt, "pt-PT")
                           : "—"}
                       </Field>
-                      {p.cardBrand && p.cardLast4 && (
-                        <Field label="Cartão">
-                          {p.cardBrand} •••• {p.cardLast4}
-                        </Field>
-                      )}
                       {p.failureReason && (
                         <Field label="Motivo da recusa">
                           {p.failureReason}

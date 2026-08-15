@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Copy,
-  CreditCard,
   Database,
   ExternalLink,
   Eye,
   EyeOff,
   Package,
+  ReceiptText,
   Trash2,
 } from "lucide-react";
 
@@ -82,7 +82,7 @@ export default async function CheckoutsPage() {
 
         {rows.length === 0 ? (
           <EmptyState
-            icon={CreditCard}
+            icon={ReceiptText}
             title="Nenhum checkout criado"
             description="Crie um checkout acima para ter um endereço próprio por campanha, com métricas separadas."
             className="min-h-[240px]"

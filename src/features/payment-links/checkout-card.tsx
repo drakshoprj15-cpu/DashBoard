@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Landmark, Loader2, Lock, Smartphone } from "lucide-react";
+import { ArrowLeft, Landmark, Loader2, Lock, Smartphone } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
@@ -99,7 +99,7 @@ const FIELD_META: Record<
   },
   phone: {
     formKey: "phone",
-    label: "Telefone",
+    label: "Telemóvel",
     placeholder: "912 345 678",
     type: "tel",
     inputMode: "tel",
@@ -214,6 +214,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         disabled={disabled}
+        required={required}
         aria-invalid={invalid || undefined}
         aria-required={required || undefined}
         onChange={(e) => onValue(e.target.value)}
@@ -251,6 +252,19 @@ export function CheckoutCard({
     method: link.paymentMethods[0] ?? "mbway",
     shippingOptionId: link.fields.shippingOptions[0]?.id ?? "",
   });
+  const detailFields = React.useMemo(
+    () =>
+      [...link.fields.customerFields]
+        .sort((left, right) => left.order - right.order)
+        .filter((field) => field.mode !== "hidden"),
+    [link.fields.customerFields],
+  );
+  const hasDetailsStep =
+    detailFields.length > 0 ||
+    (link.fields.requestShipping && link.fields.shippingOptions.length > 0);
+  const [step, setStep] = React.useState<"details" | "payment">(() =>
+    hasDetailsStep ? "details" : "payment",
+  );
   const touched = React.useRef(false);
 
   const form = values ?? internal;
@@ -270,17 +284,20 @@ export function CheckoutCard({
       ? `linear-gradient(${appearance.gradientAngle}deg, ${appearance.gradientFrom}, ${appearance.gradientTo})`
       : appearance.backgroundColor;
 
+  const markInteraction = React.useCallback(() => {
+    if (touched.current) return;
+    touched.current = true;
+    onFirstInteraction?.();
+  }, [onFirstInteraction]);
+
   const update = React.useCallback(
     (patch: Partial<CheckoutFormValues>) => {
-      if (!touched.current) {
-        touched.current = true;
-        onFirstInteraction?.();
-      }
+      markInteraction();
       const next = { ...form, ...patch };
       if (onChange) onChange(next);
       else setInternal(next);
     },
-    [form, onChange, onFirstInteraction],
+    [form, markInteraction, onChange],
   );
 
   const shipping = link.fields.requestShipping
@@ -307,17 +324,24 @@ export function CheckoutCard({
     accentColor: appearance.inputFocusColor,
     style: fieldStyle,
   };
-  const orderedFields = [...link.fields.customerFields]
-    .sort((left, right) => left.order - right.order)
-    .filter(
-      (field) =>
-        field.mode !== "hidden" ||
-        (field.key === "phone" && activeMethod === "mbway"),
-    );
+  const errorBelongsToDetails = Boolean(
+    errorField &&
+    errorField !== "phone" &&
+    errorField !== "method" &&
+    detailFields.some((field) => {
+      const key = field.key === "firstName" ? "name" : field.key;
+      return key === errorField;
+    }),
+  );
+  const visibleStep = !hasDetailsStep
+    ? "payment"
+    : errorBelongsToDetails
+      ? "details"
+      : step;
 
   return (
     <div
-      className={cn("min-h-full w-full", className)}
+      className={cn("flex min-h-full w-full items-center", className)}
       style={{ background: pageBackground }}
     >
       <div
@@ -396,6 +420,29 @@ export function CheckoutCard({
               </p>
             ) : null}
 
+            <div className="mt-5 text-center">
+              <p
+                className="text-[11px] font-medium tracking-[0.14em] uppercase"
+                style={{ color: appearance.textColor }}
+              >
+                Valor a pagar
+              </p>
+              <p
+                className="mt-1 text-[34px] leading-none font-bold tracking-tight tabular-nums"
+                style={{ color: appearance.titleColor }}
+              >
+                {money(total)}
+              </p>
+              {shipping > 0 ? (
+                <p
+                  className="mt-1.5 text-xs"
+                  style={{ color: appearance.textColor }}
+                >
+                  {money(link.amountCents)} + {money(shipping)} de envio
+                </p>
+              ) : null}
+            </div>
+
             {link.product ? (
               <div
                 className="mt-5 flex items-center gap-3 border p-3"
@@ -408,7 +455,7 @@ export function CheckoutCard({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={link.product.imageUrl}
-                    alt=""
+                    alt={link.product.name}
                     className="size-14 shrink-0 rounded-md object-cover"
                   />
                 ) : null}
@@ -438,29 +485,6 @@ export function CheckoutCard({
               </div>
             ) : null}
 
-            <div className="mt-6 text-center">
-              <p
-                className="text-[11px] font-medium tracking-[0.14em] uppercase"
-                style={{ color: appearance.textColor }}
-              >
-                Valor a pagar
-              </p>
-              <p
-                className="mt-1 text-[34px] leading-none font-bold tracking-tight tabular-nums"
-                style={{ color: appearance.titleColor }}
-              >
-                {money(total)}
-              </p>
-              {shipping > 0 ? (
-                <p
-                  className="mt-1.5 text-xs"
-                  style={{ color: appearance.textColor }}
-                >
-                  {money(link.amountCents)} + {money(shipping)} de envio
-                </p>
-              ) : null}
-            </div>
-
             <form
               className="mt-6 space-y-4"
               noValidate
@@ -470,157 +494,185 @@ export function CheckoutCard({
                 onSubmit?.({ ...form, method: activeMethod });
               }}
             >
-              <fieldset className="space-y-2" disabled={disabled || submitting}>
-                <legend
-                  className="mb-2 block text-[13px] font-medium"
-                  style={{ color: appearance.textColor }}
-                >
-                  Forma de pagamento
-                </legend>
-                <div
-                  className={cn(
-                    "grid gap-2",
-                    link.paymentMethods.length > 1
-                      ? "grid-cols-2"
-                      : "grid-cols-1",
-                  )}
-                >
-                  {(
-                    [
-                      { id: "mbway", label: "MB WAY", Icon: Smartphone },
-                      { id: "multibanco", label: "Multibanco", Icon: Landmark },
-                    ] as const
-                  )
-                    .filter(({ id }) => link.paymentMethods.includes(id))
-                    .map(({ id, label, Icon }) => {
-                      const active = activeMethod === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => update({ method: id })}
-                          className="flex items-center justify-center gap-2 border px-3 py-3 text-sm font-medium transition-colors duration-150"
-                          style={{
-                            borderRadius: Math.max(6, radius - 4),
-                            borderColor: active
-                              ? appearance.buttonColor
-                              : appearance.inputBorderColor,
-                            backgroundColor: active
-                              ? `${appearance.buttonColor}14`
-                              : appearance.inputBackgroundColor,
-                            color: active
-                              ? appearance.buttonColor
-                              : appearance.inputTextColor,
-                          }}
-                        >
-                          <Icon className="size-4" aria-hidden="true" />
-                          {label}
-                        </button>
-                      );
-                    })}
-                </div>
-              </fieldset>
+              {visibleStep === "details" ? (
+                <>
+                  {detailFields.map((field) => {
+                    const meta = FIELD_META[field.key];
+                    const formKey = meta.formKey;
+                    const validationKey =
+                      field.key === "firstName" ? "name" : field.key;
+                    return (
+                      <Field
+                        {...fieldCommon}
+                        key={field.key}
+                        id={String(formKey)}
+                        label={meta.label}
+                        value={String(form[formKey])}
+                        placeholder={meta.placeholder}
+                        type={meta.type}
+                        inputMode={meta.inputMode}
+                        autoComplete={meta.autoComplete}
+                        required={field.mode === "required"}
+                        invalid={
+                          errorField === validationKey ||
+                          errorField === field.key
+                        }
+                        onValue={(value) =>
+                          update({
+                            [formKey]:
+                              field.key === "phone"
+                                ? formatPtMobileInput(value)
+                                : value,
+                          } as Partial<CheckoutFormValues>)
+                        }
+                      />
+                    );
+                  })}
 
-              {orderedFields.map((field) => {
-                const meta = FIELD_META[field.key];
-                const formKey = meta.formKey;
-                const isMbwayPhone =
-                  field.key === "phone" && activeMethod === "mbway";
-                const validationKey =
-                  field.key === "firstName" ? "name" : field.key;
-                return (
-                  <Field
-                    {...fieldCommon}
-                    key={field.key}
-                    id={String(formKey)}
-                    label={isMbwayPhone ? "Telemóvel MB WAY" : meta.label}
-                    value={String(form[formKey])}
-                    placeholder={meta.placeholder}
-                    type={meta.type}
-                    inputMode={meta.inputMode}
-                    autoComplete={meta.autoComplete}
-                    required={field.mode === "required" || isMbwayPhone}
-                    invalid={
-                      errorField === validationKey || errorField === field.key
-                    }
-                    onValue={(value) =>
-                      update({
-                        [formKey]:
-                          field.key === "phone" && activeMethod === "mbway"
-                            ? formatPtMobileInput(value)
-                            : value,
-                      } as Partial<CheckoutFormValues>)
-                    }
-                  />
-                );
-              })}
-
-              {link.fields.requestShipping &&
-              link.fields.shippingOptions.length > 0 ? (
-                <fieldset
-                  className="space-y-2"
-                  disabled={disabled || submitting}
-                >
-                  <legend
-                    className="mb-2 block text-[13px] font-medium"
-                    style={{ color: appearance.textColor }}
-                  >
-                    Forma de envio
-                  </legend>
-                  <div className="space-y-2">
-                    {link.fields.shippingOptions.map((option) => {
-                      const active =
-                        (form.shippingOptionId ||
-                          link.fields.shippingOptions[0]?.id) === option.id;
-                      return (
-                        <label
-                          key={option.id}
-                          className="flex cursor-pointer items-center gap-3 border px-3.5 py-3 text-sm transition-colors duration-150"
-                          style={{
-                            borderRadius: Math.max(6, radius - 4),
-                            borderColor: active
-                              ? appearance.buttonColor
-                              : appearance.inputBorderColor,
-                            backgroundColor: appearance.inputBackgroundColor,
-                            color: appearance.inputTextColor,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="shippingOptionId"
-                            value={option.id}
-                            checked={active}
-                            onChange={() =>
-                              update({ shippingOptionId: option.id })
-                            }
-                            className="size-4 shrink-0"
-                            style={{ accentColor: appearance.buttonColor }}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-medium">
-                              {option.name}
-                            </span>
-                            {option.estimate ? (
-                              <span
-                                className="block text-xs"
-                                style={{ color: appearance.textColor }}
-                              >
-                                {option.estimate}
+                  {link.fields.requestShipping &&
+                  link.fields.shippingOptions.length > 0 ? (
+                    <fieldset
+                      className="space-y-2"
+                      disabled={disabled || submitting}
+                    >
+                      <legend
+                        className="mb-2 block text-[13px] font-medium"
+                        style={{ color: appearance.textColor }}
+                      >
+                        Forma de envio
+                      </legend>
+                      <div className="space-y-2">
+                        {link.fields.shippingOptions.map((option) => {
+                          const active =
+                            (form.shippingOptionId ||
+                              link.fields.shippingOptions[0]?.id) === option.id;
+                          return (
+                            <label
+                              key={option.id}
+                              className="flex cursor-pointer items-center gap-3 border px-3.5 py-3 text-sm transition-colors duration-150"
+                              style={{
+                                borderRadius: Math.max(6, radius - 4),
+                                borderColor: active
+                                  ? appearance.buttonColor
+                                  : appearance.inputBorderColor,
+                                backgroundColor:
+                                  appearance.inputBackgroundColor,
+                                color: appearance.inputTextColor,
+                              }}
+                            >
+                              <input
+                                type="radio"
+                                name="shippingOptionId"
+                                value={option.id}
+                                checked={active}
+                                onChange={() =>
+                                  update({ shippingOptionId: option.id })
+                                }
+                                className="size-4 shrink-0"
+                                style={{ accentColor: appearance.buttonColor }}
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block font-medium">
+                                  {option.name}
+                                </span>
+                                {option.estimate ? (
+                                  <span
+                                    className="block text-xs"
+                                    style={{ color: appearance.textColor }}
+                                  >
+                                    {option.estimate}
+                                  </span>
+                                ) : null}
                               </span>
-                            ) : null}
-                          </span>
-                          <span className="font-medium tabular-nums">
-                            {option.priceCents === 0
-                              ? "Grátis"
-                              : money(option.priceCents)}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              ) : null}
+                              <span className="font-medium tabular-nums">
+                                {option.priceCents === 0
+                                  ? "Grátis"
+                                  : money(option.priceCents)}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <fieldset className="space-y-2" disabled={submitting}>
+                    <legend
+                      className="mb-2 block text-[13px] font-medium"
+                      style={{ color: appearance.textColor }}
+                    >
+                      Forma de pagamento
+                    </legend>
+                    <div
+                      className={cn(
+                        "grid gap-2",
+                        link.paymentMethods.length > 1
+                          ? "grid-cols-2"
+                          : "grid-cols-1",
+                      )}
+                    >
+                      {(
+                        [
+                          { id: "mbway", label: "MB WAY", Icon: Smartphone },
+                          {
+                            id: "multibanco",
+                            label: "Multibanco",
+                            Icon: Landmark,
+                          },
+                        ] as const
+                      )
+                        .filter(({ id }) => link.paymentMethods.includes(id))
+                        .map(({ id, label, Icon }) => {
+                          const active = activeMethod === id;
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              aria-pressed={active}
+                              onClick={() => update({ method: id })}
+                              className="flex items-center justify-center gap-2 border px-3 py-3 text-sm font-medium transition-colors duration-150"
+                              style={{
+                                borderRadius: Math.max(6, radius - 4),
+                                borderColor: active
+                                  ? appearance.buttonColor
+                                  : appearance.inputBorderColor,
+                                backgroundColor: active
+                                  ? `${appearance.buttonColor}14`
+                                  : appearance.inputBackgroundColor,
+                                color: active
+                                  ? appearance.buttonColor
+                                  : appearance.inputTextColor,
+                              }}
+                            >
+                              <Icon className="size-4" aria-hidden="true" />
+                              {label}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </fieldset>
+
+                  {activeMethod === "mbway" ? (
+                    <Field
+                      {...fieldCommon}
+                      id="phone"
+                      label="Telemóvel MB WAY"
+                      value={form.phone}
+                      placeholder="912 345 678"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      required
+                      invalid={errorField === "phone"}
+                      onValue={(value) =>
+                        update({ phone: formatPtMobileInput(value) })
+                      }
+                    />
+                  ) : null}
+                </>
+              )}
 
               {error ? (
                 <p
@@ -637,33 +689,82 @@ export function CheckoutCard({
                 </p>
               ) : null}
 
-              <button
-                type="submit"
-                disabled={disabled || submitting}
-                className="flex w-full items-center justify-center gap-2 px-4 transition-colors duration-200 hover:bg-[var(--button-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
-                style={{
-                  backgroundColor: appearance.buttonColor,
-                  color: appearance.buttonTextColor,
-                  borderRadius: appearance.buttonRadius,
-                  height: appearance.buttonHeight,
-                  fontSize: appearance.buttonFontSize,
-                  fontWeight: appearance.buttonWeight,
-                  ["--button-hover" as string]: appearance.buttonHoverColor,
-                  ["--tw-ring-color" as string]: appearance.buttonColor,
-                }}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2
-                      className="size-4 animate-spin"
-                      aria-hidden="true"
-                    />
-                    A preparar pagamento…
-                  </>
-                ) : (
-                  link.appearance.buttonText
-                )}
-              </button>
+              {visibleStep === "details" ? (
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={(event) => {
+                    markInteraction();
+                    if (!disabled) {
+                      const checkoutForm = event.currentTarget.form;
+                      if (checkoutForm && !checkoutForm.checkValidity()) {
+                        checkoutForm.reportValidity();
+                        return;
+                      }
+                    }
+                    setStep("payment");
+                  }}
+                  className="flex w-full items-center justify-center gap-2 px-4 transition-colors duration-200 hover:bg-[var(--button-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+                  style={{
+                    backgroundColor: appearance.buttonColor,
+                    color: appearance.buttonTextColor,
+                    borderRadius: appearance.buttonRadius,
+                    height: appearance.buttonHeight,
+                    fontSize: appearance.buttonFontSize,
+                    fontWeight: appearance.buttonWeight,
+                    ["--button-hover" as string]: appearance.buttonHoverColor,
+                    ["--tw-ring-color" as string]: appearance.buttonColor,
+                  }}
+                >
+                  Continuar para pagamento
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="submit"
+                    disabled={disabled || submitting}
+                    className="flex w-full items-center justify-center gap-2 px-4 transition-colors duration-200 hover:bg-[var(--button-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+                    style={{
+                      backgroundColor: appearance.buttonColor,
+                      color: appearance.buttonTextColor,
+                      borderRadius: appearance.buttonRadius,
+                      height: appearance.buttonHeight,
+                      fontSize: appearance.buttonFontSize,
+                      fontWeight: appearance.buttonWeight,
+                      ["--button-hover" as string]: appearance.buttonHoverColor,
+                      ["--tw-ring-color" as string]: appearance.buttonColor,
+                    }}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2
+                          className="size-4 animate-spin"
+                          aria-hidden="true"
+                        />
+                        A preparar pagamento…
+                      </>
+                    ) : (
+                      link.appearance.buttonText
+                    )}
+                  </button>
+
+                  {hasDetailsStep ? (
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => setStep("details")}
+                      className="mx-auto flex items-center justify-center gap-1.5 rounded px-2 py-1 text-xs font-medium underline-offset-4 transition-opacity duration-150 hover:underline focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
+                      style={{
+                        color: appearance.secondaryButtonColor,
+                        ["--tw-ring-color" as string]: appearance.buttonColor,
+                      }}
+                    >
+                      <ArrowLeft className="size-3" aria-hidden="true" />
+                      {appearance.secondaryButtonText}
+                    </button>
+                  ) : null}
+                </>
+              )}
             </form>
           </div>
 

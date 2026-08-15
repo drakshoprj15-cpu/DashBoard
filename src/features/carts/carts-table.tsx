@@ -417,16 +417,7 @@ export function CartsTable({
 
                   <TableCell className="text-xs">
                     {r.paymentMethod ? (
-                      <>
-                        {PAYMENT_METHOD_LABEL[r.paymentMethod] ??
-                          r.paymentMethod}
-                        {r.cardBrand && r.cardLast4 && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            · {r.cardBrand} •••• {r.cardLast4}
-                          </span>
-                        )}
-                      </>
+                      (PAYMENT_METHOD_LABEL[r.paymentMethod] ?? r.paymentMethod)
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}

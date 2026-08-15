@@ -81,30 +81,6 @@ export default async function ConfiguracoesPage() {
       envVars: ["BROSKI_API_KEY", "BROSKI_WEBHOOK_SECRET"],
     },
     {
-      name: "Stripe",
-      description: "Gateway de pagamento",
-      configured: Boolean(process.env.STRIPE_SECRET_KEY),
-      envVars: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
-    },
-    {
-      name: "Mercado Pago",
-      description: "Gateway de pagamento",
-      configured: Boolean(process.env.MERCADO_PAGO_ACCESS_TOKEN),
-      envVars: ["MERCADO_PAGO_ACCESS_TOKEN"],
-    },
-    {
-      name: "Pagar.me",
-      description: "Gateway de pagamento",
-      configured: Boolean(process.env.PAGARME_API_KEY),
-      envVars: ["PAGARME_API_KEY"],
-    },
-    {
-      name: "Asaas",
-      description: "Gateway de pagamento",
-      configured: Boolean(process.env.ASAAS_API_KEY),
-      envVars: ["ASAAS_API_KEY"],
-    },
-    {
       name: "UTMify",
       description:
         "Rastreamento de conversões — token cadastrado em /pixel, não por variável de ambiente.",

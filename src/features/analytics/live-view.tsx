@@ -5,12 +5,12 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   Activity,
-  CreditCard,
   Eye,
   Laptop,
   MapPin,
   MousePointerClick,
   Package,
+  ReceiptText,
   ShoppingBag,
   Smartphone,
   Tablet,
@@ -65,10 +65,10 @@ const EVENT_ICON: Record<string, React.ElementType> = {
   page_view: Eye,
   view_content: Eye,
   click_buy: MousePointerClick,
-  checkout_opened: CreditCard,
-  checkout_contact_filled: CreditCard,
-  checkout_payment_selected: CreditCard,
-  payment_created: CreditCard,
+  checkout_opened: ReceiptText,
+  checkout_contact_filled: ReceiptText,
+  checkout_payment_selected: ReceiptText,
+  payment_created: ReceiptText,
 };
 
 const EVENT_TONE: Record<string, string> = {
@@ -439,7 +439,7 @@ export function LiveView() {
             <MiniStat
               label="Checkouts agora"
               value={data?.activeCheckouts ?? 0}
-              icon={CreditCard}
+              icon={ReceiptText}
               live
             />
           </div>

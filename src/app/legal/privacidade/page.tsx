@@ -37,8 +37,8 @@ export default function PrivacidadePage() {
         </li>
         <li>
           <strong>Dados de pagamento:</strong> processados diretamente pelo
-          prestador de pagamentos. Não recebemos nem guardamos números completos
-          de cartão.
+          prestador de pagamentos. Não recebemos nem guardamos credenciais
+          bancárias ou códigos de autenticação do cliente.
         </li>
         <li>
           <strong>Dados de navegação:</strong> identificador anónimo de sessão,
