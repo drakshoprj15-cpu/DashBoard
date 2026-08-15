@@ -3,6 +3,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getOwnerEmails, isOwnerAllowlistEnabled } from "@/lib/auth/owner";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { pixels } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
@@ -24,6 +25,8 @@ interface ServiceStatus {
   description: string;
   configured: boolean;
   envVars: string[];
+  /** Rótulos do badge quando "Credenciais presentes/Desconectado" não descreve o estado. */
+  statusLabels?: { on: string; off: string };
 }
 
 /**
@@ -61,12 +64,23 @@ export default async function ConfiguracoesPage() {
   const utmifyConfigured = await isUtmifyConfigured();
   const branding = await getWorkspaceBranding();
 
+  const ownerEmails = getOwnerEmails();
+
   const services: ServiceStatus[] = [
     {
       name: "Supabase (banco, auth, realtime)",
       description: "Necessário para login real, dados e RLS",
       configured: isSupabaseConfigured(),
       envVars: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+    },
+    {
+      name: "Acesso restrito ao dono",
+      description: isOwnerAllowlistEnabled()
+        ? `Somente ${ownerEmails.join(", ")} pode entrar no painel.`
+        : "Sem allowlist: qualquer conta criada no seu Supabase consegue entrar. Preencha OWNER_EMAILS com o seu e-mail.",
+      configured: isOwnerAllowlistEnabled(),
+      envVars: ["OWNER_EMAILS"],
+      statusLabels: { on: "Restrito a você", off: "Aberto — configure já" },
     },
     {
       name: "Resend (e-mails)",
@@ -127,8 +141,8 @@ export default async function ConfiguracoesPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={service.configured ? "success" : "muted"}>
                   {service.configured
-                    ? "Credenciais presentes"
-                    : "Desconectado"}
+                    ? (service.statusLabels?.on ?? "Credenciais presentes")
+                    : (service.statusLabels?.off ?? "Desconectado")}
                 </Badge>
                 {service.envVars.map((v) => (
                   <code
