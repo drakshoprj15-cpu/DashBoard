@@ -40,6 +40,21 @@ export type RawRow = Partial<Record<ImportColumn, string>> & {
 };
 
 /**
+ * Identifica uma planilha de contactos enviada por engano no importador de
+ * carrinhos. A classificação só acontece quando não há produto nem valor em
+ * nenhuma linha e existe pelo menos um e-mail, porque o importador de clientes
+ * exige essa coluna. Arquivos mistos continuam no fluxo de carrinhos.
+ */
+export function countCustomerImportCandidates(rows: RawRow[]): number {
+  const hasCartData = rows.some(
+    (row) => Boolean(row.produto?.trim()) || Boolean(row.valor?.trim()),
+  );
+  if (hasCartData) return 0;
+
+  return rows.filter((row) => Boolean(row.email?.trim())).length;
+}
+
+/**
  * Sinônimos aceitos por coluna. Planilhas reais vêm de origens diferentes
  * (exportação de gateway, CRM, planilha feita à mão), então aceitar variação
  * de nome evita obrigar o usuário a reescrever o cabeçalho.

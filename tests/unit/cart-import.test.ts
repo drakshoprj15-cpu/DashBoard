@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  countCustomerImportCandidates,
   detectDelimiter,
   normalizeHeader,
   parseCsv,
@@ -61,6 +62,39 @@ describe("normalizeHeader e resolveColumn", () => {
 
   it("devolve null para cabeçalho desconhecido", () => {
     expect(resolveColumn("coluna inventada")).toBeNull();
+  });
+});
+
+describe("countCustomerImportCandidates", () => {
+  it("reconhece uma planilha composta apenas por clientes", () => {
+    expect(
+      countCustomerImportCandidates([
+        { _line: 2, nome: "Maria", email: "maria@exemplo.pt" },
+        { _line: 3, nome: "João", email: "joao@exemplo.pt" },
+      ]),
+    ).toBe(2);
+  });
+
+  it("não desvia planilhas que possuem produto ou valor", () => {
+    expect(
+      countCustomerImportCandidates([
+        {
+          _line: 2,
+          nome: "Maria",
+          email: "maria@exemplo.pt",
+          produto: "Cadeira",
+          valor: "39,90",
+        },
+      ]),
+    ).toBe(0);
+  });
+
+  it("não classifica como clientes quando não existe e-mail", () => {
+    expect(
+      countCustomerImportCandidates([
+        { _line: 2, nome: "Maria", telefone: "+351912345678" },
+      ]),
+    ).toBe(0);
   });
 });
 

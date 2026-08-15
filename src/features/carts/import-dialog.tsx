@@ -7,6 +7,7 @@ import {
   Download,
   FileSpreadsheet,
   Upload,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +17,7 @@ import {
   IMPORT_COLUMNS,
   ImportFileError,
   MAX_ROWS,
+  countCustomerImportCandidates,
   parseSheetFile,
   type RawRow,
 } from "@/features/carts/import/parse";
@@ -56,6 +58,7 @@ const CURRENCIES = ["EUR", "BRL", "USD"] as const;
  * `react-hooks/set-state-in-effect` (e o resto do projeto) evita.
  */
 interface ParsedState {
+  file: File;
   fileName: string;
   rows: RawRow[];
   unknownHeaders: string[];
@@ -128,6 +131,12 @@ export function ImportDialog({
     return { ...parsed, valid, invalid, warnings };
   }, [parsed, currency]);
 
+  const customerCandidateCount = React.useMemo(
+    () => (parsed ? countCustomerImportCandidates(parsed.rows) : 0),
+    [parsed],
+  );
+  const isCustomerSheet = customerCandidateCount > 0;
+
   function reset() {
     setParsed(null);
     setError(null);
@@ -141,6 +150,7 @@ export function ImportDialog({
     try {
       const sheet = await parseSheetFile(file);
       setParsed({
+        file,
         fileName: file.name,
         rows: sheet.rows,
         unknownHeaders: sheet.unknownHeaders,
@@ -157,8 +167,73 @@ export function ImportDialog({
     }
   }
 
+  async function handleCustomerImport() {
+    if (!preview || !isCustomerSheet) return;
+    setStage("importing");
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.set("file", preview.file);
+      const response = await fetch("/api/customers/import", {
+        method: "POST",
+        body: formData,
+      });
+      const result = (await response.json().catch(() => null)) as {
+        imported?: number;
+        updated?: number;
+        invalid?: number;
+        error?: string;
+      } | null;
+
+      if (!response.ok && response.status !== 207) {
+        throw new Error(
+          result?.error ?? "Não foi possível importar os clientes.",
+        );
+      }
+
+      const imported = result?.imported ?? 0;
+      const updated = result?.updated ?? 0;
+      const invalid = result?.invalid ?? 0;
+      const processed = imported + updated;
+
+      if (processed === 0) {
+        setError(
+          invalid > 0
+            ? `Nenhum cliente foi importado. ${invalid} linhas possuem dados inválidos.`
+            : "Nenhum cliente pôde ser importado.",
+        );
+        return;
+      }
+
+      toast.success(
+        `${processed} ${processed === 1 ? "cliente processado" : "clientes processados"}.` +
+          (imported > 0 ? ` ${imported} novos.` : "") +
+          (updated > 0 ? ` ${updated} atualizados.` : "") +
+          (invalid > 0 ? ` ${invalid} com erro.` : ""),
+      );
+      onOpenChange(false);
+      reset();
+      window.location.assign("/clientes");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível importar os clientes.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setStage("idle");
+    }
+  }
+
   async function handleImport() {
-    if (!preview || preview.valid.length === 0) return;
+    if (!preview) return;
+    if (isCustomerSheet) {
+      await handleCustomerImport();
+      return;
+    }
+    if (preview.valid.length === 0) return;
     setStage("importing");
 
     let imported = 0;
@@ -322,18 +397,27 @@ export function ImportDialog({
           {preview && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="success">
-                  {preview.valid.length} prontas para importar
-                </Badge>
-                {preview.invalid.length > 0 && (
-                  <Badge variant="destructive">
-                    {preview.invalid.length} com erro
+                {isCustomerSheet ? (
+                  <Badge variant="success">
+                    {customerCandidateCount}{" "}
+                    {customerCandidateCount === 1 ? "cliente" : "clientes"}
                   </Badge>
-                )}
-                {preview.warnings.length > 0 && (
-                  <Badge variant="warning">
-                    {preview.warnings.length} avisos
-                  </Badge>
+                ) : (
+                  <>
+                    <Badge variant="success">
+                      {preview.valid.length} prontas para importar
+                    </Badge>
+                    {preview.invalid.length > 0 && (
+                      <Badge variant="destructive">
+                        {preview.invalid.length} com erro
+                      </Badge>
+                    )}
+                    {preview.warnings.length > 0 && (
+                      <Badge variant="warning">
+                        {preview.warnings.length} avisos
+                      </Badge>
+                    )}
+                  </>
                 )}
                 <span className="text-muted-foreground text-xs">
                   {preview.fileName}
@@ -359,7 +443,61 @@ export function ImportDialog({
                 </Alert>
               )}
 
-              {preview.valid.length > 0 && (
+              {isCustomerSheet && (
+                <>
+                  <Alert>
+                    <Users />
+                    <AlertDescription>
+                      Esta planilha contém clientes, não carrinhos. Produto e
+                      valor não são necessários: os contactos serão importados
+                      diretamente para a área de Clientes.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      Prévia — primeiros {Math.min(10, customerCandidateCount)}
+                      {" de "}
+                      {customerCandidateCount} clientes
+                    </p>
+                    <div className="overflow-x-auto rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="w-12">Linha</TableHead>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>E-mail</TableHead>
+                            <TableHead>Telefone</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {preview.rows
+                            .filter((row) => Boolean(row.email?.trim()))
+                            .slice(0, 10)
+                            .map((row) => (
+                              <TableRow key={row._line}>
+                                <TableCell className="text-muted-foreground text-xs">
+                                  {row._line}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {row.nome ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {row.email}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {row.telefone ?? "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!isCustomerSheet && preview.valid.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">
                     Prévia — primeiras {Math.min(10, preview.valid.length)} de{" "}
@@ -419,7 +557,7 @@ export function ImportDialog({
                 </div>
               )}
 
-              {preview.invalid.length > 0 && (
+              {!isCustomerSheet && preview.invalid.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">
                     Linhas com erro — serão ignoradas na importação
@@ -444,7 +582,7 @@ export function ImportDialog({
                 </div>
               )}
 
-              {preview.warnings.length > 0 && (
+              {!isCustomerSheet && preview.warnings.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Avisos</p>
                   <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-3 text-xs">
@@ -460,7 +598,7 @@ export function ImportDialog({
                 </div>
               )}
 
-              {preview.valid.length === 0 && (
+              {!isCustomerSheet && preview.valid.length === 0 && (
                 <Alert variant="destructive">
                   <AlertTriangle />
                   <AlertDescription>
@@ -477,11 +615,17 @@ export function ImportDialog({
           <Button
             type="button"
             loading={stage === "importing"}
-            disabled={!preview || preview.valid.length === 0}
+            disabled={
+              !preview ||
+              (!isCustomerSheet && preview.valid.length === 0) ||
+              stage === "parsing"
+            }
             onClick={handleImport}
           >
-            <CheckCircle2 />
-            {preview && preview.valid.length > 0
+            {isCustomerSheet ? <Users /> : <CheckCircle2 />}
+            {isCustomerSheet
+              ? `Importar ${customerCandidateCount} ${customerCandidateCount === 1 ? "cliente" : "clientes"}`
+              : preview && preview.valid.length > 0
               ? `Importar ${preview.valid.length} ${preview.valid.length === 1 ? "carrinho" : "carrinhos"}`
               : "Importar"}
           </Button>
