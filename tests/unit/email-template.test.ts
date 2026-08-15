@@ -42,6 +42,12 @@ describe("email campaign template", () => {
     expect(html).toContain("Minha Loja");
     expect(html).toContain("Maria Oliveira");
     expect(html).toContain("Curso &lt;Avançado&gt;");
+    expect(html).toContain("<strong>Encomenda:</strong> PED-42");
+    expect(html).toContain(
+      "<strong>Artigo:</strong> Curso &lt;Avançado&gt;",
+    );
+    expect(html).not.toContain("<strong>Valor:</strong>");
+    expect(html).not.toContain("49,90 €");
     expect(html).toContain('href="https://example.com/checkout/PED-42"');
     expect(html).toContain("Confirmar dados de entrega");
     expect(html).not.toContain("{{");
