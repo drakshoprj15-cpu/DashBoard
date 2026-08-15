@@ -29,6 +29,7 @@ export function normalizeDocument(value: string): string | null {
 
 export interface CustomerIdentityCandidate {
   id: string;
+  email?: string | null;
   normalizedEmail: string | null;
   normalizedPhone: string | null;
   normalizedDocument: string | null;
@@ -48,7 +49,9 @@ export function resolveDuplicateCandidate(
   }
   if (identity.normalizedEmail) {
     const byEmail = candidates.find(
-      (candidate) => candidate.normalizedEmail === identity.normalizedEmail,
+      (candidate) =>
+        candidate.normalizedEmail === identity.normalizedEmail ||
+        normalizeEmail(candidate.email ?? "") === identity.normalizedEmail,
     );
     if (byEmail) return byEmail;
   }

@@ -82,6 +82,26 @@ describe("normalização de clientes", () => {
       }),
     ).toBeNull();
   });
+
+  it("reconhece cliente legado pelo email quando normalizedEmail está vazio", () => {
+    const candidates = [
+      {
+        id: "legado",
+        email: " Cliente.Legado@Exemplo.COM ",
+        normalizedEmail: null,
+        normalizedPhone: null,
+        normalizedDocument: null,
+      },
+    ];
+
+    expect(
+      resolveDuplicateCandidate(candidates, {
+        normalizedEmail: "cliente.legado@exemplo.com",
+        normalizedPhone: null,
+        normalizedDocument: null,
+      })?.id,
+    ).toBe("legado");
+  });
 });
 
 describe("filtros e classificação de clientes", () => {
