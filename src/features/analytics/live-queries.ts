@@ -32,14 +32,33 @@ export interface LiveEvent {
   occurredAt: Date;
   anonymousId: string | null;
   countryCode: string | null;
+  city: string | null;
   deviceType: string | null;
 }
 
 export interface FunnelStep {
   label: string;
   event: string;
+  /** Sessões que chegaram a esta etapa — ou a qualquer etapa mais profunda. */
   count: number;
 }
+
+/**
+ * Etapas do funil, da mais rasa à mais profunda.
+ *
+ * A contagem é por profundidade alcançada, não por evento isolado: chegar ao
+ * checkout implica ter passado pelas etapas anteriores, mesmo que o evento
+ * delas nunca tenha sido emitido (quem abre um link `/pagar/` direto não
+ * dispara `click_buy`). Contar cada evento à parte fazia o funil subir do meio
+ * para o fim e produzia taxas acima de 100%.
+ */
+const FUNNEL_STEPS = [
+  { label: "Visitantes", event: "page_view" },
+  { label: "Viu produto", event: "view_content" },
+  { label: "Clicou comprar", event: "click_buy" },
+  { label: "Abriu checkout", event: "checkout_opened" },
+  { label: "Pagamento criado", event: "payment_created" },
+] as const;
 
 export interface TopLocation {
   label: string;
@@ -210,6 +229,7 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
       occurredAt: analyticsEvents.occurredAt,
       anonymousId: visitorSessions.anonymousId,
       countryCode: visitorSessions.countryCode,
+      city: visitorSessions.city,
       deviceType: visitorSessions.deviceType,
     })
     .from(analyticsEvents)
@@ -221,47 +241,45 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot | null> {
     .orderBy(desc(analyticsEvents.occurredAt))
     .limit(50);
 
-  // Funil das últimas 24h
-  const funnelRows = await db
-    .select({
-      eventName: analyticsEvents.eventName,
-      n: sql<number>`count(distinct ${analyticsEvents.sessionId})::int`,
-    })
-    .from(analyticsEvents)
-    .where(
-      and(
-        eq(analyticsEvents.workspaceId, workspaceId),
-        sql`${analyticsEvents.occurredAt} >= now() - interval '24 hours'`,
-      ),
+  // Funil das últimas 24h: profundidade alcançada por sessão (ver FUNNEL_STEPS).
+  // Os eventos intermédios do checkout contam como "abriu checkout" — implicam
+  // essa etapa e não têm degrau próprio no funil.
+  const funnelResult = await db.execute(sql`
+    with profundidade as (
+      select ${analyticsEvents.sessionId} as session_id,
+             max(case ${analyticsEvents.eventName}
+                   when 'page_view' then 1
+                   when 'view_content' then 2
+                   when 'click_buy' then 3
+                   when 'checkout_opened' then 4
+                   when 'checkout_contact_filled' then 4
+                   when 'checkout_payment_selected' then 4
+                   when 'payment_created' then 5
+                   else 0
+                 end) as etapa
+      from ${analyticsEvents}
+      where ${analyticsEvents.workspaceId} = ${workspaceId}
+        and ${analyticsEvents.occurredAt} >= now() - interval '24 hours'
+        and ${analyticsEvents.sessionId} is not null
+      group by ${analyticsEvents.sessionId}
     )
-    .groupBy(analyticsEvents.eventName);
+    select
+      count(*) filter (where etapa >= 1)::int as s1,
+      count(*) filter (where etapa >= 2)::int as s2,
+      count(*) filter (where etapa >= 3)::int as s3,
+      count(*) filter (where etapa >= 4)::int as s4,
+      count(*) filter (where etapa >= 5)::int as s5
+    from profundidade
+  `);
 
-  const countOf = (name: string) =>
-    funnelRows.find((r) => r.eventName === name)?.n ?? 0;
+  const funnelRow = (funnelResult as unknown as Record<string, unknown>[])[0];
+  const reached = (i: number) => Number(funnelRow?.[`s${i + 1}`] ?? 0);
 
-  const funnel: FunnelStep[] = [
-    { label: "Visitantes", event: "page_view", count: countOf("page_view") },
-    {
-      label: "Viu produto",
-      event: "view_content",
-      count: countOf("view_content"),
-    },
-    {
-      label: "Clicou comprar",
-      event: "click_buy",
-      count: countOf("click_buy"),
-    },
-    {
-      label: "Abriu checkout",
-      event: "checkout_opened",
-      count: countOf("checkout_opened"),
-    },
-    {
-      label: "Pagamento criado",
-      event: "payment_created",
-      count: countOf("payment_created"),
-    },
-  ];
+  const funnel: FunnelStep[] = FUNNEL_STEPS.map((step, i) => ({
+    label: step.label,
+    event: step.event,
+    count: reached(i),
+  }));
 
   const onlineNow = online?.n ?? 0;
   const activeCheckouts = activeCheckout?.n ?? 0;
