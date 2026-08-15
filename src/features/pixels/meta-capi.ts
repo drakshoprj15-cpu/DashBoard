@@ -10,7 +10,10 @@ import {
   pixels,
 } from "@/database/schema";
 import { decryptSecret } from "@/lib/crypto";
-import { resolveEffectivePixelRows } from "@/features/pixels/queries";
+import {
+  resolveBoundPixelRows,
+  resolveEffectivePixelRows,
+} from "@/features/pixels/queries";
 import type { PixelConnectionStatus } from "@/features/pixels/types";
 
 const GRAPH_VERSION = "v21.0";
@@ -42,15 +45,14 @@ export interface PurchaseAttribution {
 }
 
 export type PurchaseTriggerType =
-  | "generated_order"
-  | "payment_approved"
-  | "reprocess";
+  "generated_order" | "payment_approved" | "reprocess";
 
 export interface PurchaseEventInput extends PurchaseAttribution {
   workspaceId: string;
   orderId: string;
   /** Landing page de origem — aplica o fallback específico > global dos pixels CAPI */
   landingPageId?: string | null;
+  paymentLinkId?: string | null;
   /** Identificador estável do evento — deduplica browser x servidor */
   eventId: string;
   triggerType: PurchaseTriggerType;
@@ -130,7 +132,9 @@ async function callMetaGraph(
 }
 
 /** Nunca ecoa token/segredo — defensivo, mesmo a Meta não devolvendo isso. */
-function sanitizeResponse(body: Record<string, unknown>): Record<string, unknown> {
+function sanitizeResponse(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
   const clone: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (/token|secret|authorization/i.test(key)) continue;
@@ -158,10 +162,11 @@ async function deliverPurchase(
 
     const result = await callMetaGraph(pixel.pixelId!, token, [event]);
     const traceId =
-      typeof result.body.fbtrace_id === "string" ? result.body.fbtrace_id : null;
+      typeof result.body.fbtrace_id === "string"
+        ? result.body.fbtrace_id
+        : null;
     const errorObj = result.body.error as
-      | { message?: string; code?: number }
-      | undefined;
+      { message?: string; code?: number } | undefined;
 
     await db
       .update(pixelEvents)
@@ -212,10 +217,17 @@ export async function sendPurchaseToMetaCapi(
   input: PurchaseEventInput,
 ): Promise<void> {
   const db = getDb();
-  const pixelRows = await resolveEffectivePixelRows(
-    input.landingPageId ?? null,
-    "meta_capi",
-  );
+  const pixelRows = input.paymentLinkId
+    ? await resolveBoundPixelRows(
+        input.workspaceId,
+        { type: "payment_link", id: input.paymentLinkId },
+        "meta_capi",
+      )
+    : await resolveEffectivePixelRows(
+        input.landingPageId ?? null,
+        "meta_capi",
+        input.workspaceId,
+      );
 
   for (const pixel of pixelRows) {
     if (!pixel.pixelId || !pixel.encryptedToken || !pixel.isActive) continue;
@@ -301,7 +313,9 @@ async function rebuildPurchaseInput(
  * do log). Atualiza o registro existente em vez de inserir um novo — nunca
  * duplica o evento já registrado.
  */
-export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> {
+export async function reprocessPurchaseEvent(
+  eventRowId: string,
+): Promise<void> {
   const db = getDb();
   const [event] = await db
     .select()
@@ -309,7 +323,12 @@ export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> 
     .where(eq(pixelEvents.id, eventRowId))
     .limit(1);
 
-  if (!event || event.status !== "failed" || event.channel !== "server" || !event.orderId) {
+  if (
+    !event ||
+    event.status !== "failed" ||
+    event.channel !== "server" ||
+    !event.orderId
+  ) {
     throw new Error("Este evento não pode ser reprocessado.");
   }
 
@@ -319,7 +338,9 @@ export async function reprocessPurchaseEvent(eventRowId: string): Promise<void> 
     .where(eq(pixels.id, event.pixelId))
     .limit(1);
   if (!pixel || !pixel.pixelId || !pixel.encryptedToken) {
-    throw new Error("O pixel deste evento não está mais configurado corretamente.");
+    throw new Error(
+      "O pixel deste evento não está mais configurado corretamente.",
+    );
   }
 
   const input = await rebuildPurchaseInput(
@@ -379,7 +400,8 @@ export async function testMetaConnection(
     >;
 
     if (!infoResp.ok) {
-      const err = infoBody.error as { code?: number; message?: string } | undefined;
+      const err = infoBody.error as
+        { code?: number; message?: string } | undefined;
       if (err?.code === 190) {
         return {
           ok: false,

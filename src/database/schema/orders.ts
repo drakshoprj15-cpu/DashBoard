@@ -15,7 +15,7 @@ import { id, timestamps } from "./_helpers";
 import { orderStatus } from "./enums";
 import { workspaces } from "./workspaces";
 import { customers } from "./customers";
-import { checkouts } from "./checkouts";
+import { checkouts, paymentLinks } from "./checkouts";
 import { carts } from "./carts";
 import { products, productVariants } from "./catalog";
 
@@ -37,7 +37,9 @@ export const orders = pgTable(
     cartId: uuid("cart_id").references(() => carts.id, {
       onDelete: "set null",
     }),
-    paymentLinkId: uuid("payment_link_id"),
+    paymentLinkId: uuid("payment_link_id").references(() => paymentLinks.id, {
+      onDelete: "set null",
+    }),
     campaignId: uuid("campaign_id"),
     status: orderStatus("status").default("created").notNull(),
     currency: text("currency").default("BRL").notNull(),
@@ -58,6 +60,8 @@ export const orders = pgTable(
     billingAddress: jsonb("billing_address"),
     /** UTMs e click ids capturados na sessão */
     utm: jsonb("utm").default({}).notNull(),
+    /** Última origem válida; `utm` permanece como primeira origem. */
+    lastUtm: jsonb("last_utm").default({}).notNull(),
     origin: text("origin"), // store | checkout | payment_link | landing_page
     /**
      * Atribuição da Meta capturada no momento do checkout (cookies do
@@ -73,6 +77,8 @@ export const orders = pgTable(
     countryCode: text("country_code"),
     internalNotes: text("internal_notes"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    chargebackAt: timestamp("chargeback_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** Último lembrete de pagamento enviado — evita reenviar em intervalo curto */
     lastReminderSentAt: timestamp("last_reminder_sent_at", {

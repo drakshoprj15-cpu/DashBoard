@@ -1,213 +1,331 @@
-import { and, eq, isNull } from "drizzle-orm";
+import "server-only";
 
-import { getDb } from "@/database/client";
-import { pixelEvents, pixels } from "@/database/schema";
+import { randomUUID } from "node:crypto";
+import { after } from "next/server";
+import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
+
+import { getDb, isDatabaseConfigured } from "@/database/client";
+import {
+  customers,
+  integrationDeliveries,
+  integrationDeliveryAttempts,
+  integrations,
+  orderItems,
+  orders,
+  payments,
+} from "@/database/schema";
 import { decryptSecret } from "@/lib/crypto";
+import {
+  buildUtmifyPayload,
+  postUtmifyOrder,
+  retryDelayMs,
+  UTMIFY_STATUS_BY_ORDER_STATUS,
+  type UtmifySaleStatus,
+} from "@/features/pixels/utmify-core";
 
-const UTMIFY_ORDERS_URL = "https://api.utmify.com.br/api-credentials/orders";
+const MAX_BATCH = 20;
+const STALE_LOCK_MS = 5 * 60_000;
 
-/**
- * Status de pedido da plataforma → status aceito pela API da UTMify.
- * https://docs.utmify.com.br/envio-de-vendas (consultado 2026-07-31).
- */
-const UTMIFY_STATUS_MAP: Partial<Record<string, string>> = {
-  created: "waiting_payment",
-  awaiting_payment: "waiting_payment",
-  processing: "waiting_payment",
-  paid: "paid",
-  refused: "refused",
-  expired: "refused",
-  refunded: "refunded",
-  chargeback: "chargedback",
-};
-
-/** "YYYY-MM-DD HH:MM:SS" em UTC, formato exigido pela API. */
-function utmifyTimestamp(date: Date): string {
-  return date.toISOString().slice(0, 19).replace("T", " ");
+interface SafeIntegrationConfig {
+  credentialName?: string;
+  platform?: string;
+  tokenPreview?: string;
 }
 
-/**
- * A UTMify só aceita paymentMethod em {credit_card, boleto, pix, paypal,
- * free_price} — MB WAY e Multibanco (os únicos métodos reais desta loja)
- * não têm correspondência exata na API deles. "pix" é o mais próximo
- * semanticamente (pagamento instantâneo por app/referência, sem cartão),
- * mas isto é uma aproximação, não uma tradução correta — documentado aqui
- * para não ser confundido com um mapeamento oficial.
- */
-const UTMIFY_PAYMENT_METHOD_FALLBACK = "pix";
-
-export interface OrderReportInput {
-  workspaceId: string;
-  orderId: string;
-  reference: string;
-  /** Status já traduzido para o vocabulário da plataforma (orders.status). */
-  orderStatus: string;
-  totalCents: number;
-  currency: string;
-  createdAt: Date;
-  paidAt?: Date | null;
-  refundedAt?: Date | null;
-  customer?: {
-    name?: string | null;
-    email?: string | null;
-    phone?: string | null;
-    document?: string | null;
-    country?: string | null;
-  };
-  items: {
-    id: string | null;
-    name: string;
-    quantity: number;
-    unitPriceCents: number;
-  }[];
-  /** orders.utm já normalizado (utm_source, utm_campaign, ...). */
-  utm?: Record<string, string> | null;
+function configOf(value: unknown): SafeIntegrationConfig {
+  return value && typeof value === "object"
+    ? (value as SafeIntegrationConfig)
+    : {};
 }
 
-/**
- * Reporta o pedido à UTMify (atribuição de vendas a campanhas).
- *
- * Chamado apenas a partir do webhook de pagamento — nunca do navegador. Sem
- * pixel do tipo `utmify` configurado, não faz nada (não é erro). Limitações
- * conhecidas: `customer.ip` é omitido (não coletamos IP em `customers`) e
- * `commission.gatewayFeeInCents` não é enviado (a Broski não informa a taxa
- * do gateway em nenhum ponto do fluxo).
- */
-export async function sendOrderToUtmify(
-  input: OrderReportInput,
-): Promise<void> {
-  const utmifyStatus = UTMIFY_STATUS_MAP[input.orderStatus];
-  if (!utmifyStatus) return;
+export async function enqueueUtmifyOrderUpdate(
+  workspaceId: string,
+  orderId: string,
+  orderStatus: string,
+): Promise<string[]> {
+  const saleStatus = UTMIFY_STATUS_BY_ORDER_STATUS[orderStatus];
+  if (!saleStatus || !isDatabaseConfigured()) return [];
 
   const db = getDb();
-
-  const rows = await db
-    .select()
-    .from(pixels)
+  const active = await db
+    .select({ id: integrations.id })
+    .from(integrations)
     .where(
       and(
-        eq(pixels.workspaceId, input.workspaceId),
-        eq(pixels.type, "utmify"),
-        eq(pixels.isActive, true),
-        isNull(pixels.deletedAt),
+        eq(integrations.workspaceId, workspaceId),
+        eq(integrations.key, "utmify"),
+        eq(integrations.isActive, true),
+        eq(integrations.status, "connected"),
       ),
     );
 
-  for (const pixel of rows) {
-    if (!pixel.encryptedToken) continue;
-
-    // Deduplicação: mesmo pedido no mesmo status nunca é reenviado, mas uma
-    // mudança de status (ex.: waiting_payment → paid) gera um novo evento.
-    const eventId = `${input.orderId}_${utmifyStatus}`;
-    const inserted = await db
-      .insert(pixelEvents)
+  const ids: string[] = [];
+  for (const integration of active) {
+    const [inserted] = await db
+      .insert(integrationDeliveries)
       .values({
-        workspaceId: input.workspaceId,
-        pixelId: pixel.id,
-        eventName: `order.${utmifyStatus}`,
-        eventId,
-        channel: "server",
-        orderId: input.orderId,
-        status: "pending",
+        workspaceId,
+        integrationId: integration.id,
+        orderId,
+        saleStatus,
+        idempotencyKey: `${workspaceId}:${integration.id}:${orderId}:${saleStatus}`,
       })
       .onConflictDoNothing()
-      .returning({ id: pixelEvents.id });
+      .returning({ id: integrationDeliveries.id });
+    if (inserted) ids.push(inserted.id);
+  }
+  return ids;
+}
 
-    if (inserted.length === 0) continue;
-
+export function scheduleUtmifyDeliveries(ids?: string[]): void {
+  after(async () => {
     try {
-      const token = decryptSecret(pixel.encryptedToken);
+      if (ids?.length) {
+        for (const id of ids) await processUtmifyDelivery(id);
+      } else {
+        await processUtmifyOutbox();
+      }
+    } catch (error) {
+      console.error("[utmify/outbox] falha sanitizada ao processar fila", {
+        kind: error instanceof Error ? error.name : "unknown",
+      });
+    }
+  });
+}
 
-      const body = {
-        orderId: input.reference,
-        platform: "Infinity",
-        paymentMethod: UTMIFY_PAYMENT_METHOD_FALLBACK,
-        status: utmifyStatus,
-        createdAt: utmifyTimestamp(input.createdAt),
-        approvedDate: input.paidAt ? utmifyTimestamp(input.paidAt) : null,
-        refundedAt: input.refundedAt ? utmifyTimestamp(input.refundedAt) : null,
+async function loadDeliverySource(deliveryId: string) {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      delivery: integrationDeliveries,
+      integration: integrations,
+      order: orders,
+      customer: customers,
+    })
+    .from(integrationDeliveries)
+    .innerJoin(integrations, eq(integrations.id, integrationDeliveries.integrationId))
+    .innerJoin(orders, eq(orders.id, integrationDeliveries.orderId))
+    .leftJoin(customers, eq(customers.id, orders.customerId))
+    .where(eq(integrationDeliveries.id, deliveryId))
+    .limit(1);
+  if (!row) return null;
+
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(
+      and(
+        eq(payments.orderId, row.order.id),
+        eq(payments.workspaceId, row.delivery.workspaceId),
+      ),
+    )
+    .orderBy(desc(payments.createdAt))
+    .limit(1);
+  const items = await db
+    .select()
+    .from(orderItems)
+    .where(
+      and(
+        eq(orderItems.orderId, row.order.id),
+        eq(orderItems.workspaceId, row.delivery.workspaceId),
+      ),
+    );
+  return { ...row, payment, items };
+}
+
+export async function processUtmifyDelivery(deliveryId: string): Promise<void> {
+  if (!isDatabaseConfigured()) return;
+  const db = getDb();
+  const now = new Date();
+  const lockToken = randomUUID();
+
+  const [claimed] = await db
+    .update(integrationDeliveries)
+    .set({ status: "processing", lockToken, lockedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(integrationDeliveries.id, deliveryId),
+        eq(integrationDeliveries.status, "pending"),
+        lte(integrationDeliveries.nextAttemptAt, now),
+      ),
+    )
+    .returning({ id: integrationDeliveries.id });
+  if (!claimed) return;
+
+  const source = await loadDeliverySource(deliveryId);
+  if (!source) return;
+  const attemptNumber = source.delivery.attemptCount + 1;
+  let result;
+
+  try {
+    if (!source.integration.encryptedCredentials) {
+      throw new Error("credential_missing");
+    }
+    if (!source.payment) throw new Error("payment_missing");
+    const cfg = configOf(source.integration.config);
+    const payload = buildUtmifyPayload(
+      {
+        reference: source.order.reference,
+        status: source.order.status,
+        paymentMethod: source.payment.method,
+        platform: cfg.platform || "Infinity",
+        totalCents: source.order.totalCents,
+        gatewayFeeCents: source.payment.feeCents,
+        netCents: source.payment.netCents,
+        currency: source.order.currency,
+        createdAt: source.order.createdAt,
+        paidAt: source.order.paidAt,
+        refundedAt: source.order.refundedAt,
         customer: {
-          name: input.customer?.name || "Cliente",
-          email: input.customer?.email || undefined,
-          phone: input.customer?.phone || undefined,
-          // A API exige o campo mesmo sem CPF/NIF — aceita null explícito
-          // (confirmado via SCHEMA_VALIDATION_FAILED em teste real; a doc
-          // pública não deixava isso claro).
-          document: input.customer?.document || null,
-          country: input.customer?.country || "PT",
+          name:
+            [source.customer?.firstName, source.customer?.lastName]
+              .filter(Boolean)
+              .join(" ") || "Cliente",
+          email: source.customer?.email || "cliente@nao-informado.invalid",
+          phone: source.customer?.phone || null,
+          document: source.customer?.document || null,
+          country: source.customer?.country || source.order.countryCode,
+          ip: source.order.clientIp,
         },
-        products: input.items.map((item) => ({
-          id: item.id ?? input.orderId,
-          name: item.name,
-          planId: null,
-          planName: null,
+        products: source.items.map((item) => ({
+          id: item.sku || item.variantId || item.productId || item.id,
+          name: item.productName,
+          planId: item.variantId,
+          planName: item.variantName,
           quantity: item.quantity,
           priceInCents: item.unitPriceCents,
         })),
-        trackingParameters: {
-          src: null,
-          sck: null,
-          utm_source: input.utm?.utm_source ?? null,
-          utm_campaign: input.utm?.utm_campaign ?? null,
-          utm_medium: input.utm?.utm_medium ?? null,
-          utm_content: input.utm?.utm_content ?? null,
-          utm_term: input.utm?.utm_term ?? null,
-        },
-        // gatewayFeeInCents/userCommissionInCents são exigidos pela API
-        // (confirmado via SCHEMA_VALIDATION_FAILED em teste real — a doc
-        // pública não os listava como obrigatórios). A Broski não informa a
-        // taxa do gateway em nenhum ponto do fluxo (mesma limitação já
-        // documentada no lançamento do livro-caixa), então enviamos 0 em
-        // vez de inventar um valor — a UTMify recebe o total correto, só
-        // sem a quebra de taxa/comissão.
-        commission: {
-          totalPriceInCents: input.totalCents,
-          gatewayFeeInCents: 0,
-          userCommissionInCents: input.totalCents,
-        },
-        isTest: false,
-      };
-
-      const response = await fetch(UTMIFY_ORDERS_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-token": token,
-        },
-        body: JSON.stringify(body),
-      });
-
-      const responseBody = (await response.json().catch(() => ({}))) as Record<
-        string,
-        unknown
-      >;
-
-      await db
-        .update(pixelEvents)
-        .set({
-          status: response.ok ? "sent" : "failed",
-          sentAt: new Date(),
-          response: responseBody,
-          error: response.ok
-            ? null
-            : JSON.stringify(responseBody).slice(0, 500),
-        })
-        .where(eq(pixelEvents.id, inserted[0].id));
-
-      if (response.ok) {
-        await db
-          .update(pixels)
-          .set({ lastActivityAt: new Date() })
-          .where(eq(pixels.id, pixel.id));
-      }
-    } catch (error) {
-      await db
-        .update(pixelEvents)
-        .set({
-          status: "failed",
-          error: error instanceof Error ? error.message : "erro desconhecido",
-        })
-        .where(eq(pixelEvents.id, inserted[0].id));
-    }
+        utm: (source.order.utm ?? {}) as Record<string, unknown>,
+      },
+      source.delivery.saleStatus as UtmifySaleStatus,
+    );
+    result = await postUtmifyOrder(
+      decryptSecret(source.integration.encryptedCredentials),
+      payload,
+    );
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "unexpected";
+    result = {
+      ok: false,
+      retryable: false,
+      httpStatus: null,
+      code: code === "credential_missing" ? "invalid_token" : "invalid_payload",
+      message:
+        code === "credential_missing"
+          ? "Credencial ausente."
+          : "Os dados do pedido não puderam ser convertidos para a UTMify.",
+      durationMs: 0,
+    } as const;
   }
+
+  const reachedLimit = attemptNumber >= source.delivery.maxAttempts;
+  const nextStatus = result.ok
+    ? "success"
+    : result.retryable && !reachedLimit
+      ? "pending"
+      : result.retryable
+        ? "dead_letter"
+        : "failed";
+  const nextAttemptAt =
+    nextStatus === "pending"
+      ? new Date(Date.now() + retryDelayMs(attemptNumber))
+      : now;
+
+  await db.transaction(async (tx) => {
+    await tx.insert(integrationDeliveryAttempts).values({
+      workspaceId: source.delivery.workspaceId,
+      integrationId: source.delivery.integrationId,
+      deliveryId,
+      attemptNumber,
+      result: result.ok ? "success" : "error",
+      httpStatus: result.httpStatus,
+      errorCode: result.code,
+      errorMessage: result.ok ? null : result.message,
+      durationMs: result.durationMs,
+    });
+    await tx
+      .update(integrationDeliveries)
+      .set({
+        status: nextStatus,
+        attemptCount: attemptNumber,
+        nextAttemptAt,
+        lockToken: null,
+        lockedAt: null,
+        httpStatus: result.httpStatus,
+        errorCode: result.code,
+        errorMessage: result.ok ? null : result.message,
+        durationMs: result.durationMs,
+        sentAt: result.ok ? now : null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(integrationDeliveries.id, deliveryId),
+          eq(integrationDeliveries.lockToken, lockToken),
+        ),
+      );
+    await tx
+      .update(integrations)
+      .set({
+        lastSyncAt: result.ok ? now : source.integration.lastSyncAt,
+        lastEventAt: now,
+        lastError: result.ok ? null : result.message,
+        updatedAt: now,
+      })
+      .where(eq(integrations.id, source.integration.id));
+  });
+}
+
+export async function processUtmifyOutbox(limit = MAX_BATCH): Promise<number> {
+  if (!isDatabaseConfigured()) return 0;
+  const db = getDb();
+  const now = new Date();
+  await db
+    .update(integrationDeliveries)
+    .set({ status: "pending", lockToken: null, lockedAt: null, updatedAt: now })
+    .where(
+      and(
+        eq(integrationDeliveries.status, "processing"),
+        lte(integrationDeliveries.lockedAt, new Date(Date.now() - STALE_LOCK_MS)),
+      ),
+    );
+  const due = await db
+    .select({ id: integrationDeliveries.id })
+    .from(integrationDeliveries)
+    .where(
+      and(
+        eq(integrationDeliveries.status, "pending"),
+        lte(integrationDeliveries.nextAttemptAt, now),
+      ),
+    )
+    .orderBy(asc(integrationDeliveries.nextAttemptAt))
+    .limit(Math.min(MAX_BATCH, Math.max(1, limit)));
+  for (const row of due) await processUtmifyDelivery(row.id);
+  return due.length;
+}
+
+export async function requeueUtmifyDelivery(
+  workspaceId: string,
+  deliveryId: string,
+): Promise<boolean> {
+  const db = getDb();
+  const [updated] = await db
+    .update(integrationDeliveries)
+    .set({
+      status: "pending",
+      nextAttemptAt: new Date(),
+      errorCode: null,
+      errorMessage: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(integrationDeliveries.id, deliveryId),
+        eq(integrationDeliveries.workspaceId, workspaceId),
+        inArray(integrationDeliveries.status, ["failed", "dead_letter"]),
+      ),
+    )
+    .returning({ id: integrationDeliveries.id });
+  if (updated) scheduleUtmifyDeliveries([updated.id]);
+  return Boolean(updated);
 }

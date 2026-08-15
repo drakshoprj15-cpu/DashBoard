@@ -14,10 +14,12 @@ import { id, timestamps } from "./_helpers";
 import {
   environment,
   integrationCategory,
+  integrationDeliveryStatus,
   integrationStatus,
   webhookDeliveryStatus,
 } from "./enums";
 import { workspaces } from "./workspaces";
+import { orders } from "./orders";
 
 export const integrations = pgTable(
   "integrations",
@@ -35,6 +37,15 @@ export const integrations = pgTable(
     /** Credenciais criptografadas com ENCRYPTION_KEY */
     encryptedCredentials: text("encrypted_credentials"),
     config: jsonb("config").default({}).notNull(),
+    isActive: boolean("is_active").default(false).notNull(),
+    connectionStatus: text("connection_status").default("not_tested").notNull(),
+    lastConnectionTestAt: timestamp("last_connection_test_at", {
+      withTimezone: true,
+    }),
+    lastConnectionOk: boolean("last_connection_ok"),
+    lastConnectionHttpStatus: integer("last_connection_http_status"),
+    lastConnectionMessage: text("last_connection_message"),
+    lastConnectionDurationMs: integer("last_connection_duration_ms"),
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
     lastEventAt: timestamp("last_event_at", { withTimezone: true }),
     lastError: text("last_error"),
@@ -43,6 +54,89 @@ export const integrations = pgTable(
   (t) => [
     uniqueIndex("integrations_ws_key_idx").on(t.workspaceId, t.key),
     index("integrations_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+/**
+ * Outbox persistente das integrações server-side. O payload é reconstruído
+ * a partir do pedido no envio para não guardar uma segunda cópia de PII.
+ */
+export const integrationDeliveries = pgTable(
+  "integration_deliveries",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    integrationId: uuid("integration_id")
+      .notNull()
+      .references(() => integrations.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    saleStatus: text("sale_status").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: integrationDeliveryStatus("status").default("pending").notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    maxAttempts: integer("max_attempts").default(6).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockToken: text("lock_token"),
+    httpStatus: integer("http_status"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    durationMs: integer("duration_ms"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("integration_deliveries_order_status_idx").on(
+      t.workspaceId,
+      t.integrationId,
+      t.orderId,
+      t.saleStatus,
+    ),
+    uniqueIndex("integration_deliveries_idempotency_idx").on(t.idempotencyKey),
+    index("integration_deliveries_queue_idx").on(t.status, t.nextAttemptAt),
+    index("integration_deliveries_workspace_idx").on(t.workspaceId, t.createdAt),
+  ],
+);
+
+/** Histórico imutável e sanitizado de cada tentativa da outbox. */
+export const integrationDeliveryAttempts = pgTable(
+  "integration_delivery_attempts",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    integrationId: uuid("integration_id")
+      .notNull()
+      .references(() => integrations.id, { onDelete: "cascade" }),
+    deliveryId: uuid("delivery_id")
+      .notNull()
+      .references(() => integrationDeliveries.id, { onDelete: "cascade" }),
+    attemptNumber: integer("attempt_number").notNull(),
+    result: text("result").notNull(),
+    httpStatus: integer("http_status"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index("integration_delivery_attempts_delivery_idx").on(
+      t.deliveryId,
+      t.attemptNumber,
+    ),
+    index("integration_delivery_attempts_workspace_idx").on(
+      t.workspaceId,
+      t.createdAt,
+    ),
   ],
 );
 

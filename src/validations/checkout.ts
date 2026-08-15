@@ -58,11 +58,13 @@ export const checkoutSchema = z
       .or(z.literal("")),
     couponCode: z.string().trim().optional().or(z.literal("")),
     shippingMethodId: z.string().trim().optional().or(z.literal("")),
-    utmSource: z.string().trim().optional().or(z.literal("")),
-    utmMedium: z.string().trim().optional().or(z.literal("")),
-    utmCampaign: z.string().trim().optional().or(z.literal("")),
-    utmContent: z.string().trim().optional().or(z.literal("")),
-    utmTerm: z.string().trim().optional().or(z.literal("")),
+    src: z.string().trim().max(200).optional().or(z.literal("")),
+    sck: z.string().trim().max(200).optional().or(z.literal("")),
+    utmSource: z.string().trim().max(200).optional().or(z.literal("")),
+    utmMedium: z.string().trim().max(200).optional().or(z.literal("")),
+    utmCampaign: z.string().trim().max(200).optional().or(z.literal("")),
+    utmContent: z.string().trim().max(200).optional().or(z.literal("")),
+    utmTerm: z.string().trim().max(200).optional().or(z.literal("")),
     /** Id da landing page de origem (parâmetro `lp` na URL do checkout) */
     landingPageId: z.string().trim().max(64).optional().or(z.literal("")),
   })

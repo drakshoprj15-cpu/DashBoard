@@ -5,6 +5,7 @@ import {
   TRACK_EVENTS,
   type TrackEvent,
 } from "@/features/analytics/track";
+import { ATTRIBUTION_COOKIE } from "@/features/attribution/utm";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,15 @@ export async function POST(request: Request) {
       },
     );
 
-    return NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set(ATTRIBUTION_COOKIE, body.anonymousId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 90,
+    });
+    return response;
   } catch (error) {
     // Rastreamento nunca pode quebrar a experiência do visitante.
     console.error("[track] erro:", error);

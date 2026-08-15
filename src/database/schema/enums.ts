@@ -112,6 +112,11 @@ export const webhookDeliveryStatus = pgEnum("webhook_delivery_status", [
   "dead_letter",
 ]);
 
+export const integrationDeliveryStatus = pgEnum(
+  "integration_delivery_status",
+  ["pending", "processing", "success", "failed", "dead_letter"],
+);
+
 export const emailCampaignStatus = pgEnum("email_campaign_status", [
   "draft",
   "scheduled",

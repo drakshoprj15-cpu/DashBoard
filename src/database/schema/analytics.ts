@@ -31,6 +31,7 @@ export const visitorSessions = pgTable(
     currentPage: text("current_page"),
     referrer: text("referrer"),
     utm: jsonb("utm").default({}).notNull(),
+    lastUtm: jsonb("last_utm").default({}).notNull(),
     deviceType: text("device_type"),
     browser: text("browser"),
     os: text("os"),

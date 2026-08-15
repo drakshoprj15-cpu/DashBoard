@@ -74,6 +74,8 @@ export default async function CheckoutSlugPage(
   const unitPriceCents = selectedVariant?.priceCents ?? product.priceCents;
 
   const utm = {
+    src: asString(searchParams.src),
+    sck: asString(searchParams.sck),
     utmSource: asString(searchParams.utm_source),
     utmMedium: asString(searchParams.utm_medium),
     utmCampaign: asString(searchParams.utm_campaign),

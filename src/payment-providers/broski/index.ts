@@ -112,6 +112,7 @@ function toPaymentResult(order: BroskiOrder): PaymentResult {
       ? {
           multibancoEntity: order.multibanco.entity,
           multibancoReference: order.multibanco.reference,
+          multibancoExpiresAt: order.multibanco.expires_at,
         }
       : undefined,
     raw: order,
@@ -327,7 +328,11 @@ export class BroskiProvider implements PaymentProvider {
         : // dispute.created referencia o pedido em data.object.order
           obj?.order,
       status:
-        isOrder && obj ? (STATUS_MAP[obj.status] ?? undefined) : undefined,
+        event.type === "dispute.created"
+          ? "chargeback"
+          : isOrder && obj
+            ? (STATUS_MAP[obj.status] ?? undefined)
+            : undefined,
       amountCents: obj?.amount,
       raw: event,
     };

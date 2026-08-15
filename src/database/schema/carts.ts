@@ -38,6 +38,7 @@ export const carts = pgTable(
     currency: text("currency").default("BRL").notNull(),
     totalCents: bigint("total_cents", { mode: "number" }).default(0).notNull(),
     utm: jsonb("utm").default({}).notNull(),
+    lastUtm: jsonb("last_utm").default({}).notNull(),
     recoveredAt: timestamp("recovered_at", { withTimezone: true }),
     abandonedAt: timestamp("abandoned_at", { withTimezone: true }),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true })

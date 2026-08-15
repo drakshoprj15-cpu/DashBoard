@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude local settings (pode conter credenciais usadas em comandos)
 .claude/settings.local.json
+
+.vercel
+.env*

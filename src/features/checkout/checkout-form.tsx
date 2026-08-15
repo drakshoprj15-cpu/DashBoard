@@ -41,6 +41,8 @@ interface CheckoutFormProps {
   theme: CheckoutTheme;
   /** UTMs capturadas da URL de entrada, resolvidas no server component pai. */
   utm: {
+    src: string;
+    sck: string;
     utmSource: string;
     utmMedium: string;
     utmCampaign: string;
@@ -336,6 +338,8 @@ export function CheckoutForm({
         <input type="hidden" name="quantity" value={effectiveQuantity} />
         <input type="hidden" name="paymentMethod" value={method} />
         <input type="hidden" name="shippingMethodId" value={shippingMethodId} />
+        <input type="hidden" name="src" value={utm.src} />
+        <input type="hidden" name="sck" value={utm.sck} />
         <input type="hidden" name="utmSource" value={utm.utmSource} />
         <input type="hidden" name="utmMedium" value={utm.utmMedium} />
         <input type="hidden" name="utmCampaign" value={utm.utmCampaign} />

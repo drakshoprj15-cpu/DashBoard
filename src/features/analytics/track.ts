@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { analyticsEvents, visitorSessions } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { sanitizeAttribution } from "@/features/attribution/utm";
 
 /** Eventos aceitos pelo endpoint público de rastreamento. */
 export const TRACK_EVENTS = [
@@ -102,6 +103,7 @@ export async function recordTrackEvent(
   const workspaceId = await getOrCreateDefaultWorkspace();
   const { deviceType, browser, os } = parseUserAgent(ctx.userAgent);
   const now = new Date();
+  const incomingUtm = sanitizeAttribution(input.utm);
 
   // Sessão: cria na primeira visita, atualiza nas seguintes.
   const [session] = await db
@@ -112,7 +114,8 @@ export async function recordTrackEvent(
       firstPage: input.page,
       currentPage: input.page,
       referrer: input.referrer,
-      utm: input.utm ?? {},
+      utm: incomingUtm,
+      lastUtm: incomingUtm,
       deviceType,
       browser,
       os,
@@ -135,6 +138,7 @@ export async function recordTrackEvent(
             ? sql`${visitorSessions.pageViews} + 1`
             : sql`${visitorSessions.pageViews}`,
         durationSeconds: sql`greatest(0, extract(epoch from (${now.toISOString()}::timestamptz - ${visitorSessions.createdAt}))::int)`,
+        lastUtm: sql`coalesce(${visitorSessions.lastUtm}, '{}'::jsonb) || ${JSON.stringify(incomingUtm)}::jsonb`,
       },
     })
     .returning({ id: visitorSessions.id });

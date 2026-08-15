@@ -13,18 +13,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export function PixelTabs({
   general,
   meta,
+  utmify,
 }: {
   general: ReactNode;
   meta: ReactNode;
+  utmify: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") === "meta" ? "meta" : "geral";
+  const requestedTab = searchParams.get("tab");
+  const activeTab = requestedTab === "meta" || requestedTab === "utmify" ? requestedTab : "geral";
 
   function handleChange(value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === "meta") params.set("tab", "meta");
+    if (value === "meta" || value === "utmify") params.set("tab", value);
     else params.delete("tab");
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
@@ -34,12 +37,16 @@ export function PixelTabs({
       <TabsList>
         <TabsTrigger value="geral">Geral</TabsTrigger>
         <TabsTrigger value="meta">Meta</TabsTrigger>
+        <TabsTrigger value="utmify">UTMify</TabsTrigger>
       </TabsList>
       <TabsContent value="geral" className="space-y-6 pt-4">
         {general}
       </TabsContent>
       <TabsContent value="meta" className="space-y-6 pt-4">
         {meta}
+      </TabsContent>
+      <TabsContent value="utmify" className="space-y-6 pt-4">
+        {utmify}
       </TabsContent>
     </Tabs>
   );

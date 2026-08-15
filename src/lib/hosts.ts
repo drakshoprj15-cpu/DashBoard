@@ -51,6 +51,9 @@ const STORE_PREFIXES = [
   "/p/",
   "/lp/",
   "/pay/",
+  // Links de pagamento: o cliente paga no domínio próprio do workspace, sem
+  // nunca ver o endereço do painel.
+  "/pagar/",
   "/checkout/",
   "/loja",
   "/legal/",

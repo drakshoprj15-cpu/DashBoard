@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { getSession } from "@/lib/auth/session";
 import { getDb, isDatabaseConfigured } from "@/database/client";
@@ -13,6 +13,8 @@ import {
   ORDER_STATUS_BY_PAYMENT_STATUS,
 } from "@/features/carts/status";
 import { recordAuditLog } from "@/features/audit/log";
+import { requireCustomerPermission } from "@/features/customers/access";
+import { enqueueUtmifyOrderUpdate, scheduleUtmifyDeliveries } from "@/features/pixels/utmify";
 
 export const dynamic = "force-dynamic";
 
@@ -51,11 +53,12 @@ export async function POST(
 
   const { orderId } = await ctx.params;
   const db = getDb();
+  const { workspaceId } = await requireCustomerPermission("edit");
 
   const [orderRow] = await db
     .select()
     .from(orders)
-    .where(eq(orders.id, orderId))
+    .where(and(eq(orders.id, orderId), eq(orders.workspaceId, workspaceId)))
     .limit(1);
   if (!orderRow) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -64,7 +67,7 @@ export async function POST(
   const [paymentRow] = await db
     .select()
     .from(payments)
-    .where(eq(payments.orderId, orderId))
+    .where(and(eq(payments.orderId, orderId), eq(payments.workspaceId, workspaceId)))
     .orderBy(desc(payments.createdAt))
     .limit(1);
 
@@ -133,6 +136,8 @@ export async function POST(
       .set({
         status: newOrderStatus as (typeof orders.$inferInsert)["status"],
         paidAt: result.status === "approved" ? now : orderRow.paidAt,
+        refundedAt: result.status === "refunded" ? now : orderRow.refundedAt,
+        chargebackAt: result.status === "chargeback" ? now : orderRow.chargebackAt,
         updatedAt: now,
       })
       .where(eq(orders.id, orderId));
@@ -149,6 +154,12 @@ export async function POST(
       metadata: { source: "manual_sync", providerKey: "broski" },
     });
     orderStatusChanged = true;
+    const deliveryIds = await enqueueUtmifyOrderUpdate(
+      workspaceId,
+      orderId,
+      newOrderStatus,
+    );
+    scheduleUtmifyDeliveries(deliveryIds);
   }
 
   await recordAuditLog({

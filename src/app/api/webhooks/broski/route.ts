@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
@@ -9,17 +9,24 @@ import {
   orderItems,
   orderStatusHistory,
   orders,
+  paymentLinkEvents,
+  paymentLinks,
+  paymentProviderAccounts,
+  paymentProviders,
   payments,
   paymentWebhooks,
   payouts,
 } from "@/database/schema";
 import { createBroskiProvider } from "@/payment-providers/broski";
+import { decryptSecret } from "@/lib/crypto";
 import {
   buildPurchaseEventId,
   sendPurchaseToMetaCapi,
 } from "@/features/pixels/meta-capi";
-import { sendOrderToUtmify } from "@/features/pixels/utmify";
-import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import {
+  enqueueUtmifyOrderUpdate,
+  scheduleUtmifyDeliveries,
+} from "@/features/pixels/utmify";
 import { dispatchWebhookEvent } from "@/features/webhooks/dispatch";
 import {
   applyPaidOrderStock,
@@ -47,6 +54,78 @@ const NOTIFICATION_BY_STATUS: Record<
   chargeback: { eventType: "chargeback", title: "Chargeback aberto" },
 };
 
+interface WebhookVerifier {
+  provider: ReturnType<typeof createBroskiProvider>;
+  workspaceId: string | null;
+  providerAccountId: string | null;
+}
+
+/**
+ * Encontra o segredo que realmente pertence ao workspace. O payload é lido
+ * apenas para priorizar uma conta; nada dele é confiado antes do HMAC passar.
+ */
+async function resolveWebhookVerifier(
+  request: Request,
+  rawBody: string,
+): Promise<WebhookVerifier | null> {
+  const db = getDb();
+  const accounts = await db
+    .select({
+      id: paymentProviderAccounts.id,
+      workspaceId: paymentProviderAccounts.workspaceId,
+      environment: paymentProviderAccounts.environment,
+      encryptedCredentials: paymentProviderAccounts.encryptedCredentials,
+    })
+    .from(paymentProviderAccounts)
+    .innerJoin(
+      paymentProviders,
+      eq(paymentProviders.id, paymentProviderAccounts.providerId),
+    )
+    .where(
+      and(
+        eq(paymentProviders.key, "broski"),
+        eq(paymentProviderAccounts.isActive, true),
+      ),
+    )
+    .limit(100);
+
+  for (const account of accounts) {
+    try {
+      if (!account.encryptedCredentials) continue;
+      const credentials = JSON.parse(
+        decryptSecret(account.encryptedCredentials),
+      ) as { apiKey?: string; webhookSecret?: string };
+      if (!credentials.apiKey || !credentials.webhookSecret) continue;
+      const provider = createBroskiProvider({
+        environment: account.environment,
+        apiKey: credentials.apiKey,
+        webhookSecret: credentials.webhookSecret,
+      });
+      if (await provider.verifyWebhookSignature(request, rawBody)) {
+        return {
+          provider,
+          workspaceId: account.workspaceId,
+          providerAccountId: account.id,
+        };
+      }
+    } catch {
+      // Uma credencial antiga não impede testar as outras contas.
+    }
+  }
+
+  const apiKey = process.env.BROSKI_API_KEY;
+  const webhookSecret = process.env.BROSKI_WEBHOOK_SECRET;
+  if (!apiKey || !webhookSecret) return null;
+  const provider = createBroskiProvider({
+    environment: "production",
+    apiKey,
+    webhookSecret,
+  });
+  return (await provider.verifyWebhookSignature(request, rawBody))
+    ? { provider, workspaceId: null, providerAccountId: null }
+    : null;
+}
+
 /**
  * Webhook do Broski (POST https://<dominio>/api/webhooks/broski).
  *
@@ -59,37 +138,25 @@ const NOTIFICATION_BY_STATUS: Record<
  * Ativação: registrar a URL no painel Broski e definir BROSKI_WEBHOOK_SECRET.
  */
 export async function POST(request: Request) {
-  if (!process.env.BROSKI_API_KEY || !isDatabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
-  if (!process.env.BROSKI_WEBHOOK_SECRET) {
-    // Sem segredo não há como validar autenticidade — rejeitar sempre.
-    return NextResponse.json(
-      { error: "webhook_secret_missing" },
-      { status: 503 },
-    );
-  }
-
-  const provider = createBroskiProvider({
-    environment: "production",
-    apiKey: process.env.BROSKI_API_KEY,
-    webhookSecret: process.env.BROSKI_WEBHOOK_SECRET,
-  });
 
   const rawBody = await request.text();
-
-  const valid = await provider.verifyWebhookSignature(request, rawBody);
-  if (!valid) {
+  const verifier = await resolveWebhookVerifier(request, rawBody);
+  if (!verifier) {
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
   }
 
-  const event = await provider.parseWebhook(rawBody);
+  const event = await verifier.provider.parseWebhook(rawBody);
   const db = getDb();
 
   // Deduplicação: unique (provider_key, external_event_id)
   const inserted = await db
     .insert(paymentWebhooks)
     .values({
+      workspaceId: verifier.workspaceId,
+      providerAccountId: verifier.providerAccountId,
       providerKey: "broski",
       externalEventId: event.externalEventId,
       eventType: event.type,
@@ -99,9 +166,55 @@ export async function POST(request: Request) {
     .onConflictDoNothing()
     .returning({ id: paymentWebhooks.id });
 
-  if (inserted.length === 0) {
-    // Evento já processado anteriormente
-    return NextResponse.json({ received: true, duplicate: true });
+  let webhookId = inserted[0]?.id;
+  if (!webhookId) {
+    const [existing] = await db
+      .select({
+        id: paymentWebhooks.id,
+        processedAt: paymentWebhooks.processedAt,
+        processingError: paymentWebhooks.processingError,
+        updatedAt: paymentWebhooks.updatedAt,
+      })
+      .from(paymentWebhooks)
+      .where(
+        and(
+          eq(paymentWebhooks.providerKey, "broski"),
+          eq(paymentWebhooks.externalEventId, event.externalEventId),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      return NextResponse.json(
+        { error: "deduplication_failed" },
+        { status: 500 },
+      );
+    }
+    if (existing.processedAt) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    webhookId = existing.id;
+  }
+
+  const staleBefore = new Date(Date.now() - 2 * 60_000);
+  const claimed = await db
+    .update(paymentWebhooks)
+    .set({ processingError: "processing", updatedAt: new Date() })
+    .where(
+      and(
+        eq(paymentWebhooks.id, webhookId),
+        isNull(paymentWebhooks.processedAt),
+        or(
+          isNull(paymentWebhooks.processingError),
+          lt(paymentWebhooks.updatedAt, staleBefore),
+        ),
+      ),
+    )
+    .returning({ id: paymentWebhooks.id });
+  if (claimed.length === 0) {
+    return NextResponse.json(
+      { received: true, processing: true },
+      { status: 202 },
+    );
   }
 
   if (event.paymentExternalId && event.status) {
@@ -116,62 +229,69 @@ export async function POST(request: Request) {
       const now = new Date();
       let statusTransitionApplied = false;
 
-      await db
-        .update(payments)
-        .set({
-          status: event.status,
-          approvedAt: event.status === "approved" ? now : undefined,
-          updatedAt: now,
-        })
-        .where(eq(payments.id, paymentId));
+      await db.transaction(async (tx) => {
+        // Eventos diferentes do mesmo pagamento também são serializados.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${paymentId}))`,
+        );
 
-      const newOrderStatus = ORDER_STATUS_BY_PAYMENT_STATUS[event.status];
-      if (newOrderStatus) {
-        const [currentOrder] = await db
-          .select({ status: orders.status, workspaceId: orders.workspaceId })
-          .from(orders)
-          .where(eq(orders.id, orderId))
-          .limit(1);
+        await tx
+          .update(payments)
+          .set({
+            status: event.status,
+            approvedAt: event.status === "approved" ? now : undefined,
+            updatedAt: now,
+          })
+          .where(eq(payments.id, paymentId));
 
-        // Entrega at-least-once + eventos fora de ordem: nunca rebaixa um
-        // pedido já confirmado (ex.: "processing" atrasado chegando depois
-        // de "approved" não pode reverter um pedido pago).
-        if (
-          currentOrder &&
-          canTransitionOrderStatus(currentOrder.status, newOrderStatus)
-        ) {
-          await db
-            .update(orders)
-            .set({
-              status: newOrderStatus as (typeof orders.$inferInsert)["status"],
-              paidAt: event.status === "approved" ? now : undefined,
-              updatedAt: now,
-            })
-            .where(eq(orders.id, orderId));
+        const newOrderStatus = ORDER_STATUS_BY_PAYMENT_STATUS[event.status!];
+        if (newOrderStatus) {
+          const [currentOrder] = await tx
+            .select({ status: orders.status, workspaceId: orders.workspaceId })
+            .from(orders)
+            .where(eq(orders.id, orderId))
+            .limit(1);
 
-          await db.insert(orderStatusHistory).values({
-            workspaceId: currentOrder.workspaceId,
-            orderId,
-            fromStatus:
-              currentOrder.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
-            toStatus:
-              newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
-            reason: `Webhook Broski: ${event.type}`,
-            changedBy: null,
-            metadata: {
-              source: "webhook",
-              providerKey: "broski",
-              eventType: event.type,
-            },
-          });
-          statusTransitionApplied = true;
+          if (
+            currentOrder &&
+            canTransitionOrderStatus(currentOrder.status, newOrderStatus)
+          ) {
+            await tx
+              .update(orders)
+              .set({
+                status:
+                  newOrderStatus as (typeof orders.$inferInsert)["status"],
+                paidAt: event.status === "approved" ? now : undefined,
+                refundedAt: event.status === "refunded" ? now : undefined,
+                chargebackAt: event.status === "chargeback" ? now : undefined,
+                updatedAt: now,
+              })
+              .where(eq(orders.id, orderId));
+
+            await tx.insert(orderStatusHistory).values({
+              workspaceId: currentOrder.workspaceId,
+              orderId,
+              fromStatus:
+                currentOrder.status as (typeof orderStatusHistory.$inferInsert)["fromStatus"],
+              toStatus:
+                newOrderStatus as (typeof orderStatusHistory.$inferInsert)["toStatus"],
+              reason: `Webhook Broski: ${event.type}`,
+              changedBy: null,
+              metadata: {
+                source: "webhook",
+                providerKey: "broski",
+                eventType: event.type,
+              },
+            });
+            statusTransitionApplied = true;
+          }
         }
-      }
 
-      await db
-        .update(paymentWebhooks)
-        .set({ processedAt: now, paymentId })
-        .where(eq(paymentWebhooks.id, inserted[0].id));
+        await tx
+          .update(paymentWebhooks)
+          .set({ processedAt: now, paymentId, processingError: null })
+          .where(eq(paymentWebhooks.id, webhookId));
+      });
 
       // Efeitos posteriores (Meta CAPI, notificação in-app) nunca podem
       // impedir a resposta 2xx ao Broski: sem 2xx ele reenvia por ~24h, e o
@@ -184,6 +304,8 @@ export async function POST(request: Request) {
             totalCents: orders.totalCents,
             currency: orders.currency,
             customerId: orders.customerId,
+            paymentLinkId: orders.paymentLinkId,
+            paymentLinkPixelEnabled: paymentLinks.metaPixelEnabled,
             status: orders.status,
             createdAt: orders.createdAt,
             paidAt: orders.paidAt,
@@ -194,10 +316,34 @@ export async function POST(request: Request) {
             clientUserAgent: orders.clientUserAgent,
           })
           .from(orders)
+          .leftJoin(paymentLinks, eq(paymentLinks.id, orders.paymentLinkId))
           .where(eq(orders.id, orderId))
           .limit(1);
 
         if (orderRow) {
+          // Funil do link de pagamento: o desfecho é registado aqui, com o
+          // status real do gateway — nunca no clique do comprador. Só numa
+          // transição efetiva, para que uma reentrega do mesmo evento não
+          // conte o pagamento duas vezes no relatório.
+          if (orderRow.paymentLinkId && statusTransitionApplied) {
+            const LINK_EVENT_BY_STATUS: Partial<Record<string, string>> = {
+              approved: "payment_paid",
+              refused: "payment_failed",
+              expired: "payment_failed",
+            };
+            const linkEvent = LINK_EVENT_BY_STATUS[event.status];
+            if (linkEvent) {
+              await db.insert(paymentLinkEvents).values({
+                workspaceId: orderRow.workspaceId,
+                paymentLinkId: orderRow.paymentLinkId,
+                orderId,
+                type: linkEvent,
+                valueCents: orderRow.totalCents,
+                metadata: { provider: "broski", eventType: event.type },
+              });
+            }
+          }
+
           if (orderRow.customerId && statusTransitionApplied) {
             const activityType =
               event.status === "approved"
@@ -263,7 +409,7 @@ export async function POST(request: Request) {
             chargeback: { type: "chargeback", direction: "out" },
           };
           const ledgerPlan = LEDGER_ENTRY_BY_STATUS[event.status];
-          if (ledgerPlan) {
+          if (ledgerPlan && statusTransitionApplied) {
             await db.insert(ledgerEntries).values({
               workspaceId: orderRow.workspaceId,
               type: ledgerPlan.type,
@@ -311,9 +457,8 @@ export async function POST(request: Request) {
                 .limit(1)
             : [undefined];
 
-          // Reporta o pedido à UTMify (atribuição de vendas a campanhas).
-          // Diferente da Meta CAPI, todo status relevante é reportado, não
-          // só aprovado — a UTMify quer acompanhar o funil completo.
+          // Os dados são lidos de novo pelo worker da outbox. Aqui só
+          // persistimos a entrega; a chamada HTTP nunca bloqueia o webhook.
           const itemRows = await db
             .select({
               productId: orderItems.productId,
@@ -326,46 +471,24 @@ export async function POST(request: Request) {
             .from(orderItems)
             .where(eq(orderItems.orderId, orderId));
 
-          await sendOrderToUtmify({
-            workspaceId: orderRow.workspaceId,
-            orderId,
-            reference: orderRow.reference,
-            orderStatus: orderRow.status,
-            totalCents: orderRow.totalCents,
-            currency: orderRow.currency,
-            createdAt: orderRow.createdAt,
-            paidAt: orderRow.paidAt,
-            customer: customerRow
-              ? {
-                  name: [customerRow.firstName, customerRow.lastName]
-                    .filter(Boolean)
-                    .join(" "),
-                  email: customerRow.email,
-                  phone: customerRow.phone,
-                  document: customerRow.document,
-                  country: customerRow.country,
-                }
-              : undefined,
-            items: itemRows.map((item) => ({
-              id: item.productId,
-              // A variação comprada aparece no nome do produto reportado —
-              // relatório de campanha mostrando "Cadeira — Rosa", não só
-              // "Cadeira".
-              name: item.variantName
-                ? `${item.productName} — ${item.variantName}`
-                : item.productName,
-              quantity: item.quantity,
-              unitPriceCents: item.unitPriceCents,
-            })),
-            utm: (orderRow.utm as Record<string, string> | null) ?? null,
-          });
+          if (statusTransitionApplied) {
+            const deliveryIds = await enqueueUtmifyOrderUpdate(
+              orderRow.workspaceId,
+              orderId,
+              orderRow.status,
+            );
+            scheduleUtmifyDeliveries(deliveryIds);
+          }
 
           // Purchase pelo pagamento aprovado. Sempre tenta enviar — se o
           // checkout já enviou este pedido como "generated_order", o índice
           // único (pixelId, eventId, channel) em pixel_events bloqueia
           // silenciosamente um segundo envio, sem precisar checar a regra
           // aqui de novo.
-          if (event.status === "approved") {
+          if (
+            event.status === "approved" &&
+            orderRow.paymentLinkPixelEnabled !== false
+          ) {
             const landingPageId =
               (orderRow.utm as Record<string, string> | null)?.lp ?? null;
 
@@ -373,6 +496,7 @@ export async function POST(request: Request) {
               workspaceId: orderRow.workspaceId,
               orderId,
               landingPageId,
+              paymentLinkId: orderRow.paymentLinkId,
               eventId: buildPurchaseEventId(orderId),
               triggerType: "payment_approved",
               valueCents: orderRow.totalCents,
@@ -430,6 +554,15 @@ export async function POST(request: Request) {
           error,
         );
       }
+    } else {
+      await db
+        .update(paymentWebhooks)
+        .set({ processingError: "payment_not_found", updatedAt: new Date() })
+        .where(eq(paymentWebhooks.id, webhookId));
+      return NextResponse.json(
+        { error: "payment_not_found_retry" },
+        { status: 503 },
+      );
     }
   } else if (event.type === "payout.paid") {
     // Suporte defensivo: a Broski documenta este evento (docs/PAYMENTS.md),
@@ -466,12 +599,18 @@ export async function POST(request: Request) {
         null;
 
       if (typeof amountCents === "number") {
-        const workspaceId = await getOrCreateDefaultWorkspace();
+        const workspaceId = verifier.workspaceId;
+        if (!workspaceId) {
+          throw new Error(
+            "Payout assinado pela credencial global sem workspace associado.",
+          );
+        }
 
         await db
           .insert(payouts)
           .values({
             workspaceId,
+            providerAccountId: verifier.providerAccountId,
             externalId,
             status: "paid",
             amountCents,
@@ -492,18 +631,31 @@ export async function POST(request: Request) {
           });
       } else {
         console.error(
-          "[webhook/broski] evento payout.paid sem valor reconhecível — payload:",
-          JSON.stringify(payoutObject),
+          "[webhook/broski] evento payout.paid sem valor reconhecível.",
         );
       }
 
       await db
         .update(paymentWebhooks)
-        .set({ processedAt: new Date() })
-        .where(eq(paymentWebhooks.id, inserted[0].id));
+        .set({ processedAt: new Date(), processingError: null })
+        .where(eq(paymentWebhooks.id, webhookId));
     } catch (error) {
       console.error("[webhook/broski] erro ao processar payout.paid:", error);
+      await db
+        .update(paymentWebhooks)
+        .set({
+          processingError:
+            error instanceof Error ? error.name.slice(0, 120) : "payout_error",
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentWebhooks.id, webhookId));
+      return NextResponse.json({ error: "processing_failed" }, { status: 500 });
     }
+  } else {
+    await db
+      .update(paymentWebhooks)
+      .set({ processedAt: new Date(), processingError: null })
+      .where(eq(paymentWebhooks.id, webhookId));
   }
 
   return NextResponse.json({ received: true });

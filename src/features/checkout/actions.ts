@@ -8,6 +8,8 @@ import {
 } from "@/features/shipping/queries";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
+  cartItems,
+  carts,
   customerActivities,
   customers,
   orderItems,
@@ -15,6 +17,8 @@ import {
   payments,
   products,
 } from "@/database/schema";
+import { resolveCheckoutAttribution } from "@/features/attribution/server";
+import { enqueueUtmifyOrderUpdate, scheduleUtmifyDeliveries } from "@/features/pixels/utmify";
 import {
   normalizeEmail,
   normalizePhone,
@@ -91,6 +95,8 @@ export async function submitCheckoutAction(
     productSlug: formData.get("productSlug"),
     variantId: formData.get("variantId") ?? "",
     shippingMethodId: formData.get("shippingMethodId") ?? "",
+    src: formData.get("src") ?? "",
+    sck: formData.get("sck") ?? "",
     utmSource: formData.get("utmSource") ?? "",
     utmMedium: formData.get("utmMedium") ?? "",
     utmCampaign: formData.get("utmCampaign") ?? "",
@@ -192,6 +198,8 @@ export async function submitCheckoutAction(
   // Só guarda as chaves realmente preenchidas — nunca um objeto com strings
   // vazias, que poluiria a leitura de "pedido sem origem de campanha".
   const utm: Record<string, string> = {};
+  if (data.src) utm.src = data.src;
+  if (data.sck) utm.sck = data.sck;
   if (data.utmSource) utm.utm_source = data.utmSource;
   if (data.utmMedium) utm.utm_medium = data.utmMedium;
   if (data.utmCampaign) utm.utm_campaign = data.utmCampaign;
@@ -205,6 +213,7 @@ export async function submitCheckoutAction(
 
   try {
     const workspaceId = await getOrCreateDefaultWorkspace();
+    const attribution = await resolveCheckoutAttribution(workspaceId, utm);
     const normalizedEmail =
       normalizeEmail(data.email) ?? data.email.toLowerCase();
     const normalizedPhone = phone ? normalizePhone(phone) : null;
@@ -288,12 +297,39 @@ export async function submitCheckoutAction(
       )
       .limit(1);
 
+    const [cart] = await db
+      .insert(carts)
+      .values({
+        workspaceId,
+        customerId,
+        sessionId: attribution.sessionId,
+        status: "active",
+        email: normalizedEmail,
+        phone,
+        currency: "EUR",
+        totalCents: total,
+        utm: attribution.first,
+        lastUtm: attribution.last,
+      })
+      .returning({ id: carts.id });
+    if (productRow) {
+      await db.insert(cartItems).values({
+        workspaceId,
+        cartId: cart.id,
+        productId: productRow.id,
+        variantId: chosenVariant?.id ?? null,
+        quantity: data.quantity,
+        unitPriceCents,
+      });
+    }
+
     const [order] = await db
       .insert(orders)
       .values({
         workspaceId,
         reference,
         customerId,
+        cartId: cart.id,
         status: "created",
         currency: "EUR",
         subtotalCents: subtotal,
@@ -303,7 +339,8 @@ export async function submitCheckoutAction(
         shippingMethod: selectedShippingMethod?.name,
         origin: data.landingPageId ? "landing_page" : "checkout",
         countryCode: "PT",
-        utm,
+        utm: attribution.first,
+        lastUtm: attribution.last,
       })
       .returning({ id: orders.id });
 
@@ -391,6 +428,18 @@ export async function submitCheckoutAction(
       .update(orders)
       .set({ status: "awaiting_payment", updatedAt: new Date() })
       .where(eq(orders.id, order.id));
+
+    await db
+      .update(carts)
+      .set({ status: "converted", recoveredAt: new Date(), updatedAt: new Date() })
+      .where(eq(carts.id, cart.id));
+
+    const utmifyDeliveries = await enqueueUtmifyOrderUpdate(
+      workspaceId,
+      order.id,
+      "awaiting_payment",
+    );
+    scheduleUtmifyDeliveries(utmifyDeliveries);
 
     // "Venda gerada": o pedido existe e o pagamento foi iniciado, mas ainda
     // não está confirmado. A confirmação vem só pelo webhook. Falha aqui

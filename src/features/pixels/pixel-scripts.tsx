@@ -21,6 +21,8 @@ interface PixelScriptsProps {
   landingPageId?: string | null;
   /** GTM/GA4/Ads/TikTok globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
   includeOtherGlobals?: boolean;
+  workspaceId?: string;
+  target?: { type: string; id: string };
 }
 
 /**
@@ -38,10 +40,14 @@ export async function PixelScripts({
   content,
   landingPageId,
   includeOtherGlobals = true,
+  workspaceId,
+  target,
 }: PixelScriptsProps) {
   const active = await getActivePixelsForPublic(
     landingPageId,
     includeOtherGlobals,
+    workspaceId,
+    target,
   );
   if (active.length === 0) return null;
 
