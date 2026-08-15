@@ -55,6 +55,24 @@ const SORT_OPTIONS = [
   ["approval_desc", "Maior taxa de aprovação"],
 ] as const;
 
+const CUSTOMER_TYPE_LABELS: Record<string, string> = {
+  imported_paid: "Pagos informados",
+  imported_pending: "Pendentes informados",
+  buyer: "Compradores confirmados",
+  lead: "Leads sem situação",
+  abandoned: "Carrinhos abandonados",
+  checkout: "Checkout iniciado",
+  recurring: "Recorrentes",
+  pending: "Pedidos reais pendentes",
+  refused: "Pagamentos recusados",
+  no_purchase: "Clientes sem compra confirmada",
+};
+
+function activeFilterLabel(key: string, value: string): string {
+  if (key === "type") return CUSTOMER_TYPE_LABELS[value] ?? value;
+  return `${key}: ${value}`;
+}
+
 function selectClass() {
   return "border-input bg-background h-9 rounded-md border px-2.5 text-xs shadow-xs outline-none focus:ring-2 focus:ring-ring/40";
 }
@@ -375,7 +393,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 2xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <StatCard
           label="Total de contatos"
           value={formatNumber(stats?.totalContacts ?? 0)}
@@ -810,7 +828,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                   className="bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px]"
                   onClick={() => updateParams({ [key]: "" })}
                 >
-                  {key}: {value} <X className="size-3" />
+                  {activeFilterLabel(key, value)} <X className="size-3" />
                 </button>
               ))}
             </div>
