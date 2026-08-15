@@ -89,6 +89,16 @@ export function normalizeDocument(value: string): string | null {
   return digits.length >= 9 && digits.length <= 14 ? digits : null;
 }
 
+/** Normaliza o nome informado sem transformar a importação num pedido real. */
+export function normalizeImportedProductName(value: string): string | null {
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized || normalized.length > 160) return null;
+  return normalized;
+}
+
 export interface CustomerIdentityCandidate {
   id: string;
   email?: string | null;

@@ -991,6 +991,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
         open={importOpen}
         onOpenChange={setImportOpen}
         onImported={() => setRefreshToken((token) => token + 1)}
+        products={products}
       />
       <ExportCustomersDialog
         open={exportOpen}

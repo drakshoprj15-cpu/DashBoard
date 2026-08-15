@@ -8,6 +8,7 @@ import {
   Mail,
   MessageCircle,
   MoreHorizontal,
+  Package2,
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -117,6 +118,34 @@ function StatusBadges({ statuses }: { statuses: CustomerStatusTag[] }) {
   );
 }
 
+function ProductCell({ row }: { row: CustomerListRow }) {
+  if (row.productNames.length === 0) {
+    return (
+      <span className="text-muted-foreground text-xs">
+        Produto não informado
+      </span>
+    );
+  }
+  const label = row.productNames.join(" · ");
+  return (
+    <div className="flex max-w-[230px] items-start gap-2">
+      <span className="bg-primary/8 text-primary mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
+        <Package2 className="size-3.5" />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium" title={label}>
+          {label}
+        </p>
+        <p className="text-muted-foreground text-[10px]">
+          {row.productSource === "order"
+            ? "Confirmado pelo pedido"
+            : "Informado na importação"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function RowActions({
   row,
   onOpen,
@@ -197,6 +226,7 @@ export function CustomersTable({
               <TableHead>E-mail</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Produto</TableHead>
               <TableHead className="text-right">Pedidos</TableHead>
               <TableHead className="text-right">Total gasto</TableHead>
               <TableHead>Última atividade</TableHead>
@@ -291,6 +321,9 @@ export function CustomersTable({
                 <TableCell>
                   <StatusBadges statuses={row.statuses} />
                 </TableCell>
+                <TableCell>
+                  <ProductCell row={row} />
+                </TableCell>
                 <TableCell className="text-right">
                   <span className="font-medium">
                     {formatNumber(row.orderCount)}
@@ -359,6 +392,7 @@ export function CustomersTable({
               </div>
             </div>
             <StatusBadges statuses={row.statuses} />
+            <ProductCell row={row} />
             <dl className="grid grid-cols-3 gap-2 text-xs">
               <div>
                 <dt className="text-muted-foreground">Pedidos</dt>

@@ -52,6 +52,8 @@ export async function POST(request: Request) {
       "País",
       "Origem",
       "Tipos",
+      "Produto",
+      "Origem do produto",
       "Pedidos",
       "Pedidos pagos",
       "Total gasto (centavos)",
@@ -72,6 +74,12 @@ export async function POST(request: Request) {
           row.country,
           row.source,
           row.statuses.map((status) => status.label).join(" | "),
+          row.productNames.join(" | "),
+          row.productSource === "order"
+            ? "Pedido"
+            : row.productSource === "import"
+              ? "Importação"
+              : "Não informado",
           row.orderCount,
           row.paidCount,
           row.totalSpentCents,
