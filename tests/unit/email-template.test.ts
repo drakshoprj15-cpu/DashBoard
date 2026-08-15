@@ -78,6 +78,9 @@ describe("email campaign template", () => {
     expect(html).toContain("Sua Empresa");
     expect(html).toContain("<strong>Artigo:</strong> O seu Produto");
     expect(html).toContain("Continuar para o Pagamento");
+    expect(html).toContain(
+      "Se o botão não funcionar, copie e cole o seguinte endereço na barra do navegador:",
+    );
     expect(html).toContain('href="https://suaempresa.site/pagar/6bzge2a64e"');
   });
 

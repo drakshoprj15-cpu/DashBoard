@@ -150,6 +150,9 @@ export function CampaignForm({
   const [ctaUrl, setCtaUrl] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
   );
+  const [fallbackText, setFallbackText] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.fallbackText,
+  );
   const [previewRecipientId, setPreviewRecipientId] = React.useState(
     pendingRecipients[0]?.id ?? "",
   );
@@ -234,6 +237,7 @@ export function CampaignForm({
     articleName,
     ctaLabel,
     ctaUrl,
+    fallbackText,
     vars: previewVars,
   });
 
@@ -821,6 +825,23 @@ export function CampaignForm({
                       />
                     </div>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fallbackText">
+                    Texto do link alternativo
+                  </Label>
+                  <Input
+                    id="fallbackText"
+                    name="fallbackText"
+                    value={fallbackText}
+                    onChange={(event) => setFallbackText(event.target.value)}
+                    maxLength={240}
+                    required
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    O endereço mostrado abaixo deste texto acompanha sempre o
+                    Link do botão.
+                  </p>
                 </div>
               </div>
 
