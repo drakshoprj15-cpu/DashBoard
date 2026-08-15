@@ -13,6 +13,8 @@ import {
   requireCustomerPermission,
 } from "@/features/customers/access";
 import {
+  isCustomerImportClassification,
+  mergeCustomerImportTags,
   normalizeDocument,
   normalizeEmail,
   normalizePhone,
@@ -109,6 +111,14 @@ export async function POST(request: Request) {
       );
     const formData = await request.formData();
     const file = formData.get("file");
+    const requestedClassification = formData.get("classification") ?? "contact";
+    if (!isCustomerImportClassification(requestedClassification)) {
+      return Response.json(
+        { error: "Selecione uma classificação válida para esta lista." },
+        { status: 400 },
+      );
+    }
+    const classification = requestedClassification;
     if (!(file instanceof File)) {
       return Response.json(
         { error: "Selecione um arquivo CSV ou XLSX." },
@@ -208,6 +218,7 @@ export async function POST(request: Request) {
             normalizedEmail: customers.normalizedEmail,
             normalizedPhone: customers.normalizedPhone,
             normalizedDocument: customers.document,
+            tags: customers.tags,
           })
           .from(customers)
           .where(
@@ -236,6 +247,11 @@ export async function POST(request: Request) {
         const consent = /^(sim|yes|true|1)$/i.test(
           cellValue(row, columns.consent),
         );
+        const classifiedTags = mergeCustomerImportTags(
+          existing?.tags,
+          tags,
+          classification,
+        );
         const now = new Date();
 
         if (existing) {
@@ -248,7 +264,7 @@ export async function POST(request: Request) {
               normalizedPhone: phone || undefined,
               document: document || undefined,
               country: country || undefined,
-              tags: tags.length > 0 ? tags : undefined,
+              tags: classifiedTags,
               normalizedEmail: email,
               acceptsEmail: consent,
               marketingOptOut: !consent,
@@ -280,7 +296,7 @@ export async function POST(request: Request) {
             normalizedPhone: phone,
             document,
             country: country || null,
-            tags,
+            tags: classifiedTags,
             source: "import",
             firstSource: "import",
             acceptsEmail: consent,
@@ -305,7 +321,7 @@ export async function POST(request: Request) {
             type: "customer_imported",
             source: "import",
             createdBy: access.userId,
-            metadata: { line },
+            metadata: { line, classification },
           });
         });
         result.imported += 1;
@@ -326,6 +342,7 @@ export async function POST(request: Request) {
         imported: result.imported,
         updated: result.updated,
         invalid: result.invalid,
+        classification,
       },
       workspaceId: access.workspaceId,
       actorId: access.userId,

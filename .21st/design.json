@@ -368,6 +368,12 @@
   "decisions": [
     {
       "date": "2026-08-15",
+      "area": "customer-import-classification",
+      "decision": "Separate spreadsheet-reported paid and pending customers from processor-confirmed order states. Use compact status cards, explicit import-choice tiles, filters, and badges within the existing CRM density.",
+      "reason": "This gives operators the requested visual separation without fabricating orders, revenue, or gateway confirmation from a contact spreadsheet."
+    },
+    {
+      "date": "2026-08-15",
       "area": "payment-link-checkout",
       "decision": "Use a compact, neutral two-step checkout: customer details first, then payment method and provider-specific fields. Branding must always come from the workspace configuration and never from hardcoded third-party assets.",
       "reason": "This keeps the public payment page focused and mobile-friendly while preserving legitimate merchant-controlled branding."

@@ -13,8 +13,10 @@ import {
 } from "@/database/schema";
 import { requireCustomerPermission } from "@/features/customers/access";
 import {
+  CUSTOMER_IMPORT_STATUS_TAGS,
   activityLabel,
   buildCustomerStatuses,
+  isCustomerImportSystemTag,
   maskDocument,
   maskPhone,
 } from "@/features/customers/customer-utils";
@@ -28,6 +30,11 @@ import type {
 } from "@/features/customers/types";
 
 type RawRow = Record<string, unknown>;
+
+const IMPORTED_STATUS_JSON = {
+  paid: JSON.stringify([CUSTOMER_IMPORT_STATUS_TAGS.paid]),
+  pending: JSON.stringify([CUSTOMER_IMPORT_STATUS_TAGS.pending]),
+} as const;
 
 function numberValue(value: unknown): number {
   const parsed = Number(value ?? 0);
@@ -135,6 +142,11 @@ function customerBaseCte(workspaceId: string) {
         c.first_landing_page_id,
         c.last_landing_page_id,
         c.tags as legacy_tags,
+        case
+          when coalesce(c.tags, '[]'::jsonb) @> ${IMPORTED_STATUS_JSON.paid}::jsonb then 'paid'
+          when coalesce(c.tags, '[]'::jsonb) @> ${IMPORTED_STATUS_JSON.pending}::jsonb then 'pending'
+          else null
+        end as imported_status,
         coalesce(ts.assigned_tags, '[]'::jsonb) as assigned_tags,
         c.marketing_opt_out,
         c.accepts_email,
@@ -206,7 +218,12 @@ function filteredWhere(filters: CustomerListFilters) {
     )`);
   }
   if (filters.type === "buyer") conditions.push(sql`b.paid_count > 0`);
-  if (filters.type === "lead") conditions.push(sql`b.paid_count = 0`);
+  if (filters.type === "imported_paid")
+    conditions.push(sql`b.imported_status = 'paid'`);
+  if (filters.type === "imported_pending")
+    conditions.push(sql`b.imported_status = 'pending'`);
+  if (filters.type === "lead")
+    conditions.push(sql`b.paid_count = 0 and b.imported_status is null`);
   if (filters.type === "abandoned") conditions.push(sql`b.abandoned_carts > 0`);
   if (filters.type === "checkout")
     conditions.push(
@@ -306,6 +323,10 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
   const pendingCount = numberValue(row.pending_count);
   const refusedCount = numberValue(row.refused_count);
   const abandonedCarts = numberValue(row.abandoned_carts);
+  const importedStatus =
+    row.imported_status === "paid" || row.imported_status === "pending"
+      ? row.imported_status
+      : null;
   const totalSpentCents = numberValue(row.total_spent_cents);
   const firstName = stringValue(row.first_name);
   const lastName = stringValue(row.last_name);
@@ -330,17 +351,19 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
     state: nullableString(row.state),
     country: nullableString(row.country),
     source: stringValue(row.source, "unknown"),
+    importedStatus,
     tags: Array.from(
       new Set([
         ...stringArray(row.legacy_tags),
         ...stringArray(row.assigned_tags),
       ]),
-    ),
+    ).filter((tag) => !isCustomerImportSystemTag(tag)),
     statuses: buildCustomerStatuses({
       paidCount,
       pendingCount,
       refusedCount,
       abandonedCarts,
+      importedStatus,
     }),
     orderCount,
     paidCount,
@@ -399,7 +422,9 @@ export async function listCustomers(
       select
         count(*)::int as total_contacts,
         count(*) filter (where b.paid_count > 0)::int as buyers,
-        count(*) filter (where b.paid_count = 0)::int as leads,
+        count(*) filter (where b.imported_status = 'paid')::int as imported_paid,
+        count(*) filter (where b.imported_status = 'pending')::int as imported_pending,
+        count(*) filter (where b.paid_count = 0 and b.imported_status is null)::int as leads,
         count(*) filter (where b.abandoned_carts > 0)::int as abandoned_carts,
         count(*) filter (where b.paid_count >= 2)::int as recurring,
         count(*) filter (where b.pending_count > 0)::int as pending,
@@ -436,6 +461,8 @@ export async function listCustomers(
   const stats: CustomerStats = {
     totalContacts: numberValue(statsRow.total_contacts),
     buyers: numberValue(statsRow.buyers),
+    importedPaid: numberValue(statsRow.imported_paid),
+    importedPending: numberValue(statsRow.imported_pending),
     leads: numberValue(statsRow.leads),
     abandonedCarts: numberValue(statsRow.abandoned_carts),
     recurring: numberValue(statsRow.recurring),
