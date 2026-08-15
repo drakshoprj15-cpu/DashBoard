@@ -56,6 +56,8 @@ function campaignContent(content: unknown): CampaignTemplateContent {
       typeof value.articleName === "string" ? value.articleName : undefined,
     ctaLabel: typeof value.ctaLabel === "string" ? value.ctaLabel : undefined,
     ctaUrl: typeof value.ctaUrl === "string" ? value.ctaUrl : undefined,
+    fallbackText:
+      typeof value.fallbackText === "string" ? value.fallbackText : undefined,
   };
 }
 
@@ -156,6 +158,8 @@ export async function getEmailDashboardOverview(): Promise<EmailDashboardOvervie
             content.articleName ?? DEFAULT_CAMPAIGN_TEMPLATE.articleName,
           ctaLabel: content.ctaLabel ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
           ctaUrl: content.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
+          fallbackText:
+            content.fallbackText ?? DEFAULT_CAMPAIGN_TEMPLATE.fallbackText,
           vars: previewVars(appUrl),
         }),
         status: row.status,

@@ -58,6 +58,11 @@ const campaignSchema = z.object({
       isValidCtaUrlTemplate,
       "Use um link http(s) valido ou {{CHECKOUT_URL}}.",
     ),
+  fallbackText: z
+    .string()
+    .trim()
+    .min(3, "Escreva o texto do link alternativo")
+    .max(240),
   testEmail: z
     .string()
     .trim()
@@ -180,6 +185,7 @@ export async function sendCampaignAction(
     body: formData.get("body"),
     ctaLabel: formData.get("ctaLabel"),
     ctaUrl: formData.get("ctaUrl"),
+    fallbackText: formData.get("fallbackText"),
     testEmail: formData.get("testEmail") ?? "",
     mode: formData.get("mode"),
   });
@@ -207,6 +213,7 @@ export async function sendCampaignAction(
     body,
     ctaLabel,
     ctaUrl,
+    fallbackText,
     testEmail,
     mode,
   } = parsed.data;
@@ -228,6 +235,7 @@ export async function sendCampaignAction(
         articleName,
         ctaLabel,
         ctaUrl,
+        fallbackText,
         vars,
       }),
       replyTo: company.email,
@@ -268,7 +276,15 @@ export async function sendCampaignAction(
       preheader: preheader || null,
       fromEmail: process.env.RESEND_FROM_EMAIL,
       replyTo: company.email,
-      content: { body, headerName, title, articleName, ctaLabel, ctaUrl },
+      content: {
+        body,
+        headerName,
+        title,
+        articleName,
+        ctaLabel,
+        ctaUrl,
+        fallbackText,
+      },
       audienceFilter: { segment, customerIds: customerIds || null },
       status: "sending",
       stats: {
@@ -317,6 +333,7 @@ export async function sendCampaignAction(
             articleName,
             ctaLabel,
             ctaUrl,
+            fallbackText,
             vars,
           }),
           replyTo: company.email,

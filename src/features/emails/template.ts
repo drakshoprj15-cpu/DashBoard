@@ -8,6 +8,8 @@ export const DEFAULT_CAMPAIGN_TEMPLATE = {
   articleName: "O seu Produto",
   ctaLabel: "Continuar para o Pagamento",
   ctaUrl: "https://suaempresa.site/pagar/6bzge2a64e",
+  fallbackText:
+    "Se o botão não funcionar, copie e cole o seguinte endereço na barra do navegador:",
 } as const;
 
 export const EMAIL_VARIABLES = [
@@ -39,6 +41,7 @@ export interface CampaignTemplateContent {
   articleName?: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  fallbackText?: string;
 }
 
 const VARIABLE_ALIASES: Record<string, keyof CampaignTemplateVars> = {
@@ -113,6 +116,7 @@ export function buildCampaignHtml(input: {
   articleName?: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  fallbackText?: string;
   vars: CampaignTemplateVars;
 }): string {
   const renderedBody = renderCampaignText(input.body, input.vars);
@@ -150,11 +154,15 @@ export function buildCampaignHtml(input: {
     input.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
     input.vars,
   );
+  const fallbackText = renderCampaignText(
+    input.fallbackText ?? DEFAULT_CAMPAIGN_TEMPLATE.fallbackText,
+    input.vars,
+  );
   const hasCtaUrl = validHttpUrl(ctaUrl);
   const checkoutButton = hasCtaUrl
     ? `<p style="margin:26px 0 18px;line-height:1.65">Para prosseguirmos com o pedido, confirme os seus dados atraves do botao abaixo:</p>
 <div style="margin:0 0 28px;text-align:center"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#cc0000;color:#ffffff;text-decoration:none;padding:15px 28px;border-radius:4px;font-weight:700">${escapeHtml(ctaLabel)}</a></div>
-<p style="margin:0 0 26px;line-height:1.55;color:#4b5563;font-size:12px">Se o botao nao funcionar, copie e cole o seguinte endereco na barra do navegador:<br><a href="${escapeHtml(ctaUrl)}" style="color:#cc0000;word-break:break-all">${escapeHtml(ctaUrl)}</a></p>`
+<p style="margin:0 0 26px;line-height:1.55;color:#4b5563;font-size:12px">${escapeHtml(fallbackText)}<br><a href="${escapeHtml(ctaUrl)}" style="color:#cc0000;word-break:break-all">${escapeHtml(ctaUrl)}</a></p>`
     : "";
   return `<!doctype html><html lang="pt"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:14px">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
