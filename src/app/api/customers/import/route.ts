@@ -1,4 +1,3 @@
-import readXlsxFile from "read-excel-file/node";
 import { and, eq, or } from "drizzle-orm";
 
 import { getDb } from "@/database/client";
@@ -19,47 +18,16 @@ import {
   resolveDuplicateCandidate,
 } from "@/features/customers/customer-utils";
 import { consumeCustomerRateLimit } from "@/features/customers/rate-limit";
+import {
+  parseCustomerImportRows,
+  type CustomerImportCell,
+} from "@/features/customers/import/parse";
 
 export const runtime = "nodejs";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_ROWS = 5_000;
 
-type Cell = string | number | boolean | Date | null;
-
-function parseCsv(text: string): Cell[][] {
-  const delimiter =
-    (text.split("\n")[0]?.match(/;/g)?.length ?? 0) >
-    (text.split("\n")[0]?.match(/,/g)?.length ?? 0)
-      ? ";"
-      : ",";
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
-    if (char === '"' && quoted && next === '"') {
-      cell += '"';
-      i += 1;
-    } else if (char === '"') quoted = !quoted;
-    else if (char === delimiter && !quoted) {
-      row.push(cell);
-      cell = "";
-    } else if ((char === "\n" || char === "\r") && !quoted) {
-      if (char === "\r" && next === "\n") i += 1;
-      row.push(cell);
-      if (row.some((value) => value.trim())) rows.push(row);
-      row = [];
-      cell = "";
-    } else cell += char;
-  }
-  row.push(cell);
-  if (row.some((value) => value.trim())) rows.push(row);
-  return rows;
-}
-
-function normalizedHeader(value: Cell): string {
+function normalizedHeader(value: CustomerImportCell): string {
   return String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -86,7 +54,7 @@ function findColumn(headers: string[], key: string): number {
   return headers.findIndex((header) => HEADER_ALIASES[key]?.includes(header));
 }
 
-function cellValue(row: Cell[], index: number): string {
+function cellValue(row: CustomerImportCell[], index: number): string {
   if (index < 0) return "";
   return String(row[index] ?? "").trim();
 }
@@ -130,10 +98,10 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const rawRows: Cell[][] =
-      extension === "xlsx"
-        ? ((await readXlsxFile(buffer)) as unknown as Cell[][])
-        : parseCsv(buffer.toString("utf8").replace(/^\uFEFF/, ""));
+    const rawRows = await parseCustomerImportRows(
+      buffer,
+      extension as "csv" | "xlsx",
+    );
     if (rawRows.length < 2) {
       return Response.json(
         { error: "O arquivo não possui linhas para importar." },
