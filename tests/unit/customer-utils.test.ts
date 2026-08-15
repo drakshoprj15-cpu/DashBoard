@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   buildCustomerStatuses,
   calculateNetSpent,
+  isCustomerImportClassification,
   maskDocument,
   maskPhone,
+  mergeCustomerImportTags,
   normalizeDocument,
   normalizeEmail,
   normalizePhone,
   parseCustomerFilters,
+  readCustomerImportedStatus,
   resolveDuplicateCandidate,
   sanitizeCsvCell,
 } from "@/features/customers/customer-utils";
@@ -105,6 +108,27 @@ describe("normalização de clientes", () => {
 });
 
 describe("filtros e classificação de clientes", () => {
+  it("troca somente a classificação reservada e preserva as tags do cliente", () => {
+    const paidTags = mergeCustomerImportTags(
+      ["VIP", "__infinity_import_status:pending"],
+      ["Newsletter", "VIP"],
+      "paid",
+    );
+
+    expect(paidTags).toEqual([
+      "VIP",
+      "Newsletter",
+      "__infinity_import_status:paid",
+    ]);
+    expect(readCustomerImportedStatus(paidTags)).toBe("paid");
+    expect(mergeCustomerImportTags(paidTags, [], "contact")).toEqual([
+      "VIP",
+      "Newsletter",
+    ]);
+    expect(isCustomerImportClassification("pending")).toBe(true);
+    expect(isCustomerImportClassification("approved")).toBe(false);
+  });
+
   it("limita valores inválidos e converte valores monetários para centavos", () => {
     const filters = parseCustomerFilters(
       new URLSearchParams(
@@ -138,6 +162,26 @@ describe("filtros e classificação de clientes", () => {
   });
 
   it("identifica lead, comprador recorrente e sinais de recuperação", () => {
+    expect(
+      buildCustomerStatuses({
+        paidCount: 0,
+        pendingCount: 0,
+        refusedCount: 0,
+        abandonedCarts: 0,
+        importedStatus: "paid",
+      }).map((status) => status.key),
+    ).toEqual(["imported_paid"]);
+
+    expect(
+      buildCustomerStatuses({
+        paidCount: 0,
+        pendingCount: 0,
+        refusedCount: 0,
+        abandonedCarts: 0,
+        importedStatus: "pending",
+      }).map((status) => status.key),
+    ).toEqual(["imported_pending"]);
+
     expect(
       buildCustomerStatuses({
         paidCount: 0,
