@@ -134,6 +134,13 @@
       "when": 1786812932023,
       "tag": "0018_mature_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786814397610,
+      "tag": "0019_lame_famine",
+      "breakpoints": true
     }
   ]
 }

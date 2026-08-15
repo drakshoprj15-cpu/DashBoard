@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured, type Database } from "@/database/client";
 import { customers, orderItems, orders } from "@/database/schema";
@@ -140,7 +140,10 @@ export async function importCartRows(
           .where(
             and(
               eq(customers.workspaceId, workspaceId),
-              inArray(customers.email, emails),
+              or(
+                inArray(customers.normalizedEmail, emails),
+                inArray(customers.email, emails),
+              ),
             ),
           )
       : [];
@@ -167,6 +170,7 @@ export async function importCartRows(
           .values({
             workspaceId,
             email,
+            normalizedEmail: email,
             firstName,
             lastName,
             phone: row.phone,
@@ -182,6 +186,7 @@ export async function importCartRows(
               lastName: sql`coalesce(${customers.lastName}, excluded.last_name)`,
               phone: sql`coalesce(${customers.phone}, excluded.phone)`,
               document: sql`coalesce(${customers.document}, excluded.document)`,
+              normalizedEmail: email,
               updatedAt: new Date(),
             },
           })
