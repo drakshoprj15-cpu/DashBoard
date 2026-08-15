@@ -2,11 +2,12 @@ export const DEFAULT_CAMPAIGN_TEMPLATE = {
   subject: "{{PRIMEIRO_NOME}}, confirme os dados da sua encomenda",
   preheader:
     "Retome o seu pedido e confirme os dados de entrega em poucos segundos.",
-  headerName: "",
+  headerName: "Sua Empresa",
   title: "Atualizacao da sua encomenda",
   body: "Ola {{PRIMEIRO_NOME}},\n\nVimos que a sua encomenda ainda nao foi concluida. Para retomar o pedido, confirme os seus dados de entrega no botao abaixo.",
-  ctaLabel: "Confirmar dados de entrega",
-  ctaUrl: "{{CHECKOUT_URL}}",
+  articleName: "O seu Produto",
+  ctaLabel: "Continuar para o Pagamento",
+  ctaUrl: "https://suaempresa.site/pagar/6bzge2a64e",
 } as const;
 
 export const EMAIL_VARIABLES = [
@@ -35,6 +36,7 @@ export interface CampaignTemplateContent {
   body: string;
   headerName?: string;
   title?: string;
+  articleName?: string;
   ctaLabel?: string;
   ctaUrl?: string;
 }
@@ -108,6 +110,7 @@ export function buildCampaignHtml(input: {
   preheader?: string;
   headerName?: string;
   title?: string;
+  articleName?: string;
   ctaLabel?: string;
   ctaUrl?: string;
   vars: CampaignTemplateVars;
@@ -135,6 +138,10 @@ export function buildCampaignHtml(input: {
     input.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
     input.vars,
   );
+  const articleName = renderCampaignText(
+    input.articleName ?? DEFAULT_CAMPAIGN_TEMPLATE.articleName,
+    input.vars,
+  );
   const ctaLabel = renderCampaignText(
     input.ctaLabel ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
     input.vars,
@@ -157,7 +164,7 @@ ${header}
 <p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
 <div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">
-<strong>Encomenda:</strong> ${escapeHtml(input.vars.pedido)}<br><strong>Artigo:</strong> ${escapeHtml(input.vars.produto)}
+<strong>Encomenda:</strong> ${escapeHtml(input.vars.pedido)}<br><strong>Artigo:</strong> ${escapeHtml(articleName)}
 </div>
 ${checkoutButton}
 <p style="margin:0;line-height:1.65">Depois da confirmacao, o pedido podera prosseguir normalmente.</p>

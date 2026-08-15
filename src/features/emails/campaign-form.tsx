@@ -138,6 +138,9 @@ export function CampaignForm({
   const [title, setTitle] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.title,
   );
+  const [articleName, setArticleName] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.articleName,
+  );
   const [body, setBody] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.body,
   );
@@ -228,6 +231,7 @@ export function CampaignForm({
     preheader,
     headerName,
     title,
+    articleName,
     ctaLabel,
     ctaUrl,
     vars: previewVars,
@@ -741,6 +745,17 @@ export function CampaignForm({
                     name="title"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
+                    maxLength={160}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="articleName">Nome do artigo</Label>
+                  <Input
+                    id="articleName"
+                    name="articleName"
+                    value={articleName}
+                    onChange={(event) => setArticleName(event.target.value)}
                     maxLength={160}
                     required
                   />
