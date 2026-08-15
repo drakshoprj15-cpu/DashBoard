@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { domains, products } from "@/database/schema";
 import { normalizeHost } from "@/lib/hosts";
-import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { requireWorkspaceAccess } from "@/lib/workspace-access";
 
 export interface DomainRow {
   id: string;
@@ -22,7 +22,7 @@ export async function listDomains(): Promise<DomainRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requireWorkspaceAccess();
 
   return db
     .select({

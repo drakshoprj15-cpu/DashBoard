@@ -287,5 +287,6 @@ export const ledgerEntries = pgTable(
   (t) => [
     index("ledger_entries_workspace_idx").on(t.workspaceId),
     index("ledger_entries_occurred_idx").on(t.workspaceId, t.occurredAt),
+    uniqueIndex("ledger_entries_payment_type_idx").on(t.paymentId, t.type),
   ],
 );

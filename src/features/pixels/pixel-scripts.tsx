@@ -22,6 +22,10 @@ interface PixelScriptsProps {
   landingPageId?: string | null;
   /** GTM/GA4/Ads globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
   includeOtherGlobals?: boolean;
+  /** Workspace resolvido pelo recurso público; evita fallback para outro tenant. */
+  workspaceId?: string;
+  /** Recurso com vínculos explícitos de pixels, como um link de pagamento. */
+  target?: { type: string; id: string };
 }
 
 /**
@@ -39,10 +43,14 @@ export async function PixelScripts({
   content,
   landingPageId,
   includeOtherGlobals = true,
+  workspaceId,
+  target,
 }: PixelScriptsProps) {
   const active = await getActivePixelsForPublic(
     landingPageId,
     includeOtherGlobals,
+    workspaceId,
+    target,
   );
   if (active.length === 0) return null;
 

@@ -5,16 +5,17 @@ import {
   createAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
-import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import {
+  requireWorkspaceAccess,
+  WorkspaceAccessError,
+} from "@/lib/workspace-access";
+import {
+  SAFE_IMAGE_MIME_TYPES,
+  validateRasterImage,
+} from "@/lib/uploads/image-validation";
 
 const BUCKET = "logos";
 const MAX_SIZE_BYTES = 3 * 1024 * 1024; // 3 MB
-const ALLOWED_TYPES: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/svg+xml": "svg",
-  "image/webp": "webp",
-};
 
 /** Garante que o bucket público existe — cria na primeira chamada. */
 async function ensureBucket(admin: ReturnType<typeof createAdminClient>) {
@@ -24,6 +25,7 @@ async function ensureBucket(admin: ReturnType<typeof createAdminClient>) {
   const { error } = await admin.storage.createBucket(BUCKET, {
     public: true,
     fileSizeLimit: MAX_SIZE_BYTES,
+    allowedMimeTypes: SAFE_IMAGE_MIME_TYPES,
   });
   // Corrida entre duas requisições simultâneas na primeira chamada: ignora
   // "already exists", propaga qualquer outro erro real.
@@ -64,35 +66,39 @@ export async function POST(request: Request) {
     );
   }
 
-  const extension = ALLOWED_TYPES[file.type];
-  if (!extension) {
-    return NextResponse.json(
-      { error: "Formato inválido. Use PNG, JPEG, WebP ou SVG." },
-      { status: 400 },
-    );
-  }
-  if (file.size > MAX_SIZE_BYTES) {
-    return NextResponse.json(
-      { error: "Imagem muito grande — máximo de 3 MB." },
-      { status: 400 },
-    );
+  const validated = await validateRasterImage(file, MAX_SIZE_BYTES);
+  if (!validated.ok) {
+    return NextResponse.json({ error: validated.error }, { status: 400 });
   }
 
   try {
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const { workspaceId } = await requireWorkspaceAccess([
+      "owner",
+      "admin",
+      "marketing",
+    ]);
     const admin = createAdminClient();
     await ensureBucket(admin);
 
-    const path = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const path = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${validated.extension}`;
     const { error: uploadError } = await admin.storage
       .from(BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, validated.bytes, {
+        contentType: validated.contentType,
+        upsert: false,
+      });
 
     if (uploadError) throw uploadError;
 
     const { data } = admin.storage.from(BUCKET).getPublicUrl(path);
     return NextResponse.json({ url: data.publicUrl });
   } catch (error) {
+    if (error instanceof WorkspaceAccessError) {
+      return NextResponse.json(
+        { error: "Sem permissão para enviar imagens." },
+        { status: 403 },
+      );
+    }
     console.error("[uploads] erro ao enviar logo:", error);
     return NextResponse.json(
       { error: "Não foi possível enviar a imagem. Tente novamente." },

@@ -11,7 +11,10 @@ import {
   pixels,
 } from "@/database/schema";
 import { decryptSecret } from "@/lib/crypto";
-import { resolveEffectiveMetaRows } from "@/features/pixels/queries";
+import {
+  resolveBoundPixelRows,
+  resolveEffectiveMetaRows,
+} from "@/features/pixels/queries";
 import type { PixelConnectionStatus } from "@/features/pixels/types";
 
 const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION ?? "v24.0";
@@ -52,6 +55,8 @@ export interface PurchaseEventInput extends PurchaseAttribution {
   orderId: string;
   /** Landing page de origem — aplica o fallback específico > global dos pixels CAPI */
   landingPageId?: string | null;
+  /** Link de pagamento de origem — aplica os vínculos explícitos do link. */
+  paymentLinkId?: string | null;
   /** Identificador estável do evento — deduplica browser x servidor */
   eventId: string;
   triggerType: PurchaseTriggerType;
@@ -271,10 +276,16 @@ export async function sendPurchaseToMetaCapi(
   input: PurchaseEventInput,
 ): Promise<void> {
   const db = getDb();
-  const pixelRows = await resolveEffectiveMetaRows(
-    input.landingPageId ?? null,
-    input.workspaceId,
-  );
+  const pixelRows = input.paymentLinkId
+    ? await resolveBoundPixelRows(
+        input.workspaceId,
+        { type: "payment_link", id: input.paymentLinkId },
+        "meta_capi",
+      )
+    : await resolveEffectiveMetaRows(
+        input.landingPageId ?? null,
+        input.workspaceId,
+      );
 
   const queued: {
     pixel: typeof pixels.$inferSelect;

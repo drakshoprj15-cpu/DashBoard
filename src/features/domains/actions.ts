@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { domains } from "@/database/schema";
 import { DOMAIN_CHECK_TOKEN } from "@/features/domains/constants";
-import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { requireWorkspaceAccess } from "@/lib/workspace-access";
 import { domainSchema } from "@/validations/domain";
 
 export interface DomainActionResult {
@@ -19,6 +19,7 @@ export interface DomainActionResult {
 function revalidateDomainPages() {
   revalidatePath("/landing-pages/dominios");
   revalidatePath("/landing-pages");
+  revalidatePath("/financeiro/links-de-pagamento");
 }
 
 /**
@@ -47,7 +48,7 @@ export async function saveDomainAction(
 
   try {
     const db = getDb();
-    const workspaceId = await getOrCreateDefaultWorkspace();
+    const { workspaceId } = await requireWorkspaceAccess(["owner", "admin"]);
     const { hostname, productId } = parsed.data;
 
     const [existing] = await db
@@ -100,7 +101,7 @@ export async function verifyDomainAction(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requireWorkspaceAccess(["owner", "admin"]);
 
   const [row] = await db
     .select({ hostname: domains.hostname })
@@ -150,7 +151,7 @@ export async function toggleDomainAction(formData: FormData): Promise<void> {
   if (!id || !isDatabaseConfigured()) return;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requireWorkspaceAccess(["owner", "admin"]);
 
   await db
     .update(domains)
@@ -166,7 +167,7 @@ export async function deleteDomainAction(formData: FormData): Promise<void> {
   if (!id || !isDatabaseConfigured()) return;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const { workspaceId } = await requireWorkspaceAccess(["owner", "admin"]);
 
   await db
     .delete(domains)

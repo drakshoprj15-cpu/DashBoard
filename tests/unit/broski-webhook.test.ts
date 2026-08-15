@@ -104,4 +104,16 @@ describe("parseWebhook", () => {
     const event = await provider.parseWebhook(mb);
     expect(event.status).toBe("pending");
   });
+
+  it("mapeia dispute.created para chargeback do mesmo pedido", async () => {
+    const dispute = JSON.stringify({
+      id: "evt_dispute_1",
+      type: "dispute.created",
+      created: 1785234658,
+      data: { object: { id: "dp_1", object: "dispute", order: "ord_mb", amount: 3990 } },
+    });
+    const event = await provider.parseWebhook(dispute);
+    expect(event.paymentExternalId).toBe("ord_mb");
+    expect(event.status).toBe("chargeback");
+  });
 });
