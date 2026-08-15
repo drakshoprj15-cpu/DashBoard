@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
-  CreditCard,
+  CircleDollarSign,
   Download,
   RefreshCw,
   ShoppingBag,
@@ -227,7 +227,7 @@ export function DashboardView() {
                     ? formatMoney(data.averageTicketCents, currency, "pt-BR")
                     : "—"
                 }
-                icon={CreditCard}
+                icon={CircleDollarSign}
                 tone="amber"
                 changePercent={data.averageTicketChangePercent}
                 unavailableHint="Ainda não há pedidos pagos neste período."

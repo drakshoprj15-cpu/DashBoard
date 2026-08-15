@@ -371,6 +371,12 @@
       "area": "payment-link-checkout",
       "decision": "Use a compact, neutral two-step checkout: customer details first, then payment method and provider-specific fields. Branding must always come from the workspace configuration and never from hardcoded third-party assets.",
       "reason": "This keeps the public payment page focused and mobile-friendly while preserving legitimate merchant-controlled branding."
+    },
+    {
+      "date": "2026-08-15",
+      "area": "payment-methods",
+      "decision": "Expose only MB WAY and Multibanco throughout checkout and payment administration, using phone, receipt, bank, or confirmation iconography instead of credit-card symbols.",
+      "reason": "Broski is the only active processor and the product does not accept card payments."
     }
   ],
   "evidence": [

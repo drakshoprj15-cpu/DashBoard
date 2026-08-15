@@ -1,6 +1,6 @@
 import {
+  BadgeCheck,
   Package,
-  CreditCard,
   XCircle,
   RotateCcw,
   ShieldAlert,
@@ -26,7 +26,7 @@ export const WEBHOOK_EVENTS: WebhookEventDef[] = [
     key: "order.paid",
     label: "Pedido aprovado",
     description: "Disparado quando o gateway confirma o pagamento.",
-    icon: CreditCard,
+    icon: BadgeCheck,
   },
   {
     key: "order.refused",

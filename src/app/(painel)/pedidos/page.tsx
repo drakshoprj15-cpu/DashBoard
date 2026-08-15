@@ -20,9 +20,6 @@ export const dynamic = "force-dynamic";
 const METHOD_LABEL: Record<string, string> = {
   mbway: "MB WAY",
   multibanco: "Multibanco",
-  card: "Cartão",
-  pix: "Pix",
-  boleto: "Boleto",
 };
 
 export default async function PedidosPage() {

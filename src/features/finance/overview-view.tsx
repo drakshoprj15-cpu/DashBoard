@@ -15,7 +15,7 @@ import {
   AlertCircle,
   ArrowRight,
   Banknote,
-  CreditCard,
+  Landmark,
   Receipt,
   ShoppingBag,
   TrendingDown,
@@ -45,7 +45,7 @@ const SHORTCUTS = [
   {
     href: "/financeiro/processador",
     label: "Processador",
-    icon: CreditCard,
+    icon: Landmark,
     description: "Gateway de pagamento",
   },
   {

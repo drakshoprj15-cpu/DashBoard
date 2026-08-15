@@ -1,12 +1,11 @@
 /**
  * Contrato dos adapters de pagamento.
  *
- * O checkout NUNCA depende de um gateway específico — apenas desta
- * interface. Cada gateway (Stripe, Mercado Pago, Pagar.me, Asaas, custom)
- * implementa PaymentProvider na Fase 4.
+ * O checkout NUNCA depende diretamente da API Broski — apenas desta
+ * interface. Neste produto, o catálogo ativo é intencionalmente restrito a
+ * MB WAY e Multibanco.
  *
  * Regras invioláveis:
- * - Nunca armazenar número completo de cartão ou CVV (tokenização apenas).
  * - Nunca inventar suporte: `listPaymentMethods` retorna somente o que o
  *   gateway realmente suporta na conta configurada.
  * - Toda criação de pagamento envia `idempotencyKey`.
@@ -14,15 +13,7 @@
  *   `parseWebhook`/`handleWebhook`.
  */
 
-export type PaymentMethod =
-  | "card"
-  | "pix"
-  | "boleto"
-  | "mbway"
-  | "multibanco"
-  | "sepa_debit"
-  | "apple_pay"
-  | "google_pay";
+export type PaymentMethod = "mbway" | "multibanco";
 
 export type PaymentProviderStatus =
   | "created"
@@ -64,9 +55,6 @@ export interface CreatePaymentInput {
       country?: string;
     };
   };
-  /** Token do cartão gerado pelo componente seguro do gateway — nunca PAN/CVV */
-  cardToken?: string;
-  installments?: number;
   metadata?: Record<string, string>;
   successUrl?: string;
   cancelUrl?: string;
@@ -78,20 +66,13 @@ export interface PaymentResult {
   method: PaymentMethod;
   amountCents: number;
   currency: string;
-  /** Dados de exibição: QR Code Pix, URL de boleto, redirect 3DS etc. */
+  /** Dados públicos devolvidos ao comprador para concluir o pagamento. */
   displayData?: {
-    pixQrCode?: string;
-    pixCopyPaste?: string;
-    boletoUrl?: string;
-    boletoBarcode?: string;
-    redirectUrl?: string;
     multibancoEntity?: string;
     multibancoReference?: string;
     multibancoExpiresAt?: string;
   };
   feeCents?: number;
-  cardBrand?: string;
-  cardLast4?: string;
   failureReason?: string;
   raw?: unknown;
 }
@@ -122,7 +103,7 @@ export interface ConnectionTestResult {
 }
 
 export interface PaymentProvider {
-  /** Identificador único do adapter (ex.: "stripe") */
+  /** Identificador único do adapter (neste produto, "broski"). */
   readonly key: string;
   readonly name: string;
 
@@ -150,8 +131,7 @@ export interface PaymentProvider {
 }
 
 /**
- * Fábrica de providers — implementada na Fase 4.
- * Cada adapter vive em src/payment-providers/<key>/.
+ * Fábrica do provider. O adapter Broski vive em src/payment-providers/broski/.
  */
 export type PaymentProviderFactory = (
   credentials: ProviderCredentials,

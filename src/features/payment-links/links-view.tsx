@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Copy,
-  CreditCard,
+  BadgeCheck,
   ExternalLink,
   Link2,
   MoreHorizontal,
@@ -447,7 +447,7 @@ export function LinksView({ links, metrics, period }: LinksViewProps) {
           value={formatNumber(metrics.activeLinks, "pt-PT")}
         />
         <MetricCard
-          icon={CreditCard}
+          icon={BadgeCheck}
           label="Pagamentos"
           value={formatNumber(metrics.paidPayments, "pt-PT")}
         />
