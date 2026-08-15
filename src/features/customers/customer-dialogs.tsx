@@ -7,6 +7,7 @@ import {
   Download,
   FileSpreadsheet,
   Info,
+  Package2,
   Upload,
   UsersRound,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import {
   createCustomerSegmentAction,
 } from "@/features/customers/actions";
 import type { CustomerImportClassification } from "@/features/customers/types";
+import type { ProductOption } from "@/features/products/queries";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -233,6 +235,7 @@ export function AddCustomerDialog({
 
 interface ImportCustomersDialogProps extends ControlledDialogProps {
   onImported: () => void;
+  products: ProductOption[];
 }
 
 const IMPORT_CLASSIFICATION_OPTIONS = [
@@ -269,11 +272,14 @@ export function ImportCustomersDialog({
   open,
   onOpenChange,
   onImported,
+  products,
 }: ImportCustomersDialogProps) {
   const [file, setFile] = React.useState<File | null>(null);
   const [classification, setClassification] =
     React.useState<CustomerImportClassification>("contact");
   const [pending, setPending] = React.useState(false);
+  const [productChoice, setProductChoice] = React.useState("spreadsheet");
+  const [customProductName, setCustomProductName] = React.useState("");
   const [result, setResult] = React.useState<Record<string, unknown> | null>(
     null,
   );
@@ -306,6 +312,10 @@ export function ImportCustomersDialog({
     const formData = new FormData();
     formData.set("file", file);
     formData.set("classification", classification);
+    if (productChoice === "custom")
+      formData.set("defaultProductName", customProductName);
+    else if (productChoice !== "spreadsheet")
+      formData.set("defaultProductId", productChoice);
     try {
       const response = await fetch("/api/customers/import", {
         method: "POST",
@@ -328,12 +338,13 @@ export function ImportCustomersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Importar clientes</DialogTitle>
           <DialogDescription>
             Envie CSV ou XLSX de até 5 MB. Reconhecemos automaticamente nome,
-            e-mail, telefone, CPF/NIF, localização, tags e consentimento.
+            e-mail, telefone, produto, CPF/NIF, localização, tags e
+            consentimento.
           </DialogDescription>
         </DialogHeader>
         <fieldset className="space-y-2">
@@ -406,6 +417,57 @@ export function ImportCustomersDialog({
             do gateway.
           </p>
         </div>
+        <fieldset className="border-border bg-muted/15 space-y-3 rounded-xl border p-4">
+          <legend className="px-1 text-sm font-semibold">
+            Produto dos contatos
+          </legend>
+          <div className="flex gap-3">
+            <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+              <Package2 className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1 space-y-2">
+              <Label htmlFor="import-product">
+                Como identificar o produto?
+              </Label>
+              <select
+                id="import-product"
+                value={productChoice}
+                onChange={(event) => {
+                  setProductChoice(event.target.value);
+                  setResult(null);
+                }}
+                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+              >
+                <option value="spreadsheet">
+                  Usar a coluna Produto da planilha
+                </option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    Aplicar a todos: {product.name}
+                  </option>
+                ))}
+                <option value="custom">Informar outro produto</option>
+              </select>
+              {productChoice === "custom" && (
+                <Input
+                  value={customProductName}
+                  onChange={(event) => {
+                    setCustomProductName(event.target.value);
+                    setResult(null);
+                  }}
+                  maxLength={160}
+                  placeholder="Nome exato do produto"
+                  aria-label="Nome do produto para todos os contatos"
+                />
+              )}
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {classification === "contact"
+                  ? "Opcional para uma lista apenas de contatos."
+                  : "Obrigatório para compras pagas e pedidos pendentes. O produto informado não cria pedido nem receita."}
+              </p>
+            </div>
+          </div>
+        </fieldset>
         <label className="border-border hover:bg-muted/30 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
           <Upload className="text-primary size-8" />
           <span className="text-sm font-medium">
@@ -471,7 +533,17 @@ export function ImportCustomersDialog({
           >
             Fechar
           </Button>
-          <Button type="button" disabled={!file || pending} onClick={submit}>
+          <Button
+            type="button"
+            disabled={
+              !file ||
+              pending ||
+              (classification !== "contact" &&
+                productChoice === "custom" &&
+                !customProductName.trim())
+            }
+            onClick={submit}
+          >
             <FileSpreadsheet />{" "}
             {pending ? "Importando..." : "Validar e importar"}
           </Button>

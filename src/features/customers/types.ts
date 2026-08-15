@@ -93,6 +93,8 @@ export interface CustomerListRow {
   country: string | null;
   source: string;
   importedStatus: CustomerImportedStatus | null;
+  productNames: string[];
+  productSource: "order" | "import" | "missing";
   tags: string[];
   statuses: CustomerStatusTag[];
   orderCount: number;

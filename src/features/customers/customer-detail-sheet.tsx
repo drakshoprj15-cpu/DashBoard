@@ -9,6 +9,7 @@ import {
   MapPin,
   MessageCircle,
   NotebookPen,
+  Package2,
   ShoppingCart,
   UserRound,
 } from "lucide-react";
@@ -246,6 +247,30 @@ export function CustomerDetailSheet({
                     label="Carrinhos abandonados"
                     value={detail.abandonedCarts}
                   />
+                </div>
+                <div className="rounded-lg border p-4 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 font-medium">
+                      <Package2 className="text-primary size-4" /> Produto
+                    </p>
+                    {detail.productSource !== "missing" && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {detail.productSource === "order"
+                          ? "Confirmado pelo pedido"
+                          : "Informado na importação"}
+                      </Badge>
+                    )}
+                  </div>
+                  {detail.productNames.length > 0 ? (
+                    <p className="mt-2 font-semibold">
+                      {detail.productNames.join(" · ")}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground mt-2">
+                      Produto não informado. Reimporte este contato com a coluna
+                      Produto ou escolha um produto padrão.
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-lg border p-4 text-sm">
                   <p className="font-medium">Contato</p>

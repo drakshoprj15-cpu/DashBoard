@@ -9,6 +9,7 @@ import {
   mergeCustomerImportTags,
   normalizeDocument,
   normalizeEmail,
+  normalizeImportedProductName,
   normalizePhone,
   parseCustomerFilters,
   readCustomerImportedStatus,
@@ -29,6 +30,14 @@ describe("normalização de clientes", () => {
     expect(maskDocument("12345678901")).toMatch(/^123\./);
     expect(maskPhone("+55 21 99999-0000")).toMatch(/^\+55 .*00$/);
     expect(maskPhone("+55 21 99999-0000")).not.toContain("99999");
+  });
+
+  it("normaliza o produto importado e rejeita valores ausentes ou excessivos", () => {
+    expect(normalizeImportedProductName("  Cadeira\nGaming   Nébula  ")).toBe(
+      "Cadeira Gaming Nébula",
+    );
+    expect(normalizeImportedProductName(" \n\t ")).toBeNull();
+    expect(normalizeImportedProductName("x".repeat(161))).toBeNull();
   });
 
   it("calcula gasto líquido sem permitir total negativo", () => {

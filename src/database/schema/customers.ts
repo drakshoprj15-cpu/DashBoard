@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { id, timestamps, softDelete } from "./_helpers";
+import { products } from "./catalog";
 import { workspaces } from "./workspaces";
 
 export const customers = pgTable(
@@ -31,6 +32,15 @@ export const customers = pgTable(
     document: text("document"),
     country: text("country"),
     source: text("source").default("unknown").notNull(),
+    /**
+     * Produto declarado numa importação de contatos. Não cria pedido nem
+     * comprova pagamento; o nome fica congelado para preservar a origem.
+     */
+    importedProductId: uuid("imported_product_id").references(
+      () => products.id,
+      { onDelete: "set null" },
+    ),
+    importedProductName: text("imported_product_name"),
     firstSource: text("first_source"),
     firstLandingPageId: uuid("first_landing_page_id"),
     lastLandingPageId: uuid("last_landing_page_id"),
@@ -57,6 +67,10 @@ export const customers = pgTable(
   (t) => [
     uniqueIndex("customers_ws_email_idx").on(t.workspaceId, t.email),
     index("customers_workspace_idx").on(t.workspaceId),
+    index("customers_imported_product_idx").on(
+      t.workspaceId,
+      t.importedProductId,
+    ),
     index("customers_normalized_email_idx").on(
       t.workspaceId,
       t.normalizedEmail,
@@ -71,10 +85,7 @@ export const customers = pgTable(
       t.workspaceId,
       t.firstLandingPageId,
     ),
-    index("customers_last_landing_idx").on(
-      t.workspaceId,
-      t.lastLandingPageId,
-    ),
+    index("customers_last_landing_idx").on(t.workspaceId, t.lastLandingPageId),
   ],
 );
 

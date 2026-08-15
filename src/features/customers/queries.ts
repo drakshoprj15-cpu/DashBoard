@@ -89,6 +89,19 @@ function customerBaseCte(workspaceId: string) {
       where o.workspace_id = ${workspaceId}
       group by o.customer_id
     ),
+    order_products as (
+      select
+        o.customer_id,
+        coalesce(
+          jsonb_agg(distinct oi.product_name order by oi.product_name)
+            filter (where oi.product_name is not null),
+          '[]'::jsonb
+        ) as product_names
+      from orders o
+      join order_items oi on oi.order_id = o.id and oi.workspace_id = ${workspaceId}
+      where o.workspace_id = ${workspaceId}
+      group by o.customer_id
+    ),
     approved_payments as (
       select o.customer_id, coalesce(sum(p.amount_cents), 0)::bigint as approved_cents
       from payments p
@@ -139,6 +152,9 @@ function customerBaseCte(workspaceId: string) {
         c.phone_country_code,
         c.country,
         c.source,
+        c.imported_product_id,
+        c.imported_product_name,
+        coalesce(op.product_names, '[]'::jsonb) as order_product_names,
         c.first_landing_page_id,
         c.last_landing_page_id,
         c.tags as legacy_tags,
@@ -183,6 +199,7 @@ function customerBaseCte(workspaceId: string) {
         )::bigint as total_spent_cents
       from customers c
       left join order_stats os on os.customer_id = c.id
+      left join order_products op on op.customer_id = c.id
       left join approved_payments ap on ap.customer_id = c.id
       left join refunded_payments rp on rp.customer_id = c.id
       left join disputed_payments dp on dp.customer_id = c.id
@@ -210,6 +227,8 @@ function filteredWhere(filters: CustomerListFilters) {
       or lower(b.email) like lower(${like})
       or coalesce(b.phone, '') ilike ${like}
       or coalesce(b.document, '') ilike ${like}
+      or coalesce(b.imported_product_name, '') ilike ${like}
+      or b.order_product_names::text ilike ${like}
       or exists (
         select 1 from orders so
         where so.customer_id = b.id and so.reference ilike ${like}
@@ -239,10 +258,13 @@ function filteredWhere(filters: CustomerListFilters) {
     )`);
   if (filters.origin) conditions.push(sql`b.source = ${filters.origin}`);
   if (filters.productId)
-    conditions.push(sql`exists (
-      select 1 from orders po
-      join order_items poi on poi.order_id = po.id
-      where po.customer_id = b.id and poi.product_id = ${filters.productId}
+    conditions.push(sql`(
+      b.imported_product_id = ${filters.productId}::uuid
+      or exists (
+        select 1 from orders po
+        join order_items poi on poi.order_id = po.id
+        where po.customer_id = b.id and poi.product_id = ${filters.productId}::uuid
+      )
     )`);
   if (filters.landingPageId)
     conditions.push(sql`(
@@ -337,6 +359,14 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
   const cartIsLatest =
     abandonedCarts > 0 &&
     (!lastOrderAt || new Date(lastActivityAt) > new Date(lastOrderAt));
+  const orderProductNames = stringArray(row.order_product_names);
+  const importedProductName = nullableString(row.imported_product_name);
+  const productNames =
+    orderProductNames.length > 0
+      ? orderProductNames
+      : importedProductName
+        ? [importedProductName]
+        : [];
 
   return {
     id: stringValue(row.id),
@@ -352,6 +382,13 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
     country: nullableString(row.country),
     source: stringValue(row.source, "unknown"),
     importedStatus,
+    productNames,
+    productSource:
+      orderProductNames.length > 0
+        ? "order"
+        : importedProductName
+          ? "import"
+          : "missing",
     tags: Array.from(
       new Set([
         ...stringArray(row.legacy_tags),
