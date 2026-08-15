@@ -34,6 +34,7 @@ describe("email campaign template", () => {
       preheader: "Retome o pedido {{PEDIDO}}.",
       headerName: "Minha Loja",
       title: "Atualização da encomenda {{PEDIDO}}",
+      articleName: "O seu Produto",
       ctaLabel: "Confirmar dados de entrega",
       ctaUrl: "{{CHECKOUT_URL}}",
       vars,
@@ -43,9 +44,7 @@ describe("email campaign template", () => {
     expect(html).toContain("Maria Oliveira");
     expect(html).toContain("Curso &lt;Avançado&gt;");
     expect(html).toContain("<strong>Encomenda:</strong> PED-42");
-    expect(html).toContain(
-      "<strong>Artigo:</strong> Curso &lt;Avançado&gt;",
-    );
+    expect(html).toContain("<strong>Artigo:</strong> O seu Produto");
     expect(html).not.toContain("<strong>Valor:</strong>");
     expect(html).not.toContain("49,90 €");
     expect(html).toContain('href="https://example.com/checkout/PED-42"');
@@ -68,6 +67,18 @@ describe("email campaign template", () => {
     expect(withoutHeader).not.toContain("PCG VIP");
     expect(customHeader).toContain("Loja &lt;Principal&gt;");
     expect(customHeader).toContain("color:#cc0000");
+  });
+
+  it("uses the saved neutral campaign defaults", () => {
+    const html = buildCampaignHtml({
+      body: "Olá {{PRIMEIRO_NOME}}.",
+      vars,
+    });
+
+    expect(html).toContain("Sua Empresa");
+    expect(html).toContain("<strong>Artigo:</strong> O seu Produto");
+    expect(html).toContain("Continuar para o Pagamento");
+    expect(html).toContain('href="https://suaempresa.site/pagar/6bzge2a64e"');
   });
 
   it("accepts a dynamic checkout link and rejects unsafe protocols", () => {
