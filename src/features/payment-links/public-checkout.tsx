@@ -506,7 +506,13 @@ export function PublicCheckout({
       link={link}
       className="min-h-svh"
       values={values}
-      onChange={setValues}
+      onChange={(nextValues) => {
+        setValues(nextValues);
+        if (error || errorField) {
+          setError(null);
+          setErrorField(null);
+        }
+      }}
       onSubmit={handleSubmit}
       submitting={submitting}
       error={error}
