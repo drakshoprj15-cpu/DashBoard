@@ -87,6 +87,7 @@ export interface PaymentResult {
     redirectUrl?: string;
     multibancoEntity?: string;
     multibancoReference?: string;
+    multibancoExpiresAt?: string;
   };
   feeCents?: number;
   cardBrand?: string;

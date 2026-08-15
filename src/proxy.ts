@@ -11,6 +11,8 @@ const PUBLIC_PREFIXES = [
   "/p/",
   "/lp/",
   "/pay/",
+  // Página pública de um link de pagamento — quem vai pagar não tem sessão.
+  "/pagar/",
   "/checkout/",
   "/loja",
   "/api/public",

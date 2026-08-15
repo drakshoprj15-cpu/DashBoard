@@ -4,6 +4,7 @@ import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
   landingPages,
   orders,
+  pixelBindings,
   pixelEvents,
   pixels,
   workspaces,
@@ -34,6 +35,7 @@ export {
 const META_PIXEL_TYPES = ["meta_pixel", "meta_capi"] as const;
 /** Tipos que continuam só globais (fora do escopo desta feature). */
 const OTHER_PUBLIC_PIXEL_TYPES = ["gtm", "ga4", "google_ads"] as const;
+const PUBLIC_PIXEL_TYPES = ["meta_pixel", ...OTHER_PUBLIC_PIXEL_TYPES] as const;
 
 function toPixelRow(p: typeof pixels.$inferSelect): PixelRow {
   return {
@@ -258,6 +260,34 @@ export async function resolveEffectiveMetaRows(
   return pickEffectivePixels(candidates, landingPageId);
 }
 
+/** Vínculos explícitos vencem o fallback global; sem vínculo, preserva a configuração global. */
+export async function resolveBoundPixelRows(
+  workspaceId: string,
+  target: { type: string; id: string },
+  type: PixelType,
+): Promise<(typeof pixels.$inferSelect)[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  const rows = await getDb()
+    .select({ pixel: pixels })
+    .from(pixelBindings)
+    .innerJoin(pixels, eq(pixels.id, pixelBindings.pixelId))
+    .where(
+      and(
+        eq(pixelBindings.workspaceId, workspaceId),
+        eq(pixelBindings.targetType, target.type),
+        eq(pixelBindings.targetId, target.id),
+        eq(pixels.type, type),
+        eq(pixels.isActive, true),
+        isNull(pixels.deletedAt),
+      ),
+    );
+
+  return rows.length > 0
+    ? rows.map((row) => row.pixel)
+    : resolveEffectivePixelRows(null, type, workspaceId);
+}
+
 /**
  * Pixels ativos para injeção nas páginas públicas.
  * Retorna apenas dados que podem ir ao navegador — nunca tokens.
@@ -273,15 +303,55 @@ export async function getActivePixelsForPublic(
    * (o Meta Pixel resolve seu próprio fallback independentemente disso).
    */
   includeOtherGlobals = true,
+  requestedWorkspaceId?: string,
+  target?: { type: string; id: string },
 ): Promise<{ type: PixelType; pixelId: string }[]> {
   if (!isDatabaseConfigured()) return [];
 
   try {
     const db = getDb();
-    const workspaceId = await resolvePublicWorkspaceId(landingPageId ?? null);
+    const workspaceId = await resolvePublicWorkspaceId(
+      landingPageId ?? null,
+      requestedWorkspaceId,
+    );
     if (!workspaceId) return [];
 
-    const metaRows = await resolveEffectiveMetaRows(landingPageId ?? null);
+    if (target) {
+      const boundRows = await db
+        .select({ type: pixels.type, pixelId: pixels.pixelId })
+        .from(pixelBindings)
+        .innerJoin(pixels, eq(pixels.id, pixelBindings.pixelId))
+        .where(
+          and(
+            eq(pixelBindings.workspaceId, workspaceId),
+            eq(pixelBindings.targetType, target.type),
+            eq(pixelBindings.targetId, target.id),
+            eq(pixels.isActive, true),
+            isNull(pixels.deletedAt),
+            inArray(pixels.type, PUBLIC_PIXEL_TYPES),
+          ),
+        );
+
+      if (boundRows.length > 0) {
+        return boundRows
+          .filter((row): row is { type: PixelType; pixelId: string } =>
+            Boolean(row.pixelId),
+          )
+          .filter(
+            (row, index, all) =>
+              all.findIndex(
+                (candidate) =>
+                  candidate.type === row.type &&
+                  candidate.pixelId === row.pixelId,
+              ) === index,
+          );
+      }
+    }
+
+    const metaRows = await resolveEffectiveMetaRows(
+      landingPageId ?? null,
+      workspaceId,
+    );
 
     const otherRows = includeOtherGlobals
       ? await db

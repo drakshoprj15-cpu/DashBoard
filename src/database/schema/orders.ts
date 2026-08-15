@@ -15,7 +15,7 @@ import { id, timestamps } from "./_helpers";
 import { orderStatus } from "./enums";
 import { workspaces } from "./workspaces";
 import { customers } from "./customers";
-import { checkouts } from "./checkouts";
+import { checkouts, paymentLinks } from "./checkouts";
 import { carts } from "./carts";
 import { products, productVariants } from "./catalog";
 
@@ -37,7 +37,9 @@ export const orders = pgTable(
     cartId: uuid("cart_id").references(() => carts.id, {
       onDelete: "set null",
     }),
-    paymentLinkId: uuid("payment_link_id"),
+    paymentLinkId: uuid("payment_link_id").references(() => paymentLinks.id, {
+      onDelete: "set null",
+    }),
     campaignId: uuid("campaign_id"),
     status: orderStatus("status").default("created").notNull(),
     currency: text("currency").default("BRL").notNull(),

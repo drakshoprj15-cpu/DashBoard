@@ -120,6 +120,13 @@
       "when": 1786400002000,
       "tag": "0016_lying_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786767012872,
+      "tag": "0017_reflective_iron_monger",
+      "breakpoints": true
     }
   ]
 }

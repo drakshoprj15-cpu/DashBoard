@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
+const SAFE_RASTER_TYPES = "image/png,image/jpeg,image/webp";
+const ACCEPTED_TYPES = `${SAFE_RASTER_TYPES},image/svg+xml`;
 
 /**
  * Arrastar-e-soltar (ou clicar para escolher) uma imagem, com upload real
@@ -22,9 +23,11 @@ const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
 export function ImageDropzone({
   id,
   label,
-  hint = "PNG, JPEG, WebP ou SVG · até 3 MB",
+  hint = "PNG, JPEG ou WebP · até 3 MB",
   endpoint,
   optional = true,
+  allowRemoteUrl = true,
+  allowSvg = false,
   value,
   onChange,
 }: {
@@ -33,6 +36,8 @@ export function ImageDropzone({
   hint?: string;
   endpoint: string;
   optional?: boolean;
+  allowRemoteUrl?: boolean;
+  allowSvg?: boolean;
   value: string;
   onChange: (url: string) => void;
 }) {
@@ -108,7 +113,7 @@ export function ImageDropzone({
           ref={inputRef}
           id={id}
           type="file"
-          accept={ACCEPTED_TYPES}
+          accept={allowSvg ? ACCEPTED_TYPES : SAFE_RASTER_TYPES}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
@@ -151,18 +156,20 @@ export function ImageDropzone({
 
       {error && <p className="text-destructive text-xs">{error}</p>}
 
-      <details className="text-xs">
-        <summary className="text-muted-foreground cursor-pointer select-none">
-          ou cole uma URL diretamente
-        </summary>
-        <Input
-          type="url"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="https://…/imagem.png"
-          className="mt-2"
-        />
-      </details>
+      {allowRemoteUrl ? (
+        <details className="text-xs">
+          <summary className="text-muted-foreground cursor-pointer select-none">
+            ou cole uma URL diretamente
+          </summary>
+          <Input
+            type="url"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="https://…/imagem.png"
+            className="mt-2"
+          />
+        </details>
+      ) : null}
     </div>
   );
 }
