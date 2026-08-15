@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isOwnerEmail } from "@/lib/auth/owner";
 import { getAppUrl } from "@/lib/app-url";
 import { loginSchema, forgotPasswordSchema } from "@/validations/auth";
 
@@ -44,6 +45,16 @@ export async function loginAction(
         error.code === "invalid_credentials"
           ? "E-mail ou senha incorretos."
           : "Não foi possível entrar. Tente novamente.",
+    };
+  }
+
+  // Credenciais corretas não garantem acesso: contas fora da allowlist são
+  // desconectadas aqui, senão ficariam presas em redirect entre / e /login.
+  if (!isOwnerEmail(parsed.data.email)) {
+    await supabase.auth.signOut();
+    return {
+      ok: false,
+      error: "Esta conta não tem acesso ao painel.",
     };
   }
 
