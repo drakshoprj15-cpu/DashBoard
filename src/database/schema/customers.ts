@@ -71,7 +71,7 @@ export const customers = pgTable(
       t.workspaceId,
       t.importedProductId,
     ),
-    index("customers_normalized_email_idx").on(
+    uniqueIndex("customers_ws_normalized_email_idx").on(
       t.workspaceId,
       t.normalizedEmail,
     ),
