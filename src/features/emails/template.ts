@@ -1,10 +1,10 @@
 export const DEFAULT_CAMPAIGN_TEMPLATE = {
-  subject: "{{PRIMEIRO_NOME}}, confirme os dados da sua encomenda",
+  subject: "{{PRIMEIRO_NOME}}, confirme os dados do seu pedido",
   preheader:
     "Retome o seu pedido e confirme os dados de entrega em poucos segundos.",
   headerName: "Sua Empresa",
-  title: "Atualizacao da sua encomenda",
-  body: "Ola {{PRIMEIRO_NOME}},\n\nVimos que a sua encomenda ainda nao foi concluida. Para retomar o pedido, confirme os seus dados de entrega no botao abaixo.",
+  title: "Atualização do seu pedido",
+  body: "Olá {{PRIMEIRO_NOME}},\n\nO seu pedido encontra-se pendente de conclusão. Para continuar, confirme os dados no botão abaixo apenas se reconhecer esta compra.",
   articleName: "O seu Produto",
   ctaLabel: "Continuar para o Pagamento",
   ctaUrl: "https://suaempresa.site/pagar/6bzge2a64e",
@@ -160,7 +160,7 @@ export function buildCampaignHtml(input: {
   );
   const hasCtaUrl = validHttpUrl(ctaUrl);
   const checkoutButton = hasCtaUrl
-    ? `<p style="margin:26px 0 18px;line-height:1.65">Para prosseguirmos com o pedido, confirme os seus dados atraves do botao abaixo:</p>
+    ? `<p style="margin:26px 0 18px;line-height:1.65">Para continuar com o pedido, confirme os seus dados através do botão abaixo:</p>
 <div style="margin:0 0 28px;text-align:center"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#cc0000;color:#ffffff;text-decoration:none;padding:15px 28px;border-radius:4px;font-weight:700">${escapeHtml(ctaLabel)}</a></div>
 <p style="margin:0 0 26px;line-height:1.55;color:#4b5563;font-size:12px">${escapeHtml(fallbackText)}<br><a href="${escapeHtml(ctaUrl)}" style="color:#cc0000;word-break:break-all">${escapeHtml(ctaUrl)}</a></p>`
     : "";
@@ -175,10 +175,10 @@ ${paragraphs}
 <strong>Encomenda:</strong> ${escapeHtml(input.vars.pedido)}<br><strong>Artigo:</strong> ${escapeHtml(articleName)}
 </div>
 ${checkoutButton}
-<p style="margin:0;line-height:1.65">Depois da confirmacao, o pedido podera prosseguir normalmente.</p>
+<p style="margin:0;line-height:1.65">Depois da confirmação, o pedido poderá prosseguir normalmente.</p>
 </div>
 <div style="border-top:1px solid #e5e7eb;padding:20px 32px;text-align:left">
-<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${headerName ? `${escapeHtml(headerName)}<br>` : ""}Este e-mail foi enviado porque existe uma compra iniciada associada a este endereco.<br>Para deixar de receber, responda com "REMOVER".</p>
+<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${headerName ? `${escapeHtml(headerName)}<br>` : ""}Este e-mail foi enviado porque existe uma compra iniciada associada a este endereço.<br>Para deixar de receber, responda a este e-mail com "REMOVER".</p>
 </div>
 </div></body></html>`;
 }

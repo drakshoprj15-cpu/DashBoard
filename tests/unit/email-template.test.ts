@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCampaignHtml,
+  DEFAULT_CAMPAIGN_TEMPLATE,
   isValidCtaUrlTemplate,
   renderCampaignText,
   type CampaignTemplateVars,
@@ -71,11 +72,13 @@ describe("email campaign template", () => {
 
   it("uses the saved neutral campaign defaults", () => {
     const html = buildCampaignHtml({
-      body: "Olá {{PRIMEIRO_NOME}}.",
+      body: DEFAULT_CAMPAIGN_TEMPLATE.body,
       vars,
     });
 
     expect(html).toContain("Sua Empresa");
+    expect(html).toContain("O seu pedido encontra-se pendente de conclusão.");
+    expect(html).toContain("apenas se reconhecer esta compra.");
     expect(html).toContain("<strong>Artigo:</strong> O seu Produto");
     expect(html).toContain("Continuar para o Pagamento");
     expect(html).toContain(
