@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeLinkTotal } from "@/features/payment-links/pricing";
+import { getPublicPaymentLinkStatusMessage } from "@/features/payment-links/public-status";
 import { resolveLinkState } from "@/features/payment-links/types";
 import {
   buildPaymentAttemptIdempotencyKey,
@@ -132,6 +133,24 @@ describe("resolveLinkState", () => {
     expect(resolveLinkState({ ...base, maxPayments: 3, paidCount: 3 })).toBe(
       "exhausted",
     );
+  });
+});
+
+describe("getPublicPaymentLinkStatusMessage", () => {
+  it("explica que um rascunho ainda precisa ser publicado", () => {
+    expect(getPublicPaymentLinkStatusMessage("draft")).toEqual({
+      title: "Este link ainda não foi publicado",
+      body: "A cobrança está guardada como rascunho e ainda não aceita pagamentos.",
+    });
+  });
+
+  it("não confunde pausa, arquivo, expiração e limite atingido", () => {
+    const states = ["paused", "archived", "expired", "exhausted"] as const;
+    const titles = states.map(
+      (state) => getPublicPaymentLinkStatusMessage(state).title,
+    );
+
+    expect(new Set(titles).size).toBe(states.length);
   });
 });
 

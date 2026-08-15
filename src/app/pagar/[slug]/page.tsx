@@ -1,13 +1,23 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { Ban, Clock, CheckCircle2 } from "lucide-react";
+import {
+  Archive,
+  CheckCircle2,
+  Clock,
+  FileText,
+  PauseCircle,
+} from "lucide-react";
 
 import {
   countPaidPayments,
   getPaymentLinkBySlug,
   toPublicPaymentLink,
 } from "@/features/payment-links/queries";
+import {
+  getPublicPaymentLinkStatusMessage,
+  type UnavailablePaymentLinkState,
+} from "@/features/payment-links/public-status";
 import { resolveLinkState } from "@/features/payment-links/types";
 import { PublicCheckout } from "@/features/payment-links/public-checkout";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
@@ -44,36 +54,39 @@ export async function generateMetadata(
 
 /** Tela de link indisponível — elegante, nunca um erro cru. */
 function UnavailableScreen({
-  variant,
+  state,
   customTitle,
   customBody,
 }: {
-  variant: "expired" | "disabled" | "exhausted";
+  state: UnavailablePaymentLinkState;
   customTitle?: string;
   customBody?: string;
 }) {
-  const content = {
+  const presentation = {
+    draft: {
+      Icon: FileText,
+      tone: "bg-sky-100 text-sky-600",
+    },
+    paused: {
+      Icon: PauseCircle,
+      tone: "bg-zinc-200 text-zinc-500",
+    },
+    archived: {
+      Icon: Archive,
+      tone: "bg-zinc-200 text-zinc-500",
+    },
     expired: {
       Icon: Clock,
       tone: "bg-amber-100 text-amber-600",
-      title: "Este link de pagamento expirou",
-      body: "O prazo para pagar terminou. Peça um novo link a quem lhe enviou este.",
-    },
-    disabled: {
-      Icon: Ban,
-      tone: "bg-zinc-200 text-zinc-500",
-      title: "Este link já não está disponível",
-      body: "A cobrança foi desativada por quem a criou.",
     },
     exhausted: {
       Icon: CheckCircle2,
       tone: "bg-emerald-100 text-emerald-600",
-      title: "Pagamento já realizado",
-      body: "Esta cobrança já foi paga e não aceita novos pagamentos.",
     },
-  }[variant];
+  }[state];
+  const content = getPublicPaymentLinkStatusMessage(state);
 
-  const { Icon } = content;
+  const { Icon } = presentation;
   const title = customTitle || content.title;
   const body = customBody || content.body;
 
@@ -81,7 +94,7 @@ function UnavailableScreen({
     <main className="flex min-h-svh items-center justify-center bg-[#F6F7F9] px-4 py-10">
       <div className="w-full max-w-[440px] rounded-2xl border bg-white p-8 text-center shadow-sm">
         <div
-          className={`mx-auto flex size-12 items-center justify-center rounded-full ${content.tone}`}
+          className={`mx-auto flex size-12 items-center justify-center rounded-full ${presentation.tone}`}
         >
           <Icon className="size-6" aria-hidden="true" />
         </div>
@@ -118,14 +131,13 @@ export default async function PagarPage(props: PageProps<"/pagar/[slug]">) {
   if (state === "expired") {
     return (
       <UnavailableScreen
-        variant="expired"
+        state="expired"
         customTitle={link.success.expiredTitle}
         customBody={link.success.expiredDescription}
       />
     );
   }
-  if (state === "exhausted") return <UnavailableScreen variant="exhausted" />;
-  if (state !== "active") return <UnavailableScreen variant="disabled" />;
+  if (state !== "active") return <UnavailableScreen state={state} />;
 
   return (
     <main>

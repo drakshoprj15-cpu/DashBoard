@@ -218,28 +218,32 @@ function LinkRow({
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
                 onSelect={() =>
-                  window.open(link.url, "_blank", "noopener,noreferrer")
-                }
-              >
-                <ExternalLink className="size-3.5" />
-                Abrir
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
                   router.push(`/financeiro/links-de-pagamento/${link.id}`)
                 }
               >
                 <Pencil className="size-3.5" />
-                Editar
+                {link.state === "draft" ? "Editar e publicar" : "Editar"}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void copy()}>
-                <Copy className="size-3.5" />
-                {copied ? "Link copiado" : "Copiar link"}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onShare(link)}>
-                <QrCode className="size-3.5" />
-                Copiar como QR Code
-              </DropdownMenuItem>
+              {link.state !== "draft" ? (
+                <>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      window.open(link.url, "_blank", "noopener,noreferrer")
+                    }
+                  >
+                    <ExternalLink className="size-3.5" />
+                    Abrir
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void copy()}>
+                    <Copy className="size-3.5" />
+                    {copied ? "Link copiado" : "Copiar link"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onShare(link)}>
+                    <QrCode className="size-3.5" />
+                    Copiar como QR Code
+                  </DropdownMenuItem>
+                </>
+              ) : null}
               <DropdownMenuItem
                 onSelect={() => run(() => duplicatePaymentLinkAction(link.id))}
               >
