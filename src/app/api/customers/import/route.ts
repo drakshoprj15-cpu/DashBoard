@@ -1,5 +1,5 @@
 import readXlsxFile from "read-excel-file/node";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/database/client";
 import {
@@ -194,13 +194,17 @@ export async function POST(request: Request) {
       }
 
       try {
-        const identityConditions = [eq(customers.normalizedEmail, email)];
+        const identityConditions = [
+          eq(customers.normalizedEmail, email),
+          sql`lower(trim(${customers.email})) = ${email}`,
+        ];
         if (phone)
           identityConditions.push(eq(customers.normalizedPhone, phone));
         if (document) identityConditions.push(eq(customers.document, document));
         const candidates = await db
           .select({
             id: customers.id,
+            email: customers.email,
             normalizedEmail: customers.normalizedEmail,
             normalizedPhone: customers.normalizedPhone,
             normalizedDocument: customers.document,
@@ -245,6 +249,7 @@ export async function POST(request: Request) {
               document: document || undefined,
               country: country || undefined,
               tags: tags.length > 0 ? tags : undefined,
+              normalizedEmail: email,
               acceptsEmail: consent,
               marketingOptOut: !consent,
               lastActivityAt: now,
