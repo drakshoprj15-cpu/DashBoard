@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { getSession } from "@/lib/auth/session";
+import { isOwnerAllowlistEnabled } from "@/lib/auth/owner";
 import { SIDEBAR_COOKIE } from "@/lib/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DemoBanner } from "@/components/layout/demo-banner";
+import { OpenAccessBanner } from "@/components/layout/open-access-banner";
 
 export default async function PainelLayout({
   children,
@@ -28,6 +30,7 @@ export default async function PainelLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <Header user={session.user} demoMode={session.demoMode} />
         {session.demoMode && <DemoBanner />}
+        {!session.demoMode && !isOwnerAllowlistEnabled() && <OpenAccessBanner />}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
