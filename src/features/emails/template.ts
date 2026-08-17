@@ -7,7 +7,7 @@ export const DEFAULT_CAMPAIGN_TEMPLATE = {
   body: "Olá {{PRIMEIRO_NOME}},\n\nO seu pedido encontra-se pendente de conclusão. Para continuar, confirme os dados no botão abaixo apenas se reconhecer esta compra.",
   articleName: "O seu Produto",
   ctaLabel: "Continuar para o Pagamento",
-  ctaUrl: "https://suaempresa.site/pagar/6bzge2a64e",
+  ctaUrl: "{{CHECKOUT_URL}}",
   fallbackText:
     "Se o botão não funcionar, copie e cole o seguinte endereço na barra do navegador:",
 } as const;
@@ -62,6 +62,7 @@ const VARIABLE_ALIASES: Record<string, keyof CampaignTemplateVars> = {
 };
 
 const VARIABLE_PATTERN = /\{\{\s*([A-Za-z_]+)\s*\}\}/g;
+const BLOCKED_CTA_HOSTS = new Set(["suaempresa.site", "www.suaempresa.site"]);
 
 export function renderCampaignText(
   template: string,
@@ -88,7 +89,10 @@ function escapeHtml(value: string): string {
 function validHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
+    return (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      !BLOCKED_CTA_HOSTS.has(url.hostname.toLowerCase())
+    );
   } catch {
     return false;
   }

@@ -57,7 +57,7 @@ const campaignSchema = z.object({
     .max(2_048)
     .refine(
       isValidCtaUrlTemplate,
-      "Use um link http(s) valido ou {{CHECKOUT_URL}}.",
+      "Use {{CHECKOUT_URL}} ou um link http(s) real.",
     ),
   fallbackText: z
     .string()
@@ -133,7 +133,7 @@ function templateVars(
             recipient.currency ?? "EUR",
             "pt-PT",
           ),
-    checkoutUrl: recipient.checkoutUrl ?? appUrl,
+    checkoutUrl: recipient.checkoutUrl ?? `${appUrl.replace(/\/$/, "")}/loja`,
     lojaUrl: appUrl,
   };
 }
@@ -146,7 +146,7 @@ function sampleVars(email: string, appUrl: string): CampaignTemplateVars {
     produto: "Produto Exemplo",
     pedido: "PED-1234",
     valor: "49,90 €",
-    checkoutUrl: `${appUrl.replace(/\/$/, "")}/checkout/exemplo`,
+    checkoutUrl: `${appUrl.replace(/\/$/, "")}/loja`,
     lojaUrl: appUrl,
   };
 }
