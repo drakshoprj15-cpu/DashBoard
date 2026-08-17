@@ -84,14 +84,30 @@ describe("email campaign template", () => {
     expect(html).toContain(
       "Se o botão não funcionar, copie e cole o seguinte endereço na barra do navegador:",
     );
-    expect(html).toContain('href="https://suaempresa.site/pagar/6bzge2a64e"');
+    expect(DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl).toBe("{{CHECKOUT_URL}}");
+    expect(html).toContain('href="https://example.com/checkout/PED-42"');
+    expect(html).not.toContain("suaempresa.site");
   });
 
-  it("accepts a dynamic checkout link and rejects unsafe protocols", () => {
+  it("accepts a dynamic checkout link and rejects unsafe or placeholder URLs", () => {
     expect(isValidCtaUrlTemplate("{{CHECKOUT_URL}}")).toBe(true);
     expect(isValidCtaUrlTemplate("https://example.com/p/{{PEDIDO}}")).toBe(
       true,
     );
     expect(isValidCtaUrlTemplate("javascript:alert(1)")).toBe(false);
+    expect(
+      isValidCtaUrlTemplate("https://suaempresa.site/pagar/6bzge2a64e"),
+    ).toBe(false);
+  });
+
+  it("does not render a button for the old placeholder domain", () => {
+    const html = buildCampaignHtml({
+      body: "Olá {{PRIMEIRO_NOME}}.",
+      ctaUrl: "https://suaempresa.site/pagar/6bzge2a64e",
+      vars,
+    });
+
+    expect(html).not.toContain("suaempresa.site");
+    expect(html).not.toContain("Continuar para o Pagamento");
   });
 });

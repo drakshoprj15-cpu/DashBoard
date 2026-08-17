@@ -24,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getAppUrl } from "@/lib/app-url";
 
 export const metadata: Metadata = { title: "Emails" };
 export const dynamic = "force-dynamic";
@@ -132,6 +133,7 @@ export default async function EmailsPage({
         customerIdsParam={customerIds.join(",")}
         pendingRecipients={pendingRecipients}
         initialDispatchId={crypto.randomUUID()}
+        appUrl={getAppUrl()}
       />
 
       <CampaignHistory campaigns={overview.history} />
