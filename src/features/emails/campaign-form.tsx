@@ -68,10 +68,7 @@ const PREVIEW_VARS: CampaignTemplateVars = {
   lojaUrl: "https://loja.exemplo.pt",
 };
 
-function recipientPreviewVars(
-  recipient: Recipient,
-  appUrl: string,
-): CampaignTemplateVars {
+function recipientPreviewVars(recipient: Recipient): CampaignTemplateVars {
   return {
     nome: recipient.name,
     primeiroNome: recipient.name.trim().split(/\s+/)[0] || "Cliente",
@@ -79,8 +76,9 @@ function recipientPreviewVars(
     produto: recipient.productName ?? "o seu produto",
     pedido: recipient.orderReference ?? "o seu pedido",
     valor: money(recipient.orderTotalCents, recipient.currency),
-    checkoutUrl: recipient.checkoutUrl ?? `${appUrl.replace(/\/$/, "")}/loja`,
-    lojaUrl: appUrl,
+    checkoutUrl:
+      recipient.checkoutUrl ?? "https://loja.exemplo.pt/checkout/pedido",
+    lojaUrl: "https://loja.exemplo.pt",
   };
 }
 
@@ -99,7 +97,6 @@ export function CampaignForm({
   customerIdsParam,
   pendingRecipients,
   initialDispatchId,
-  appUrl,
 }: {
   counts: Record<string, number>;
   resendReady: boolean;
@@ -107,7 +104,6 @@ export function CampaignForm({
   customerIdsParam?: string;
   pendingRecipients: Recipient[];
   initialDispatchId: string;
-  appUrl: string;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
@@ -230,12 +226,8 @@ export function CampaignForm({
     ) ??
     previewRecipients[0];
   const previewVars = selectedPreviewRecipient
-    ? recipientPreviewVars(selectedPreviewRecipient, appUrl)
-    : {
-        ...PREVIEW_VARS,
-        checkoutUrl: `${appUrl.replace(/\/$/, "")}/loja`,
-        lojaUrl: appUrl,
-      };
+    ? recipientPreviewVars(selectedPreviewRecipient)
+    : PREVIEW_VARS;
   const renderedSubject = renderCampaignText(subject, previewVars);
   const previewHtml = buildCampaignHtml({
     body,
