@@ -16,6 +16,12 @@ import {
   getSegmentRecipients,
   type Recipient,
 } from "@/features/emails/segments";
+import {
+  getCampaignBatchCount,
+  MAX_CAMPAIGN_RECIPIENTS,
+  MAX_RECIPIENTS_PER_CAMPAIGN_BATCH,
+  splitCampaignRecipients,
+} from "@/features/emails/batching";
 import type { SegmentKey } from "@/features/emails/types";
 import {
   isResendConfigured,
@@ -36,7 +42,7 @@ import { getSession } from "@/lib/auth/session";
 import { formatMoney } from "@/lib/format";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
-const MAX_CAMPAIGN_RECIPIENTS = 500;
+const RESEND_BATCH_INTERVAL_MS = 250;
 
 const campaignSchema = z.object({
   dispatchId: z.string().uuid(),
@@ -106,6 +112,13 @@ export interface EmailActionResult {
   sent?: number;
   failed?: number;
   queued?: number;
+  batches?: number;
+}
+
+function waitForNextProviderBatch() {
+  return new Promise((resolve) =>
+    setTimeout(resolve, RESEND_BATCH_INTERVAL_MS),
+  );
 }
 
 function templateVars(
@@ -260,9 +273,12 @@ export async function sendCampaignAction(
   if (recipients.length > MAX_CAMPAIGN_RECIPIENTS) {
     return {
       ok: false,
-      error: `Este disparo tem ${recipients.length} contatos. O limite por operação é ${MAX_CAMPAIGN_RECIPIENTS}.`,
+      error: `Este disparo tem ${recipients.length} contatos. O limite de segurança é ${MAX_CAMPAIGN_RECIPIENTS}.`,
     };
   }
+
+  const campaignBatches = splitCampaignRecipients(recipients);
+  const batchCount = getCampaignBatchCount(recipients.length);
 
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
@@ -292,6 +308,8 @@ export async function sendCampaignAction(
         sent: 0,
         failed: 0,
         queued: recipients.length,
+        batches: batchCount,
+        batchSize: MAX_RECIPIENTS_PER_CAMPAIGN_BATCH,
       },
     })
     .onConflictDoNothing()
@@ -313,95 +331,105 @@ export async function sendCampaignAction(
   let failed = 0;
   const errors: string[] = [];
 
-  for (
-    let offset = 0;
-    offset < recipients.length;
-    offset += MAX_EMAILS_PER_BATCH
-  ) {
-    const chunk = recipients.slice(offset, offset + MAX_EMAILS_PER_BATCH);
-    const result = await sendEmailBatch(
-      chunk.map((recipient) => {
-        const vars = templateVars(recipient, appUrl);
-        return {
-          to: recipient.email,
-          subject: renderCampaignText(subject, vars),
-          html: buildCampaignHtml({
-            body,
-            preheader,
-            headerName,
-            title,
-            articleName,
-            ctaLabel,
-            ctaUrl,
-            fallbackText,
-            vars,
-          }),
-          replyTo: company.email,
-        };
-      }),
-      `campaign/${dispatchId}/${Math.floor(offset / MAX_EMAILS_PER_BATCH)}`,
-    );
+  for (const [campaignBatchIndex, campaignBatch] of campaignBatches.entries()) {
+    for (
+      let providerOffset = 0;
+      providerOffset < campaignBatch.length;
+      providerOffset += MAX_EMAILS_PER_BATCH
+    ) {
+      const chunk = campaignBatch.slice(
+        providerOffset,
+        providerOffset + MAX_EMAILS_PER_BATCH,
+      );
+      const providerBatchIndex = Math.floor(
+        providerOffset / MAX_EMAILS_PER_BATCH,
+      );
+      const result = await sendEmailBatch(
+        chunk.map((recipient) => {
+          const vars = templateVars(recipient, appUrl);
+          return {
+            to: recipient.email,
+            subject: renderCampaignText(subject, vars),
+            html: buildCampaignHtml({
+              body,
+              preheader,
+              headerName,
+              title,
+              articleName,
+              ctaLabel,
+              ctaUrl,
+              fallbackText,
+              vars,
+            }),
+            replyTo: company.email,
+          };
+        }),
+        `campaign/${dispatchId}/${campaignBatchIndex}/${providerBatchIndex}`,
+      );
 
-    if (result.ok && result.externalIds?.length === chunk.length) {
-      const now = new Date();
+      if (result.ok && result.externalIds?.length === chunk.length) {
+        const now = new Date();
+        await db
+          .insert(emailRecipients)
+          .values(
+            chunk.map((recipient, index) => ({
+              workspaceId,
+              campaignId: dispatchId,
+              customerId: recipient.id,
+              email: recipient.email,
+              externalId: result.externalIds![index],
+              status: "queued",
+            })),
+          )
+          .onConflictDoUpdate({
+            target: [emailRecipients.campaignId, emailRecipients.email],
+            set: {
+              externalId: sql`excluded.external_id`,
+              status: "queued",
+              updatedAt: now,
+            },
+          });
+        queued += chunk.length;
+        await waitForNextProviderBatch();
+        continue;
+      }
+
+      const error = result.error ?? "O Resend não confirmou o lote enviado.";
+      errors.push(error);
+      failed += chunk.length;
+      const emails = chunk.map((recipient) => recipient.email);
       await db
-        .insert(emailRecipients)
-        .values(
-          chunk.map((recipient, index) => ({
+        .update(emailRecipients)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(
+          and(
+            eq(emailRecipients.campaignId, dispatchId),
+            inArray(emailRecipients.email, emails),
+          ),
+        );
+
+      const failedRecipients = await db
+        .select({ id: emailRecipients.id })
+        .from(emailRecipients)
+        .where(
+          and(
+            eq(emailRecipients.campaignId, dispatchId),
+            inArray(emailRecipients.email, emails),
+          ),
+        );
+      if (failedRecipients.length > 0) {
+        await db.insert(emailEvents).values(
+          failedRecipients.map((recipient) => ({
             workspaceId,
+            recipientId: recipient.id,
             campaignId: dispatchId,
-            customerId: recipient.id,
-            email: recipient.email,
-            externalId: result.externalIds![index],
-            status: "queued",
+            type: "failed" as const,
+            externalEventId: `local:${dispatchId}:${recipient.id}`,
+            metadata: { error: error.slice(0, 500) },
           })),
-        )
-        .onConflictDoUpdate({
-          target: [emailRecipients.campaignId, emailRecipients.email],
-          set: {
-            externalId: sql`excluded.external_id`,
-            status: "queued",
-            updatedAt: now,
-          },
-        });
-      queued += chunk.length;
-      continue;
-    }
-
-    const error = result.error ?? "O Resend não confirmou o lote enviado.";
-    errors.push(error);
-    failed += chunk.length;
-    const emails = chunk.map((recipient) => recipient.email);
-    await db
-      .update(emailRecipients)
-      .set({ status: "failed", updatedAt: new Date() })
-      .where(
-        and(
-          eq(emailRecipients.campaignId, dispatchId),
-          inArray(emailRecipients.email, emails),
-        ),
-      );
-
-    const failedRecipients = await db
-      .select({ id: emailRecipients.id })
-      .from(emailRecipients)
-      .where(
-        and(
-          eq(emailRecipients.campaignId, dispatchId),
-          inArray(emailRecipients.email, emails),
-        ),
-      );
-    if (failedRecipients.length > 0) {
-      await db.insert(emailEvents).values(
-        failedRecipients.map((recipient) => ({
-          workspaceId,
-          recipientId: recipient.id,
-          campaignId: dispatchId,
-          type: "failed" as const,
-          externalEventId: `local:${dispatchId}:${recipient.id}`,
-          metadata: { error: error.slice(0, 500) },
-        })),
-      );
+        );
+      }
+      await waitForNextProviderBatch();
     }
   }
 
@@ -416,6 +444,8 @@ export async function sendCampaignAction(
         sent: 0,
         failed,
         queued,
+        batches: batchCount,
+        batchSize: MAX_RECIPIENTS_PER_CAMPAIGN_BATCH,
         errors: errors.slice(0, 5),
       },
       updatedAt: now,
@@ -439,9 +469,12 @@ export async function sendCampaignAction(
     sent: 0,
     failed,
     queued,
+    batches: batchCount,
     message:
       failed === 0
-        ? `Disparo colocado na fila do Resend para ${queued} ${queued === 1 ? "cliente" : "clientes"}.`
+        ? batchCount > 1
+          ? `Disparo dividido em ${batchCount} lotes e colocado na fila para ${queued} clientes.`
+          : `Disparo colocado na fila do Resend para ${queued} ${queued === 1 ? "cliente" : "clientes"}.`
         : undefined,
     error:
       failed > 0
