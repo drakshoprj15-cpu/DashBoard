@@ -52,8 +52,7 @@ export default async function EmailsPage({
   const customerIds = (recipientsParamRaw ?? "")
     .split(",")
     .map((value) => value.trim())
-    .filter((value) => UUID_REGEX.test(value))
-    .slice(0, 500);
+    .filter((value) => UUID_REGEX.test(value));
 
   const [counts, customRecipients, overview, pendingRecipients] =
     await Promise.all([

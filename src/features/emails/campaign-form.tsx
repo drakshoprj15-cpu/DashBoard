@@ -27,10 +27,6 @@ import {
   sendCampaignAction,
   type EmailActionResult,
 } from "@/features/emails/actions";
-import {
-  getCampaignBatchCount,
-  MAX_RECIPIENTS_PER_CAMPAIGN_BATCH,
-} from "@/features/emails/batching";
 import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
 import type {
   CustomRecipientsResult,
@@ -210,7 +206,6 @@ export function CampaignForm({
   const activeCustomIds = selectedCustomerIds;
   const total =
     segment === "custom" ? activeCustomIds.length : (counts[segment] ?? 0);
-  const campaignBatchCount = getCampaignBatchCount(total);
   const previewRecipients = React.useMemo(() => {
     const unique = new Map<string, Recipient>();
     for (const recipient of [
@@ -417,17 +412,6 @@ export function CampaignForm({
                   </button>
                 ))}
               </div>
-
-              {campaignBatchCount > 1 && (
-                <Alert variant="info">
-                  <Send />
-                  <AlertDescription>
-                    O envio será dividido automaticamente em{" "}
-                    <strong>{campaignBatchCount} lotes</strong> de até{" "}
-                    {MAX_RECIPIENTS_PER_CAMPAIGN_BATCH} clientes.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -937,10 +921,8 @@ export function CampaignForm({
                 disabled={!resendReady || total === 0 || !dispatchId}
                 onClick={() => setSubmittingMode("send")}
               >
-                <Send />
-                {campaignBatchCount > 1
-                  ? `Enviar ${total} clientes em ${campaignBatchCount} lotes`
-                  : `Enviar para ${total} ${total === 1 ? "cliente" : "clientes"}`}
+                <Send /> Enviar para {total}{" "}
+                {total === 1 ? "cliente" : "clientes"}
               </Button>
             </div>
           </form>
