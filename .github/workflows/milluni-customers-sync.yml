@@ -1,0 +1,29 @@
+name: Sincronizar clientes da Milluni
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: milluni-customers-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Chamar sincronização do Infinity
+        env:
+          SYNC_URL: ${{ secrets.MILLUNI_SYNC_URL }}
+          CRON_SECRET: ${{ secrets.MILLUNI_CRON_SECRET }}
+        run: |
+          test -n "$SYNC_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SYNC_URL"
