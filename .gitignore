@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/tools/drizzle/node_modules/
 /.pnp
 .pnp.*
 .yarn/*

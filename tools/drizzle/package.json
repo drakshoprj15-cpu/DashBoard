@@ -1,0 +1,9 @@
+{
+  "name": "@dash-board/drizzle-tooling",
+  "version": "0.0.0",
+  "private": true,
+  "devDependencies": {
+    "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2"
+  }
+}
