@@ -113,9 +113,16 @@ async function fetchMilluniOrders(): Promise<unknown> {
   }
 
   const baseUrl = configuredBaseUrl();
+  const sourceHeaders = {
+    Origin: baseUrl,
+    Referer: `${baseUrl}/off/pedidos`,
+  };
   const loginResponse = await fetch(`${baseUrl}/api/admin/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      ...sourceHeaders,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ usuario: user, senha: password }),
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
@@ -145,7 +152,11 @@ async function fetchMilluniOrders(): Promise<unknown> {
   }
 
   const ordersResponse = await fetch(`${baseUrl}/api/off/pedidos`, {
-    headers: { Accept: "application/json", Cookie: cookie },
+    headers: {
+      ...sourceHeaders,
+      Accept: "application/json",
+      Cookie: cookie,
+    },
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   });
