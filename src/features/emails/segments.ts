@@ -7,6 +7,7 @@ import {
   orderItems,
   orders,
 } from "@/database/schema";
+import { CUSTOMER_IMPORT_STATUS_TAGS } from "@/features/customers/customer-utils";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
 import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
@@ -20,10 +21,14 @@ export {
 } from "@/features/emails/types";
 
 const STATUS_BY_SEGMENT: Record<string, string[]> = {
-  paid: ["paid", "shipped", "delivered"],
+  paid: ["paid", "preparing", "shipped", "delivered"],
   pending: ["created", "awaiting_payment", "processing"],
   refused: ["refused", "expired", "cancelled"],
 };
+
+const IMPORTED_PAID_STATUS_JSON = JSON.stringify([
+  CUSTOMER_IMPORT_STATUS_TAGS.paid,
+]);
 
 export interface Recipient {
   id: string;
@@ -47,7 +52,7 @@ type RecipientWithoutContext = Omit<
   | "checkoutUrl"
   | "orderTotalCents"
   | "currency"
->;
+> & { fallbackProductName?: string | null };
 
 async function addOrderContext(
   recipients: RecipientWithoutContext[],
@@ -90,11 +95,12 @@ async function addOrderContext(
 
   return recipients.map((recipient) => {
     const context = latestByCustomer.get(recipient.id);
+    const { fallbackProductName, ...baseRecipient } = recipient;
     return {
-      ...recipient,
+      ...baseRecipient,
       orderId: context?.orderId ?? null,
       orderReference: context?.reference ?? null,
-      productName: context?.productName ?? null,
+      productName: context?.productName ?? fallbackProductName ?? null,
       checkoutUrl: context?.checkoutUrl ?? null,
       orderTotalCents: context ? Number(context.totalCents) : null,
       currency: context?.currency ?? null,
@@ -125,6 +131,14 @@ export async function getSegmentRecipients(
   const blocked = new Set(suppressed.map((s) => s.email.toLowerCase()));
 
   const statuses = STATUS_BY_SEGMENT[segment];
+  const audienceCondition = statuses
+    ? segment === "paid"
+      ? or(
+          inArray(orders.status, statuses as never),
+          sql`coalesce(${customers.tags}, '[]'::jsonb) @> ${IMPORTED_PAID_STATUS_JSON}::jsonb`,
+        )
+      : inArray(orders.status, statuses as never)
+    : undefined;
 
   const rows = await db
     .select({
@@ -132,8 +146,9 @@ export async function getSegmentRecipients(
       email: customers.email,
       firstName: customers.firstName,
       lastName: customers.lastName,
+      importedProductName: customers.importedProductName,
       orderCount: sql<number>`count(${orders.id})::int`,
-      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
+      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','preparing','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
     })
     .from(customers)
     .leftJoin(orders, eq(orders.customerId, customers.id))
@@ -143,7 +158,7 @@ export async function getSegmentRecipients(
         isNull(customers.deletedAt),
         eq(customers.marketingOptOut, false),
         eq(customers.isBlocked, false),
-        statuses ? inArray(orders.status, statuses as never) : undefined,
+        audienceCondition,
       ),
     )
     .groupBy(
@@ -151,6 +166,7 @@ export async function getSegmentRecipients(
       customers.email,
       customers.firstName,
       customers.lastName,
+      customers.importedProductName,
     );
 
   const filtered =
@@ -164,6 +180,7 @@ export async function getSegmentRecipients(
       name: [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email,
       orderCount: r.orderCount,
       totalSpentCents: r.totalSpentCents,
+      fallbackProductName: r.importedProductName,
     }));
 
   return includeOrderContext
@@ -204,6 +221,7 @@ export async function searchEmailRecipients(
         email: customers.email,
         firstName: customers.firstName,
         lastName: customers.lastName,
+        importedProductName: customers.importedProductName,
       })
       .from(customers)
       .where(
@@ -236,6 +254,7 @@ export async function searchEmailRecipients(
         [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email,
       orderCount: 0,
       totalSpentCents: 0,
+      fallbackProductName: row.importedProductName,
     }));
 
   return addOrderContext(recipients);
@@ -302,10 +321,11 @@ export async function getCustomRecipients(
       email: customers.email,
       firstName: customers.firstName,
       lastName: customers.lastName,
+      importedProductName: customers.importedProductName,
       marketingOptOut: customers.marketingOptOut,
       isBlocked: customers.isBlocked,
       orderCount: sql<number>`count(${orders.id})::int`,
-      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
+      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','preparing','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
     })
     .from(customers)
     .leftJoin(orders, eq(orders.customerId, customers.id))
@@ -321,6 +341,7 @@ export async function getCustomRecipients(
       customers.email,
       customers.firstName,
       customers.lastName,
+      customers.importedProductName,
       customers.marketingOptOut,
       customers.isBlocked,
     );
@@ -351,6 +372,7 @@ export async function getCustomRecipients(
       name: [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email,
       orderCount: r.orderCount,
       totalSpentCents: r.totalSpentCents,
+      fallbackProductName: r.importedProductName,
     });
   }
 
