@@ -69,7 +69,7 @@ function previewVars(appUrl: string): CampaignTemplateVars {
     produto: "Produto Exemplo",
     pedido: "PED-1234",
     valor: "49,90 €",
-    checkoutUrl: `${appUrl.replace(/\/$/, "")}/loja`,
+    checkoutUrl: `${appUrl.replace(/\/$/, "")}/checkout/exemplo`,
     lojaUrl: appUrl,
   };
 }
