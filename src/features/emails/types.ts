@@ -22,8 +22,9 @@ export interface SegmentDefinition {
 export const SEGMENTS: SegmentDefinition[] = [
   {
     key: "paid",
-    label: "Compraram (pagos)",
-    description: "Clientes com pelo menos um pedido pago",
+    label: "Compras pagas",
+    description:
+      "Clientes com pedido pago ou pagamento informado na aba Clientes",
   },
   {
     key: "pending",
