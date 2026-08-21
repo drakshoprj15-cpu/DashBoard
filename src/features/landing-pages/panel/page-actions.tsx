@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   BarChart3,
+  CloudUpload,
+  Code2,
   Copy,
   ExternalLink,
   Eye,
@@ -16,9 +18,12 @@ import {
   Pencil,
   Play,
   Rocket,
+  Settings,
+  Terminal,
   Trash2,
 } from "lucide-react";
 
+import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +50,22 @@ import {
   publishLandingPageDirectAction,
   type LandingActionResult,
 } from "../actions";
-import type { LandingStatus } from "../types";
+import { deployLandingPageAction } from "../deployment/actions";
+import {
+  DEPLOYMENT_STATUS_LABEL,
+  HOSTING_PROVIDER_LABEL,
+  type LandingDeployment,
+  type LandingStatus,
+} from "../types";
+
+async function copyToClipboard(url: string) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Endereço copiado.");
+  } catch {
+    toast.error("O navegador bloqueou a cópia. Selecione e copie à mão.");
+  }
+}
 
 export function CopyUrlButton({
   url,
@@ -56,17 +76,13 @@ export function CopyUrlButton({
   variant?: "ghost" | "outline";
   label?: string;
 }) {
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Endereço copiado.");
-    } catch {
-      toast.error("O navegador bloqueou a cópia. Selecione e copie à mão.");
-    }
-  }
-
   return (
-    <Button type="button" size="sm" variant={variant} onClick={copy}>
+    <Button
+      type="button"
+      size="sm"
+      variant={variant}
+      onClick={() => void copyToClipboard(url)}
+    >
       <Copy /> {label}
     </Button>
   );
@@ -109,6 +125,7 @@ export function LandingPageActions({
   status,
   publicUrl,
   hasUnpublishedChanges,
+  deployment,
 }: {
   id: string;
   slug: string;
@@ -116,10 +133,12 @@ export function LandingPageActions({
   status: LandingStatus;
   publicUrl: string;
   hasUnpublishedChanges: boolean;
+  deployment: LandingDeployment;
 }) {
   const { run, pending } = useRunAction();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [confirmText, setConfirmText] = React.useState("");
+  const [showLog, setShowLog] = React.useState(false);
 
   function formOf(entries: Record<string, string>) {
     const formData = new FormData();
@@ -130,6 +149,11 @@ export function LandingPageActions({
   }
 
   const isPublished = status === "published";
+
+  // Uma página hospedada fora publica-se com um deploy; uma página do editor
+  // publica-se com uma escrita no banco. São ações diferentes e o menu mostra
+  // a que corresponde a esta página, em vez das duas.
+  const isExternal = deployment.provider === "vercel";
 
   return (
     <>
@@ -161,6 +185,16 @@ export function LandingPageActions({
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
+            <Link href={`/landing-pages/${id}?tab=codigo`}>
+              <Code2 /> Código
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/landing-pages/${id}?tab=publicacao`}>
+              <Settings /> Configurações
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href="/landing-pages/dominios">
               <Globe /> Configurar domínio
             </Link>
@@ -177,22 +211,47 @@ export function LandingPageActions({
           ) : null}
           <DropdownMenuItem asChild>
             <Link href={`/landing-pages/${id}?tab=publicacao`}>
-              <Eye /> Pré-visualizar
+              <Eye /> Visualizar
             </Link>
           </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onSelect={() =>
-              void run(publishLandingPageDirectAction, formOf({ id }))
-            }
-          >
-            <Rocket />
-            {isPublished
-              ? hasUnpublishedChanges
-                ? "Republicar alterações"
-                : "Republicar"
-              : "Publicar"}
+          <DropdownMenuItem onSelect={() => void copyToClipboard(publicUrl)}>
+            <Copy /> Copiar URL
           </DropdownMenuItem>
+
+          {isExternal ? (
+            <DropdownMenuItem
+              onSelect={() =>
+                void run(deployLandingPageAction, formOf({ id }))
+              }
+            >
+              <CloudUpload />
+              {deployment.url ? "Republicar na Vercel" : "Publicar na Vercel"}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onSelect={() =>
+                void run(publishLandingPageDirectAction, formOf({ id }))
+              }
+            >
+              <Rocket />
+              {isPublished
+                ? hasUnpublishedChanges
+                  ? "Republicar alterações"
+                  : "Republicar"
+                : "Publicar"}
+            </DropdownMenuItem>
+          )}
+
+          {isExternal ? (
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setShowLog(true);
+              }}
+            >
+              <Terminal /> Ver deploy
+            </DropdownMenuItem>
+          ) : null}
 
           {status === "paused" ? (
             <DropdownMenuItem
@@ -231,6 +290,56 @@ export function LandingPageActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Registo técnico do último envio. Fica atrás de um clique de propósito:
+          não é o que interessa quando corre bem, e é a primeira coisa que se
+          quer ver quando falha. */}
+      <Dialog open={showLog} onOpenChange={setShowLog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Último deploy de “{name}”</DialogTitle>
+            <DialogDescription>
+              {deployment.updatedAt
+                ? `Estado: ${DEPLOYMENT_STATUS_LABEL[deployment.status]} · ${formatDateTime(
+                    deployment.updatedAt,
+                    "pt-PT",
+                  )}`
+                : "Esta página ainda não foi enviada para a Vercel."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">
+            <dt className="text-muted-foreground">Hospedagem</dt>
+            <dd>{HOSTING_PROVIDER_LABEL[deployment.provider]}</dd>
+            <dt className="text-muted-foreground">Endereço</dt>
+            <dd className="break-all">{deployment.url ?? "—"}</dd>
+            <dt className="text-muted-foreground">Projeto</dt>
+            <dd className="break-all font-mono text-xs">
+              {deployment.projectId ?? "—"}
+            </dd>
+            <dt className="text-muted-foreground">Deploy</dt>
+            <dd className="break-all font-mono text-xs">
+              {deployment.deploymentId ?? "—"}
+            </dd>
+          </dl>
+
+          <pre className="bg-muted max-h-72 overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
+            {deployment.log?.trim() || "Sem registo guardado."}
+          </pre>
+
+          <DialogFooter>
+            {deployment.log ? (
+              <Button
+                variant="outline"
+                onClick={() => void copyToClipboard(deployment.log ?? "")}
+              >
+                <Copy /> Copiar registo
+              </Button>
+            ) : null}
+            <Button onClick={() => setShowLog(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>

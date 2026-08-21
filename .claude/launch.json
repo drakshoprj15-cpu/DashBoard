@@ -6,6 +6,19 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "landing-a55",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "--no-clipboard",
+        "--listen",
+        "4310",
+        "landing-sites/samsung-galaxy-a55-5g/public"
+      ],
+      "port": 4310
     }
   ]
 }

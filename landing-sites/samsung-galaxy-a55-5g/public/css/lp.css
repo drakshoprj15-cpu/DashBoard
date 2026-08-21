@@ -1,0 +1,69 @@
+/**
+ * Ajustes sobre o CSS que veio no export.
+ *
+ * Deliberadamente curto: as duas folhas de origem continuam a mandar em todo
+ * o desenho da página. Aqui só entra o que o export não conseguia entregar
+ * sozinho, por depender do runtime que foi removido.
+ */
+
+/* O contentor principal chegou com `opacity:0` porque a animação de entrada
+   era feita em JavaScript. A animação passa a ser do CSS — mas só sobre
+   `transform`, nunca sobre `opacity`.
+   O conteúdo da página não pode depender de uma animação para ficar visível:
+   basta a aba abrir em segundo plano, ou o motor de animação estar suspenso,
+   para o primeiro fotograma se eternizar. Animando apenas o deslocamento, o
+   pior caso é o bloco ficar 16px mais abaixo — nunca um ecrã em branco. */
+.lp-reveal {
+  animation: lp-entrada 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes lp-entrada {
+  from {
+    transform: translateY(16px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal {
+    animation: none;
+  }
+  .estoque-dot,
+  .estoque-progresso {
+    animation: none !important;
+  }
+}
+
+/* Os blocos de conteúdo longo vinham dentro de um <iframe> de altura fixa.
+   Agora que estão inline, ganham a largura da coluna e respiram como o resto
+   da página. */
+.lp-wrap {
+  width: 100%;
+}
+
+[data-lp-panel] > .lp-wrap {
+  padding-top: 4px;
+}
+
+/* Rede de segurança contra deslocamento horizontal: a página tem tabelas e
+   faixas deslizantes, e basta uma delas transbordar para o telemóvel inteiro
+   passar a abanar de lado. */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* O botão de compra deixou de ser <button> e passou a ser <a>: sem isto
+   herdava o sublinhado das ligações. */
+[data-lp="buy"] {
+  text-decoration: none;
+}
+
+/* A barra de progresso do estoque tem largura fixa em percentagem; num ecrã
+   de 320px o bloco inteiro precisa de encolher com a coluna. */
+.estoque-wrapper {
+  max-width: 100%;
+}
