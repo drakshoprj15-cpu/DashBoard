@@ -36,7 +36,9 @@ function replaceOnce(needle, value, label) {
     throw new Error(`[build] âncora não encontrada: ${label}`);
   }
   if (html.indexOf(needle, first + needle.length) !== -1) {
-    throw new Error(`[build] âncora ambígua (mais de uma ocorrência): ${label}`);
+    throw new Error(
+      `[build] âncora ambígua (mais de uma ocorrência): ${label}`,
+    );
   }
   html = html.slice(0, first) + value + html.slice(first + needle.length);
   applied.push(label);
@@ -78,6 +80,12 @@ function cutBetween(open, close, label, expected) {
 
 const euro = (cents) =>
   `${(cents / 100).toFixed(2).replace(".", ",")} €`.replace(" ", " ");
+const escapeAttribute = (value) =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 
 // ---------------------------------------------------------------------------
 // 1. Runtime de origem
@@ -89,8 +97,17 @@ replaceOnce(
   "",
   "remove preload do webpack",
 );
-replaceOnce('<meta name="next-size-adjust" content="">', "", "remove meta do Next");
-cutBetween('<link rel="dns-prefetch"', ">", "remove dns-prefetch de rastreadores", 3);
+replaceOnce(
+  '<meta name="next-size-adjust" content="">',
+  "",
+  "remove meta do Next",
+);
+cutBetween(
+  '<link rel="dns-prefetch"',
+  ">",
+  "remove dns-prefetch de rastreadores",
+  3,
+);
 
 // ---------------------------------------------------------------------------
 // 2. Metadados e assets em caminho absoluto (a página vive em /lp/<slug>/)
@@ -116,6 +133,14 @@ replaceAll('href="css/', 'href="/css/', "css absoluto", 2);
 replaceAll('href="images/', 'href="/images/', "imagens em href absoluto", 3);
 replaceAll('src="images/', 'src="/images/', "imagens em src absoluto");
 
+if (config.faviconUrl) {
+  replaceOnce(
+    '<link rel="shortcut icon" href="/images/favicon.svg"><link rel="icon" href="/images/favicon.svg" type="image/svg+xml">',
+    `<link rel="shortcut icon" href="${escapeAttribute(config.faviconUrl)}"><link rel="icon" href="${escapeAttribute(config.faviconUrl)}">`,
+    "favicon do painel",
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 3. Blocos que o export gravou em <iframe srcdoc> corrompido
 //
@@ -126,8 +151,14 @@ replaceAll('src="images/', 'src="/images/', "imagens em src absoluto");
 // elimina de vez o redimensionamento por script que fixava 80px de altura.
 // ---------------------------------------------------------------------------
 
-const estoqueBlock = readFileSync(join(here, "source", "blocks", "estoque.html"), "utf8");
-const descricaoBlock = readFileSync(join(here, "source", "blocks", "descricao.html"), "utf8");
+const estoqueBlock = readFileSync(
+  join(here, "source", "blocks", "estoque.html"),
+  "utf8",
+);
+const descricaoBlock = readFileSync(
+  join(here, "source", "blocks", "descricao.html"),
+  "utf8",
+);
 
 function replaceIframe(replacement, label) {
   const start = html.indexOf('<iframe title="Descrição do produto"');
@@ -156,7 +187,6 @@ replaceOnce(
   "injeta lp.css e lp.js",
 );
 
-
 // ---------------------------------------------------------------------------
 // 4. Identidade de terceiros
 //
@@ -166,15 +196,23 @@ replaceOnce(
 // ---------------------------------------------------------------------------
 
 const { brand } = config;
+const brandName =
+  brand.logoAlt || `${brand.wordMark} ${brand.wordMarkAccent}`.trim();
+const headerBrand = brand.logoUrl
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;height:40px;width:auto;max-width:180px;object-fit:contain;margin:0 auto">`
+  : `<span class="text-primaria">${brand.wordMark}</span><span class="text-tinta"> ${brand.wordMarkAccent}</span>`;
+const footerBrand = brand.logoUrl
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;height:40px;width:auto;max-width:180px;object-fit:contain">`
+  : `<span class="text-primaria-viva">${brand.wordMark}</span><span class="text-white"> ${brand.wordMarkAccent}</span>`;
 
 replaceAll(
   '<span class="text-primaria">Flash</span><span class="text-tinta"> Shopping</span>',
-  `<span class="text-primaria">${brand.wordMark}</span><span class="text-tinta"> ${brand.wordMarkAccent}</span>`,
+  headerBrand,
   "marca no cabeçalho",
 );
 replaceOnce(
   '<span class="text-primaria-viva">Flash</span><span class="text-white"> Shopping</span>',
-  `<span class="text-primaria-viva">${brand.wordMark}</span><span class="text-white"> ${brand.wordMarkAccent}</span>`,
+  footerBrand,
   "marca no rodapé",
 );
 replaceOnce(
@@ -184,11 +222,13 @@ replaceOnce(
 );
 
 // Bloco de dados do titular: e-mail ofuscado, site, nome, NIF e morada.
-const contactStart = '<div class="mt-5 space-y-1 text-[0.82rem] text-[#A7AFBD]">';
+const contactStart =
+  '<div class="mt-5 space-y-1 text-[0.82rem] text-[#A7AFBD]">';
 const contactEnd = "</div>";
 {
   const start = html.indexOf(contactStart);
-  if (start === -1) throw new Error("[build] bloco de contactos não encontrado");
+  if (start === -1)
+    throw new Error("[build] bloco de contactos não encontrado");
   // O bloco tem parágrafos irmãos; fecha no </div> após a última <p>.
   const lastP = html.indexOf("Morada:", start);
   if (lastP === -1) throw new Error("[build] morada não encontrada");
@@ -265,17 +305,23 @@ replaceOnce(
 // Coluna "Loja" do rodapé: as categorias de origem dão lugar a âncoras desta
 // própria página, que existem e funcionam.
 {
-  const start = html.indexOf('<h4 class="mb-3.5 font-sans text-[0.95rem] font-bold text-white">Loja</h4>');
+  const start = html.indexOf(
+    '<h4 class="mb-3.5 font-sans text-[0.95rem] font-bold text-white">Loja</h4>',
+  );
   if (start === -1) throw new Error("[build] coluna Loja não encontrada");
   const listEnd = html.indexOf("</ul>", start);
-  const linkClass = "text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white";
+  const linkClass =
+    "text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white";
   const items = [
     ["#lp-comprar", "Comprar"],
     ["#lp-descricao", "Descrição"],
     ["#lp-ficha", "Ficha do produto"],
     ["#lp-faq", "Perguntas frequentes"],
   ]
-    .map(([href, label]) => `<li><a class="${linkClass}" href="${href}">${label}</a></li>`)
+    .map(
+      ([href, label]) =>
+        `<li><a class="${linkClass}" href="${href}">${label}</a></li>`,
+    )
     .join("");
   html =
     html.slice(0, start) +
@@ -285,10 +331,26 @@ replaceOnce(
   applied.push("coluna Loja do rodapé");
 }
 
-replaceOnce('<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="/contactos">Contactos</a>', `<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="mailto:${brand.email}">Contactos</a>`, "link de contactos");
-replaceOnce('<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="/faq">Perguntas Frequentes</a>', '<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="#lp-faq">Perguntas Frequentes</a>', "link de FAQ");
-replaceOnce('<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="/sobre">Sobre Nós</a>', `<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="${legal}/termos">Sobre Nós</a>`, "link Sobre Nós");
-replaceOnce('<a class="font-titulo text-[1.4rem] font-extrabold" href="/">', '<a class="font-titulo text-[1.4rem] font-extrabold" href="#lp-topo">', "logo do rodapé");
+replaceOnce(
+  '<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="/contactos">Contactos</a>',
+  `<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="mailto:${brand.email}">Contactos</a>`,
+  "link de contactos",
+);
+replaceOnce(
+  '<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="/faq">Perguntas Frequentes</a>',
+  '<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="#lp-faq">Perguntas Frequentes</a>',
+  "link de FAQ",
+);
+replaceOnce(
+  '<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="/sobre">Sobre Nós</a>',
+  `<a class="text-[0.88rem] text-[#A7AFBD] transition-colors hover:text-white" href="${legal}/termos">Sobre Nós</a>`,
+  "link Sobre Nós",
+);
+replaceOnce(
+  '<a class="font-titulo text-[1.4rem] font-extrabold" href="/">',
+  '<a class="font-titulo text-[1.4rem] font-extrabold" href="#lp-topo">',
+  "logo do rodapé",
+);
 
 // ---------------------------------------------------------------------------
 // 6. Âncoras para o script próprio
@@ -299,7 +361,11 @@ replaceOnce(
   '<div class="flex transition-transform duration-500 ease-out" style="transform:translateX(-0%)" data-lp="ticker">',
   "carrossel de avisos",
 );
-replaceOnce("<body class=\"font-sans\">", '<body class="font-sans" id="lp-topo">', "id do topo");
+replaceOnce(
+  '<body class="font-sans">',
+  '<body class="font-sans" id="lp-topo">',
+  "id do topo",
+);
 
 // O conteúdo principal chegou com `opacity:0` porque a animação de entrada era
 // feita pelo runtime de origem. Sem tirar isto, a página fica invisível.
@@ -314,8 +380,16 @@ replaceOnce(
   '<div class="scrollbar-hide flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain" data-lp="gallery">',
   "galeria",
 );
-replaceOnce('aria-label="Imagem anterior"', 'aria-label="Imagem anterior" data-lp="prev"', "seta anterior");
-replaceOnce('aria-label="Imagem seguinte"', 'aria-label="Imagem seguinte" data-lp="next"', "seta seguinte");
+replaceOnce(
+  'aria-label="Imagem anterior"',
+  'aria-label="Imagem anterior" data-lp="prev"',
+  "seta anterior",
+);
+replaceOnce(
+  'aria-label="Imagem seguinte"',
+  'aria-label="Imagem seguinte" data-lp="next"',
+  "seta seguinte",
+);
 replaceOnce(
   '<div class="scrollbar-hide mt-3 flex gap-2.5 overflow-x-auto">',
   '<div class="scrollbar-hide mt-3 flex gap-2.5 overflow-x-auto" data-lp="thumbs">',
@@ -342,7 +416,8 @@ replaceOnce(
 config.variants.forEach((variant, index) => {
   const needle = `<span class="block text-[0.86rem] font-semibold leading-tight">${variant.label}</span>`;
   const at = html.indexOf(needle);
-  if (at === -1) throw new Error(`[build] opção não encontrada: ${variant.label}`);
+  if (at === -1)
+    throw new Error(`[build] opção não encontrada: ${variant.label}`);
   const buttonStart = html.lastIndexOf("<button", at);
   html =
     html.slice(0, buttonStart) +
@@ -351,9 +426,21 @@ config.variants.forEach((variant, index) => {
   applied.push(`opção ${variant.label}`);
 });
 
-replaceOnce('aria-label="Diminuir"', 'aria-label="Diminuir" data-lp="qty-minus"', "botão diminuir");
-replaceOnce('aria-label="Aumentar"', 'aria-label="Aumentar" data-lp="qty-plus"', "botão aumentar");
-replaceOnce('aria-label="Quantidade"', 'aria-label="Quantidade" data-lp="qty"', "campo quantidade");
+replaceOnce(
+  'aria-label="Diminuir"',
+  'aria-label="Diminuir" data-lp="qty-minus"',
+  "botão diminuir",
+);
+replaceOnce(
+  'aria-label="Aumentar"',
+  'aria-label="Aumentar" data-lp="qty-plus"',
+  "botão aumentar",
+);
+replaceOnce(
+  'aria-label="Quantidade"',
+  'aria-label="Quantidade" data-lp="qty"',
+  "campo quantidade",
+);
 
 // ---------------------------------------------------------------------------
 // 7. Botão de compra
@@ -402,11 +489,11 @@ replaceOnce(
 
 // Âncoras dentro do bloco longo de descrição.
 html = html.replace(
-  '<h2>Ficha do Produto</h2>',
+  "<h2>Ficha do Produto</h2>",
   '<h2 id="lp-ficha">Ficha do Produto</h2>',
 );
 html = html.replace(
-  '<h2>Perguntas Frequentes</h2>',
+  "<h2>Perguntas Frequentes</h2>",
   '<h2 id="lp-faq">Perguntas Frequentes</h2>',
 );
 
@@ -419,8 +506,16 @@ replaceOnce(
   '<div data-lp="cookies" hidden class="fixed inset-x-0 bottom-0 z-[200] bg-escuro px-4 py-4 text-white shadow-[0_-4px_30px_rgba(0,0,0,0.2)] transition-transform duration-300 translate-y-full">',
   "aviso de cookies",
 );
-replaceOnce(">Rejeitar</button>", ' data-lp="cookies-reject">Rejeitar</button>', "botão rejeitar");
-replaceOnce(">Aceitar tudo</button>", ' data-lp="cookies-accept">Aceitar tudo</button>', "botão aceitar");
+replaceOnce(
+  ">Rejeitar</button>",
+  ' data-lp="cookies-reject">Rejeitar</button>',
+  "botão rejeitar",
+);
+replaceOnce(
+  ">Aceitar tudo</button>",
+  ' data-lp="cookies-accept">Aceitar tudo</button>',
+  "botão aceitar",
+);
 
 // ---------------------------------------------------------------------------
 // 10. Dados estruturados
@@ -433,12 +528,16 @@ const jsonLd = {
   name: "Samsung Galaxy A55 5G",
   brand: { "@type": "Brand", name: "Samsung" },
   description: config.description,
-  image: ["/images/Gemini_Generated_Image_vgy653vgy653vgy6-PgVG1rnaKVEfGztMatZv3WhznlXCcI.webp"],
+  image: [
+    "/images/Gemini_Generated_Image_vgy653vgy653vgy6-PgVG1rnaKVEfGztMatZv3WhznlXCcI.webp",
+  ],
   offers: {
     "@type": "AggregateOffer",
     priceCurrency: "EUR",
     lowPrice: (cheapest.price / 100).toFixed(2),
-    highPrice: (Math.max(...config.variants.map((v) => v.price)) / 100).toFixed(2),
+    highPrice: (Math.max(...config.variants.map((v) => v.price)) / 100).toFixed(
+      2,
+    ),
     offerCount: config.variants.length,
     availability: "https://schema.org/InStock",
   },
@@ -476,9 +575,13 @@ const leftovers = [
   ["script do export", /<script[^>]+src="(?!\/js\/lp\.js")/i],
   ["chunk do export", /(webpack|main-app|polyfills)-[0-9a-f]{8}/i],
 ];
-const problems = leftovers.filter(([, re]) => re.test(html)).map(([name]) => name);
+const problems = leftovers
+  .filter(([, re]) => re.test(html))
+  .map(([name]) => name);
 if (problems.length > 0) {
-  throw new Error(`[build] resíduos do export de origem: ${problems.join(", ")}`);
+  throw new Error(
+    `[build] resíduos do export de origem: ${problems.join(", ")}`,
+  );
 }
 
 mkdirSync(dirname(OUT), { recursive: true });

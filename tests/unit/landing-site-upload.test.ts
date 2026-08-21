@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
+  applyLandingSiteOverrides,
   readBuildSettings,
   readSiteFiles,
 } from "@/features/landing-pages/deployment/vercel";
@@ -93,5 +94,37 @@ describe("definições de build do envio", () => {
       installCommand: null,
       outputDirectory: null,
     });
+  });
+});
+
+describe("identidade aplicada ao site externo", () => {
+  it("injeta logo e favicon no site.config.json e atualiza o hash", async () => {
+    const files = await readSiteFiles("loja-teste");
+    const before = files.find((file) => file.path === "site.config.json");
+    const updated = applyLandingSiteOverrides(files, {
+      logoUrl: "https://cdn.exemplo.com/logo.png",
+      logoAlt: "DK",
+      faviconUrl: "https://cdn.exemplo.com/favicon.png",
+    });
+    const after = updated.find((file) => file.path === "site.config.json");
+
+    expect(after?.sha).not.toBe(before?.sha);
+    expect(JSON.parse(after!.data.toString("utf8"))).toMatchObject({
+      brand: {
+        logoUrl: "https://cdn.exemplo.com/logo.png",
+        logoAlt: "DK",
+      },
+      faviconUrl: "https://cdn.exemplo.com/favicon.png",
+    });
+  });
+
+  it("falha claramente quando o site não possui configuração", () => {
+    expect(() =>
+      applyLandingSiteOverrides([], {
+        logoUrl: null,
+        logoAlt: "DK",
+        faviconUrl: null,
+      }),
+    ).toThrow(/site\.config\.json/);
   });
 });

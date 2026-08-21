@@ -5,6 +5,7 @@ import {
   HOSTING_PROVIDER_LABEL,
   asDeploymentStatus,
   asHostingProvider,
+  resolveLandingPublicUrl,
   type LandingDeployment,
 } from "@/features/landing-pages/types";
 
@@ -48,15 +49,6 @@ describe("normalização dos campos de hospedagem", () => {
  * A mesma regra é usada nos cartões, na tabela e no botão de copiar. Está
  * aqui em forma pura para não depender de renderizar a listagem inteira.
  */
-function publicUrlOf(
-  page: { slug: string; deployment: LandingDeployment },
-  appUrl: string,
-): string {
-  return page.deployment.provider === "vercel" && page.deployment.url
-    ? page.deployment.url
-    : `${appUrl}/lp/${page.slug}`;
-}
-
 const baseDeployment: LandingDeployment = {
   provider: "infinity",
   status: "idle",
@@ -71,12 +63,15 @@ describe("endereço público segundo a hospedagem", () => {
   const appUrl = "https://www.painelinfinitydash.online";
 
   it("usa a rota do painel para as páginas do editor", () => {
-    const url = publicUrlOf({ slug: "cadeira", deployment: baseDeployment }, appUrl);
+    const url = resolveLandingPublicUrl(
+      { slug: "cadeira", deployment: baseDeployment },
+      appUrl,
+    );
     expect(url).toBe("https://www.painelinfinitydash.online/lp/cadeira");
   });
 
   it("usa o endereço do serviço quando a página é hospedada fora", () => {
-    const url = publicUrlOf(
+    const url = resolveLandingPublicUrl(
       {
         slug: "samsung-galaxy-a55-5g",
         deployment: {
@@ -95,7 +90,7 @@ describe("endereço público segundo a hospedagem", () => {
     // Página marcada como externa mas ainda sem deploy: apontar para
     // `/lp/<slug>` do painel é errado, mas é o único endereço que existe — o
     // que não pode acontecer é a interface mostrar "null" ou um link vazio.
-    const url = publicUrlOf(
+    const url = resolveLandingPublicUrl(
       {
         slug: "nova",
         deployment: { ...baseDeployment, provider: "vercel", status: "idle" },

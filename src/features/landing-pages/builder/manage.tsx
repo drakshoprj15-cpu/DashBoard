@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CalendarClock,
   CheckCircle2,
+  CloudUpload,
   ExternalLink,
   Globe,
   History,
@@ -59,6 +60,7 @@ import {
   updateLandingSettingsAction,
   type LandingActionResult,
 } from "../actions";
+import { deployLandingPageAction } from "../deployment/actions";
 import { validateForPublish } from "../publish-rules";
 import {
   COUNTRY_OPTIONS,
@@ -71,6 +73,7 @@ import type {
   LandingSourceRow,
   LandingVersionRow,
 } from "../queries";
+import { DEPLOYMENT_STATUS_LABEL, resolveLandingPublicUrl } from "../types";
 import { CopyUrlButton } from "../panel/page-actions";
 import { StatusBadge } from "../panel/landing-pages-view";
 import type { BuilderState } from "./use-builder-state";
@@ -122,6 +125,8 @@ export function ProductPanel({
   const [sync, setSync] = React.useState(page.productSync);
   const [logoUrl, setLogoUrl] = React.useState(page.logoUrl);
   const [faviconUrl, setFaviconUrl] = React.useState(page.faviconUrl);
+  const isExternal = page.deployment.provider === "vercel";
+  const publicUrl = resolveLandingPublicUrl({ ...page, slug }, appUrl);
 
   React.useEffect(() => {
     if (state?.ok) router.refresh();
@@ -174,11 +179,18 @@ export function ProductPanel({
                 name="slug"
                 value={slug}
                 onChange={(event) => setSlug(event.target.value)}
+                readOnly={isExternal}
                 required
               />
               <p className="text-muted-foreground font-mono text-xs break-all">
-                {appUrl}/lp/{slug}
+                {publicUrl}
               </p>
+              {isExternal ? (
+                <p className="text-muted-foreground text-xs">
+                  O endereço desta página vem do projeto externo da Vercel e não
+                  pode ser alterado neste editor.
+                </p>
+              ) : null}
               {page.publishedAt ? (
                 <p className="text-muted-foreground text-xs">
                   Mudar o endereço quebra os links já usados em anúncios.
@@ -400,6 +412,12 @@ export function ProductPanel({
               <DetachButton pageId={page.id} />
             ) : null}
           </div>
+          {isExternal ? (
+            <p className="text-muted-foreground text-xs">
+              Depois de guardar o logo, abra a aba Publicação e clique em
+              “Republicar na Vercel” para atualizar o site no ar.
+            </p>
+          ) : null}
         </PanelSection>
       </form>
     </div>
@@ -447,15 +465,133 @@ function DetachButton({ pageId }: { pageId: string }) {
 // Publicação
 // ---------------------------------------------------------------------------
 
-export function PublishPanel({
-  page,
-  state,
-  appUrl,
-}: {
+type PublishPanelProps = {
   page: LandingPageDetail;
   state: BuilderState;
   appUrl: string;
-}) {
+};
+
+export function PublishPanel(props: PublishPanelProps) {
+  return props.page.deployment.provider === "vercel" ? (
+    <ExternalPublishPanel page={props.page} appUrl={props.appUrl} />
+  ) : (
+    <InternalPublishPanel {...props} />
+  );
+}
+
+function ExternalPublishPanel({
+  page,
+  appUrl,
+}: Pick<PublishPanelProps, "page" | "appUrl">) {
+  const router = useRouter();
+  const [result, formAction, pending] = useActionState<
+    LandingActionResult | null,
+    FormData
+  >(async (_previous, formData) => deployLandingPageAction(formData), null);
+  const publicUrl = resolveLandingPublicUrl(page, appUrl);
+
+  React.useEffect(() => {
+    if (result?.ok) router.refresh();
+  }, [result, router]);
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <PanelSection
+        title="Publicação externa"
+        description="Esta landing page é um site estático próprio hospedado na Vercel."
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={page.status} />
+          <Badge variant="secondary">
+            {DEPLOYMENT_STATUS_LABEL[page.deployment.status]}
+          </Badge>
+          {page.hasUnpublishedChanges && page.deployment.url ? (
+            <Badge variant="warning">Há alterações por publicar</Badge>
+          ) : null}
+        </div>
+
+        {page.deployment.updatedAt ? (
+          <p className="text-muted-foreground text-sm">
+            Último envio em {formatDateTime(page.deployment.updatedAt, "pt-PT")}
+            .
+          </p>
+        ) : null}
+
+        <div className="bg-muted flex flex-wrap items-center gap-2 rounded-lg p-3">
+          <code className="min-w-0 flex-1 truncate font-mono text-xs">
+            {publicUrl}
+          </code>
+          <CopyUrlButton url={publicUrl} variant="outline" />
+          {page.deployment.url ? (
+            <Button size="sm" asChild>
+              <a href={publicUrl} target="_blank" rel="noreferrer">
+                <ExternalLink /> Abrir página
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      </PanelSection>
+
+      <PanelSection title="Logo e identidade">
+        {page.logoUrl ? (
+          <Alert variant="success">
+            <CheckCircle2 />
+            <AlertDescription>
+              O logo está guardado. Ao republicar, ele será aplicado no
+              cabeçalho do site, inclusive no celular.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert>
+            <AlertCircle />
+            <AlertDescription>
+              Adicione o logo na aba Produto e guarde as informações antes de
+              republicar.
+            </AlertDescription>
+          </Alert>
+        )}
+      </PanelSection>
+
+      <PanelSection
+        title={page.deployment.url ? "Republicar" : "Publicar"}
+        description="O painel enviará os arquivos e a identidade atualizada para o projeto da Vercel."
+      >
+        {result?.error ? (
+          <Alert variant="destructive">
+            <AlertCircle />
+            <AlertDescription>{result.error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {result?.ok ? (
+          <Alert variant="success">
+            <CheckCircle2 />
+            <AlertDescription>{result.message}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <form action={formAction}>
+          <input type="hidden" name="id" value={page.id} />
+          <Button type="submit" loading={pending}>
+            <CloudUpload />
+            {page.deployment.url
+              ? "Republicar na Vercel"
+              : "Publicar na Vercel"}
+          </Button>
+        </form>
+      </PanelSection>
+
+      {page.deployment.log ? (
+        <PanelSection title="Último registro técnico">
+          <pre className="bg-muted max-h-64 overflow-auto rounded-lg p-3 text-xs whitespace-pre-wrap">
+            {page.deployment.log}
+          </pre>
+        </PanelSection>
+      ) : null}
+    </div>
+  );
+}
+
+function InternalPublishPanel({ page, state, appUrl }: PublishPanelProps) {
   const router = useRouter();
   const [result, formAction, pending] = useActionState<
     LandingActionResult | null,

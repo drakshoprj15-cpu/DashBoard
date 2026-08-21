@@ -324,6 +324,8 @@ export interface LandingPageDetail {
   previewToken: string | null;
   lastError: string | null;
   hasUnpublishedChanges: boolean;
+  /** Onde a página é servida e como correu o último envio. */
+  deployment: LandingDeployment;
   updatedAt: Date;
   metrics: LandingPageMetrics;
 }
@@ -393,6 +395,15 @@ export async function getLandingPage(
     lastError: row.lastError,
     hasUnpublishedChanges:
       row.publishedVersion === null || row.draftVersion > row.publishedVersion,
+    deployment: {
+      provider: asHostingProvider(row.hostingProvider),
+      status: asDeploymentStatus(row.deploymentStatus),
+      url: row.deploymentUrl,
+      projectId: row.deploymentProjectId,
+      deploymentId: row.deploymentId,
+      log: row.deploymentLog,
+      updatedAt: row.deploymentUpdatedAt,
+    },
     updatedAt: row.updatedAt,
     metrics: metrics.get(row.id) ?? EMPTY_METRICS,
   };

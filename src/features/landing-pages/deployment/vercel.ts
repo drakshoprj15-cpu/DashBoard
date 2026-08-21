@@ -67,6 +67,65 @@ export interface SiteFile {
   sha: string;
 }
 
+export interface LandingSiteOverrides {
+  logoUrl: string | null;
+  logoAlt: string;
+  faviconUrl: string | null;
+}
+
+/**
+ * Injeta no `site.config.json` a identidade guardada no painel sem alterar o
+ * ficheiro versionado. Assim cada deploy recebe a versão atual do logo, mas o
+ * repositório continua a conter apenas os valores padrão do template.
+ */
+export function applyLandingSiteOverrides(
+  files: SiteFile[],
+  overrides: LandingSiteOverrides,
+): SiteFile[] {
+  const config = files.find((file) => file.path === "site.config.json");
+  if (!config) {
+    throw new Error("O site externo não tem site.config.json.");
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(config.data.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+  } catch {
+    throw new Error("O site.config.json do site não é JSON válido.");
+  }
+
+  const currentBrand =
+    parsed.brand &&
+    typeof parsed.brand === "object" &&
+    !Array.isArray(parsed.brand)
+      ? (parsed.brand as Record<string, unknown>)
+      : {};
+
+  const nextConfig = {
+    ...parsed,
+    brand: {
+      ...currentBrand,
+      logoUrl: overrides.logoUrl ?? "",
+      logoAlt: overrides.logoAlt,
+    },
+    faviconUrl: overrides.faviconUrl ?? "",
+  };
+  const data = Buffer.from(`${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
+
+  return files.map((file) =>
+    file.path === "site.config.json"
+      ? {
+          ...file,
+          data,
+          sha: createHash("sha1").update(data).digest("hex"),
+        }
+      : file,
+  );
+}
+
 /**
  * Lê a pasta de um site estático versionado no repositório.
  *
@@ -161,7 +220,9 @@ export function readLandingPath(files: SiteFile[]): string {
 
   let parsed: { redirects?: unknown };
   try {
-    parsed = JSON.parse(config.data.toString("utf8")) as { redirects?: unknown };
+    parsed = JSON.parse(config.data.toString("utf8")) as {
+      redirects?: unknown;
+    };
   } catch {
     return "";
   }
@@ -196,7 +257,10 @@ export function readBuildSettings(files: SiteFile[]): SiteBuildSettings {
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(config.data.toString("utf8")) as Record<string, unknown>;
+    parsed = JSON.parse(config.data.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
   } catch {
     throw new Error("O vercel.json do site não é JSON válido.");
   }
@@ -257,7 +321,9 @@ async function getDeployment(id: string): Promise<DeploymentPayload> {
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error(`Não consegui ler o estado do deploy (HTTP ${response.status}).`);
+    throw new Error(
+      `Não consegui ler o estado do deploy (HTTP ${response.status}).`,
+    );
   }
   return (await response.json()) as DeploymentPayload;
 }
@@ -275,6 +341,7 @@ const TERMINAL_FAIL = new Set(["ERROR", "CANCELED", "DELETED"]);
 export async function deployStaticSite(options: {
   projectName: string;
   slug: string;
+  branding?: LandingSiteOverrides;
   /** Máximo de segundos à espera do resultado */
   timeoutSeconds?: number;
 }): Promise<VercelDeployResult> {
@@ -293,8 +360,15 @@ export async function deployStaticSite(options: {
 
   try {
     note(`a ler landing-sites/${options.slug}`);
-    const files = await readSiteFiles(options.slug);
-    const bytes = files.reduce((total, file) => total + file.data.byteLength, 0);
+    let files = await readSiteFiles(options.slug);
+    if (options.branding) {
+      files = applyLandingSiteOverrides(files, options.branding);
+      note("identidade do painel aplicada ao site");
+    }
+    const bytes = files.reduce(
+      (total, file) => total + file.data.byteLength,
+      0,
+    );
     note(`${files.length} ficheiros, ${(bytes / 1024).toFixed(0)} KB`);
 
     // Envio sequencial de propósito: são poucas dezenas de ficheiros e um

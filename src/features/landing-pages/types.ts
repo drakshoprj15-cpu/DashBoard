@@ -229,11 +229,7 @@ export type LandingHostingProvider = "infinity" | "vercel";
  * as duas coisas ao mesmo tempo em vez de escolher uma.
  */
 export type LandingDeploymentStatus =
-  | "idle"
-  | "preparing"
-  | "deploying"
-  | "ready"
-  | "failed";
+  "idle" | "preparing" | "deploying" | "ready" | "failed";
 
 export interface LandingDeployment {
   provider: LandingHostingProvider;
@@ -246,13 +242,14 @@ export interface LandingDeployment {
   updatedAt: Date | null;
 }
 
-export const DEPLOYMENT_STATUS_LABEL: Record<LandingDeploymentStatus, string> = {
-  idle: "Sem deploy",
-  preparing: "Preparando",
-  deploying: "Fazendo deploy",
-  ready: "Publicado",
-  failed: "Falhou",
-};
+export const DEPLOYMENT_STATUS_LABEL: Record<LandingDeploymentStatus, string> =
+  {
+    idle: "Sem deploy",
+    preparing: "Preparando",
+    deploying: "Fazendo deploy",
+    ready: "Publicado",
+    failed: "Falhou",
+  };
 
 export const HOSTING_PROVIDER_LABEL: Record<LandingHostingProvider, string> = {
   infinity: "Infinity",
@@ -275,6 +272,16 @@ export function asDeploymentStatus(value: unknown): LandingDeploymentStatus {
   return allowed.includes(value as LandingDeploymentStatus)
     ? (value as LandingDeploymentStatus)
     : "idle";
+}
+
+/** Um único endereço para cartões, editor, copiar URL e botão de abrir. */
+export function resolveLandingPublicUrl(
+  page: { slug: string; deployment: LandingDeployment },
+  appUrl: string,
+): string {
+  return page.deployment.provider === "vercel" && page.deployment.url
+    ? page.deployment.url
+    : `${appUrl}/lp/${page.slug}`;
 }
 
 // ---------------------------------------------------------------------------

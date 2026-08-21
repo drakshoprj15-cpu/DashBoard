@@ -43,6 +43,7 @@ import type { LandingPageRow } from "../queries";
 import {
   DEPLOYMENT_STATUS_LABEL,
   HOSTING_PROVIDER_LABEL,
+  resolveLandingPublicUrl,
   type LandingDeployment,
   type LandingStatus,
 } from "../types";
@@ -164,9 +165,7 @@ export function LandingPagesView({
   // abrir e o "copiar URL" têm de concordar com isso, senão o lojista copia
   // um endereço que não é o do anúncio.
   const publicUrlOf = (page: LandingPageRow) =>
-    page.deployment.provider === "vercel" && page.deployment.url
-      ? page.deployment.url
-      : `${appUrl}/lp/${page.slug}`;
+    resolveLandingPublicUrl(page, appUrl);
 
   return (
     <div className="space-y-6">
@@ -489,7 +488,9 @@ function DeploymentLine({ deployment }: { deployment: LandingDeployment }) {
         : Loader2;
 
   return (
-    <p className={`flex items-center gap-1.5 text-xs ${tone[deployment.status]}`}>
+    <p
+      className={`flex items-center gap-1.5 text-xs ${tone[deployment.status]}`}
+    >
       <Icon
         className={`size-3.5 shrink-0 ${
           deployment.status === "deploying" || deployment.status === "preparing"
@@ -543,10 +544,7 @@ function PagesTable({
           </TableHeader>
           <TableBody>
             {pages.map((page) => {
-              const publicUrl =
-                page.deployment.provider === "vercel" && page.deployment.url
-                  ? page.deployment.url
-                  : `${appUrl}/lp/${page.slug}`;
+              const publicUrl = resolveLandingPublicUrl(page, appUrl);
               return (
                 <TableRow key={page.id}>
                   <TableCell>
