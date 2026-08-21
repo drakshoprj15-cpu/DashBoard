@@ -42,7 +42,14 @@ a divergir da que o anúncio aponta.
 ```
 
 `public/lp/` não é versionado: sai sempre do `build.mjs`, tanto localmente
-como no deploy.
+como no deploy. Por isso o painel envia a pasta inteira — `source/`,
+`build.mjs`, `site.config.json`, `vercel.json` e `public/` — e deixa a Vercel
+correr o build, exatamente como faz a CLI. Enviar só `public/` subia os
+recursos sem a página.
+
+As definições de build do envio saem do `vercel.json` do próprio site. Não são
+opcionais: na API da Vercel, um campo a `null` significa "usa o que o projeto
+já tem guardado", e não "não construas nada".
 
 ## Publicar
 

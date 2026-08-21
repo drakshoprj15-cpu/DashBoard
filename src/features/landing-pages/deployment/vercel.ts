@@ -29,6 +29,12 @@ export interface VercelDeployResult {
   deploymentUrl?: string;
   inspectorUrl?: string;
   error?: string;
+  /**
+   * O deploy foi criado e ainda estava a construir quando a espera acabou.
+   * Não é uma falha: o estado da página fica em "a publicar" e não em "com
+   * erro", e o identificador guardado deixa o botão "Ver deploy" funcionar.
+   */
+  pending?: boolean;
   log: string;
 }
 
@@ -62,19 +68,29 @@ export interface SiteFile {
 }
 
 /**
- * Lê a pasta publicável de um site estático versionado no repositório.
+ * Lê a pasta de um site estático versionado no repositório.
+ *
+ * Sobe a pasta inteira — `source/`, `build.mjs`, `site.config.json`,
+ * `vercel.json` e `public/` — e não apenas o que já está construído: o HTML
+ * publicado vive em `public/lp/<slug>/index.html`, que sai do `build.mjs` e
+ * por isso não é versionado. Enviar só `public/` deixava de fora justamente a
+ * página, e o deploy corria o build sem ter o script para o correr.
  *
  * O caminho é montado a partir do slug e depois conferido contra a raiz: um
  * slug adulterado no banco não consegue apontar para fora de `landing-sites`,
  * porque o resultado resolvido tem de continuar por baixo dela.
  */
+
+/** Pastas que nunca vão no envio: estado local da CLI e dependências. */
+const SKIP_DIRS = new Set([".vercel", ".git", "node_modules"]);
+
 export async function readSiteFiles(slug: string): Promise<SiteFile[]> {
   if (!SAFE_SLUG.test(slug)) {
     throw new Error(`Slug inválido para hospedagem estática: "${slug}"`);
   }
 
   const root = resolve(process.cwd(), "landing-sites");
-  const siteRoot = resolve(root, slug, "public");
+  const siteRoot = resolve(root, slug);
   if (siteRoot !== root && !siteRoot.startsWith(root + sep)) {
     throw new Error("Caminho do site fora da pasta permitida.");
   }
@@ -82,7 +98,7 @@ export async function readSiteFiles(slug: string): Promise<SiteFile[]> {
   const info = await stat(siteRoot).catch(() => null);
   if (!info?.isDirectory()) {
     throw new Error(
-      `Não encontrei os ficheiros do site em landing-sites/${slug}/public.`,
+      `Não encontrei os ficheiros do site em landing-sites/${slug}.`,
     );
   }
 
@@ -93,6 +109,7 @@ export async function readSiteFiles(slug: string): Promise<SiteFile[]> {
     for (const entry of entries) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
+        if (SKIP_DIRS.has(entry.name)) continue;
         await walk(full);
         continue;
       }
@@ -109,9 +126,56 @@ export async function readSiteFiles(slug: string): Promise<SiteFile[]> {
   await walk(siteRoot);
 
   if (files.length === 0) {
-    throw new Error(`A pasta landing-sites/${slug}/public está vazia.`);
+    throw new Error(`A pasta landing-sites/${slug} está vazia.`);
   }
   return files;
+}
+
+/**
+ * Definições de build do site, lidas do `vercel.json` que vai no envio.
+ *
+ * A API precisa delas explicitamente: `null` num campo de `projectSettings`
+ * significa "usa o que o projeto já tem guardado", e não "não construas
+ * nada". Foi assim que um envio sem o `build.mjs` acabou a correr
+ * `node build.mjs` — a definição vinha do projeto, de um deploy anterior
+ * feito pela CLI.
+ */
+export interface SiteBuildSettings {
+  framework: string | null;
+  buildCommand: string | null;
+  installCommand: string | null;
+  outputDirectory: string | null;
+}
+
+export function readBuildSettings(files: SiteFile[]): SiteBuildSettings {
+  const empty: SiteBuildSettings = {
+    framework: null,
+    buildCommand: null,
+    installCommand: null,
+    outputDirectory: null,
+  };
+
+  const config = files.find((file) => file.path === "vercel.json");
+  if (!config) return empty;
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(config.data.toString("utf8")) as Record<string, unknown>;
+  } catch {
+    throw new Error("O vercel.json do site não é JSON válido.");
+  }
+
+  const text = (key: string): string | null => {
+    const value = parsed[key];
+    return typeof value === "string" && value.length > 0 ? value : null;
+  };
+
+  return {
+    framework: text("framework"),
+    buildCommand: text("buildCommand"),
+    installCommand: text("installCommand"),
+    outputDirectory: text("outputDirectory"),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +256,7 @@ export async function deployStaticSite(options: {
   }
 
   try {
-    note(`a ler landing-sites/${options.slug}/public`);
+    note(`a ler landing-sites/${options.slug}`);
     const files = await readSiteFiles(options.slug);
     const bytes = files.reduce((total, file) => total + file.data.byteLength, 0);
     note(`${files.length} ficheiros, ${(bytes / 1024).toFixed(0)} KB`);
@@ -205,6 +269,13 @@ export async function deployStaticSite(options: {
     }
     note("ficheiros enviados");
 
+    const settings = readBuildSettings(files);
+    note(
+      settings.buildCommand
+        ? `build: ${settings.buildCommand} → ${settings.outputDirectory ?? "."}`
+        : "sem build: o conteúdo vai como está",
+    );
+
     const created = await fetch(withTeam("/v13/deployments"), {
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -216,12 +287,7 @@ export async function deployStaticSite(options: {
           sha: file.sha,
           size: file.data.byteLength,
         })),
-        projectSettings: {
-          framework: null,
-          buildCommand: null,
-          installCommand: null,
-          outputDirectory: null,
-        },
+        projectSettings: settings,
       }),
     });
 
@@ -236,7 +302,10 @@ export async function deployStaticSite(options: {
 
     note(`deploy ${payload.id} criado`);
 
-    const deadline = Date.now() + (options.timeoutSeconds ?? 90) * 1000;
+    // A espera cabe dentro do tempo da função que a chama: passar disso não
+    // acelera o build, só troca uma resposta útil por um pedido cortado a
+    // meio, com a página presa em "a publicar" e sem o id do deploy.
+    const deadline = Date.now() + (options.timeoutSeconds ?? 45) * 1000;
     let current = payload;
 
     while (Date.now() < deadline) {
@@ -261,9 +330,12 @@ export async function deployStaticSite(options: {
     if (!TERMINAL_OK.has(finalState)) {
       return {
         ok: false,
+        pending: true,
         error:
           "O deploy ainda está a construir. Confira em alguns instantes no botão “Ver deploy”.",
         deploymentId: current.id,
+        projectId: current.projectId,
+        inspectorUrl: current.inspectorUrl,
         log: log.join("\n"),
       };
     }
