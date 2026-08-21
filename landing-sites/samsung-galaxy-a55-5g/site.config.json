@@ -1,0 +1,27 @@
+{
+  "slug": "samsung-galaxy-a55-5g",
+  "title": "Samsung Galaxy A55 5G — últimas unidades",
+  "description": "Samsung Galaxy A55 5G: ecrã de 6,6\", bateria de 5000 mAh, resistente à água e com 3 anos de garantia legal. Últimas unidades em fim de linha.",
+  "brand": {
+    "wordMark": "A Minha",
+    "wordMarkAccent": "Loja",
+    "tagline": "Portugal",
+    "footerAbout": "Loja online em Portugal. Entrega rápida e pagamento seguro por MB WAY e Multibanco.",
+    "legalName": "[NOME DA EMPRESA]",
+    "taxId": "[NIF]",
+    "address": "[MORADA]",
+    "email": "[EMAIL DE CONTACTO]",
+    "website": "www.painelinfinitydash.online"
+  },
+  "checkout": {
+    "baseUrl": "https://www.painelinfinitydash.online",
+    "path": "/checkout/samsung-galaxy-a55-5g",
+    "enabled": true
+  },
+  "legalBaseUrl": "https://www.painelinfinitydash.online/legal",
+  "variants": [
+    { "id": "df08917a-302f-4946-80b3-efd66e8b6527", "label": "256 GB", "price": 3999, "compareAt": 13999 },
+    { "id": "9da44513-fb9d-436d-921b-e61ab198d790", "label": "512 GB", "price": 4999, "compareAt": 14999 },
+    { "id": "e7fecb28-83c0-4143-9688-1a1c56cc0d1b", "label": "1 TERA", "price": 5999, "compareAt": 15999 }
+  ]
+}

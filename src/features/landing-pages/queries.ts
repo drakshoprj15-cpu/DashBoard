@@ -19,15 +19,18 @@ import {
   withTrackingDefaults,
 } from "./defaults";
 import { parseProductSnapshot, resolveLandingProduct } from "./product-data";
-import type {
-  LandingContentDoc,
-  LandingCustomCode,
-  LandingProductData,
-  LandingSeo,
-  LandingSnapshot,
-  LandingStatus,
-  LandingTheme,
-  LandingTracking,
+import {
+  asDeploymentStatus,
+  asHostingProvider,
+  type LandingContentDoc,
+  type LandingCustomCode,
+  type LandingDeployment,
+  type LandingProductData,
+  type LandingSeo,
+  type LandingSnapshot,
+  type LandingStatus,
+  type LandingTheme,
+  type LandingTracking,
 } from "./types";
 
 export interface LandingPageMetrics {
@@ -70,6 +73,8 @@ export interface LandingPageRow {
   /** Imagem do rascunho, do produto ou da marca — miniatura do cartão. */
   thumbnailUrl: string | null;
   hasUnpublishedChanges: boolean;
+  /** Onde a página é servida e como correu o último envio */
+  deployment: LandingDeployment;
   metrics: LandingPageMetrics;
 }
 
@@ -144,6 +149,13 @@ export async function listLandingPages(
       pausedAt: landingPages.pausedAt,
       lastError: landingPages.lastError,
       logoUrl: landingPages.logoUrl,
+      hostingProvider: landingPages.hostingProvider,
+      deploymentUrl: landingPages.deploymentUrl,
+      deploymentProjectId: landingPages.deploymentProjectId,
+      deploymentId: landingPages.deploymentId,
+      deploymentStatus: landingPages.deploymentStatus,
+      deploymentLog: landingPages.deploymentLog,
+      deploymentUpdatedAt: landingPages.deploymentUpdatedAt,
       updatedAt: landingPages.updatedAt,
       createdAt: landingPages.createdAt,
     })
@@ -188,6 +200,15 @@ export async function listLandingPages(
       hasUnpublishedChanges:
         row.publishedVersion === null ||
         row.draftVersion > row.publishedVersion,
+      deployment: {
+        provider: asHostingProvider(row.hostingProvider),
+        status: asDeploymentStatus(row.deploymentStatus),
+        url: row.deploymentUrl,
+        projectId: row.deploymentProjectId,
+        deploymentId: row.deploymentId,
+        log: row.deploymentLog,
+        updatedAt: row.deploymentUpdatedAt,
+      },
       metrics: metricsByPage.get(row.id) ?? EMPTY_METRICS,
     };
   });

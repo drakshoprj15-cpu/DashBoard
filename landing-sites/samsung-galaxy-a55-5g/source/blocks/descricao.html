@@ -1,0 +1,209 @@
+<div class="lp-wrap">
+<style>
+.lp-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1f26;line-height:1.7;max-width:100%;margin:0;padding:0;background:#fff;font-size:16px}
+.lp-wrap *,.lp-wrap *::before,.lp-wrap *::after{box-sizing:border-box;min-width:0}
+.lp-hero{background:linear-gradient(135deg,#111a2b 0%,#1d2f4a 52%,#2f4d70 100%);color:#fff;padding:clamp(30px,6vw,52px) clamp(16px,4vw,24px);text-align:center;border-radius:16px;margin-bottom:30px}
+.lp-badge{display:inline-block;background:rgba(224,122,40,.22);border:1px solid rgba(245,160,80,.7);padding:8px 20px;border-radius:20px;font-size:14px;font-weight:700;letter-spacing:.5px;margin-bottom:18px;color:#ffb877}
+.lp-hero h1{font-size:clamp(25px,5.8vw,35px);font-weight:800;margin:0 0 18px;line-height:1.22;color:#fff}
+.lp-hero p{font-size:clamp(17px,3.6vw,20px);color:#ccd7e4;margin:0 auto 20px;max-width:700px}
+.lp-hero p strong{color:#fff}
+.lp-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:20px}
+.lp-trust span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);padding:9px 16px;border-radius:8px;font-size:15px;font-weight:500}
+.lp-hero .lp-rating{margin-top:22px;color:#ffb877;font-size:17px}
+.lp-hero .lp-rating b{color:#fff}
+.lp-offer{background:linear-gradient(135deg,#111a2b 0%,#1d2f4a 55%,#2f4d70 100%);color:#fff;padding:32px clamp(16px,4vw,24px);border-radius:16px;margin-bottom:30px;text-align:center}
+.lp-offer h2{font-size:clamp(21px,5vw,27px);margin:0 0 10px;color:#fff}
+.lp-offer .lp-subt{color:#ccd7e4;margin-bottom:22px;font-size:17px}
+.lp-offer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:18px}
+.lp-offer-box{background:rgba(255,255,255,.08);border:1px solid rgba(245,160,80,.5);padding:20px;border-radius:12px}
+.lp-offer-box strong{display:block;font-size:21px;margin-bottom:6px;color:#ffb877}
+.lp-offer-box small{color:#ccd7e4;font-size:15px}
+.lp-section{margin-bottom:40px;padding:0 clamp(6px,2vw,16px)}
+.lp-section h2{font-size:clamp(21px,5vw,27px);font-weight:800;text-align:center;margin:0 0 10px;color:#141a22}
+.lp-section .lp-intro{text-align:center;color:#5b6672;margin-bottom:24px;font-size:17px}
+.lp-grid-5{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.lp-grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.lp-grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:18px}
+.lp-card{background:#fff;border:1px solid #dee4ea;border-radius:12px;padding:22px;text-align:center;box-shadow:0 2px 12px rgba(20,35,55,.06)}
+.lp-card .lp-icon{font-size:34px;margin-bottom:12px}
+.lp-card h3{font-size:18px;margin:0 0 10px;color:#1d4d7e}
+.lp-card p{font-size:15px;color:#4d5763;margin:0}
+.lp-step{background:#f5f7fa;border:1px solid #dee4ea;border-radius:12px;padding:24px;text-align:center}
+.lp-step-num{display:inline-block;width:44px;height:44px;line-height:44px;background:#1d4d7e;color:#fff;border-radius:50%;font-weight:800;font-size:19px;margin-bottom:12px}
+.lp-step h3{color:#141a22;margin:0 0 8px;font-size:18px}
+.lp-step p{font-size:15px;color:#4d5763;margin:0}
+.lp-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:0 2px 14px rgba(20,35,55,.1)}
+.lp-table{width:100%;min-width:480px;border-collapse:collapse}
+.lp-table th{background:#141a22;color:#fff;padding:14px;text-align:left;font-size:15px}
+.lp-table th.lp-hl{background:#1d4d7e}
+.lp-table td{padding:14px;border-bottom:1px solid #ecf0f4;font-size:15px;background:#fff}
+.lp-table tr:last-child td{border-bottom:none}
+.lp-table td.lp-yes{color:#1d4d7e;font-weight:700}
+.lp-table td.lp-mid{color:#97a2ae}
+.lp-support{background:linear-gradient(135deg,#111a2b 0%,#1d2f4a 55%,#2f4d70 100%);color:#fff;padding:32px clamp(16px,4vw,32px);border-radius:16px;text-align:center;margin-bottom:40px}
+.lp-support h2{color:#fff;font-size:clamp(21px,5vw,27px);margin:0 0 14px}
+.lp-support p{color:#ccd7e4;margin:0 0 20px;font-size:17px}
+.lp-support-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.lp-support-grid div{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);padding:18px;border-radius:12px;font-size:15px;color:#fff}
+.lp-timeline{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.lp-tl{background:#f5f7fa;border-left:5px solid #e07a28;padding:19px;border-radius:10px}
+.lp-tl strong{display:block;color:#141a22;font-size:17px;margin-bottom:8px}
+.lp-tl p{font-size:15px;color:#4d5763;margin:0}
+.lp-spec{display:grid;grid-template-columns:minmax(130px,max-content) 1fr;background:#fff;border:1px solid #dee4ea;border-radius:12px;overflow:hidden}
+.lp-spec div{padding:14px 17px;border-bottom:1px solid #ecf0f4;font-size:15px;overflow-wrap:break-word}
+.lp-spec div:nth-child(odd){background:#f5f7fa;font-weight:600;color:#1d4d7e}
+.lp-spec div:nth-last-child(-n+2){border-bottom:none}
+.lp-warn{background:#f5f7fa;border:1px solid #d6dde5;border-radius:12px;padding:18px 20px;font-size:15px;color:#3e4a57;margin-top:16px}
+.lp-faq{background:#fff;border:1px solid #dee4ea;border-radius:12px;padding:20px;margin-bottom:10px}
+.lp-faq strong{display:block;color:#141a22;font-size:17px;margin-bottom:8px}
+.lp-faq p{font-size:15px;color:#4d5763;margin:0}
+.lp-cta{background:linear-gradient(135deg,#111a2b 0%,#1d2f4a 55%,#2f4d70 100%);color:#fff;padding:40px clamp(16px,4vw,24px);border-radius:16px;text-align:center;margin-bottom:40px}
+.lp-cta h2{color:#fff;font-size:clamp(22px,5.5vw,29px);margin:0 0 14px}
+.lp-cta p{color:#ccd7e4;margin:0 0 20px;font-size:17px}
+.lp-pills{display:flex;flex-wrap:wrap;justify-content:center;gap:9px}
+.lp-pills span{background:rgba(224,122,40,.16);border:1px solid rgba(245,160,80,.5);padding:9px 16px;border-radius:20px;font-size:15px;color:#ffd6b0}
+.lp-reviews{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.lp-review{background:#fff;border:1px solid #dee4ea;border-radius:12px;padding:20px}
+.lp-stars{color:#e07a28;font-size:18px;margin-bottom:8px}
+.lp-review .lp-author{font-weight:700;color:#1d4d7e;font-size:16px}
+.lp-review p{font-size:15px;color:#333c46;margin:9px 0 0}
+.lp-note{font-size:13px;color:#97a2ae;text-align:center;margin-top:16px;line-height:1.6}
+@media(max-width:480px){
+.lp-table th,.lp-table td{padding:11px;font-size:14px}
+.lp-spec div{padding:12px 14px;font-size:14px}
+}
+</style>
+<section class="lp-hero">
+<span class="lp-badge">📦 ÚLTIMAS UNIDADES · MODELO EM FIM DE LINHA</span>
+<h1>Samsung Galaxy A55 5G — Um Telemóvel Excelente Que Já Não Vai Ser Fabricado</h1>
+<p><strong>Não é um telemóvel fraco. É um telemóvel bom que saiu de linha.</strong> A Samsung já lançou os modelos seguintes, e por isso estas são as últimas unidades. Continua a receber atualizações da Samsung durante anos, tem ecrã grande e bem visível, bateria que dura o dia todo e resiste à água.</p>
+<div class="lp-trust">
+<span>📱 Ecrã grande de 6,6 polegadas</span>
+<span>🔋 Bateria para o dia inteiro</span>
+<span>💧 Resiste à água e ao pó</span>
+<span>🔄 Atualizações da Samsung até 2029</span>
+</div>
+<div class="lp-rating">🟠 <b>ÚLTIMAS UNIDADES EM STOCK</b> · quando acabarem, não há mais · ✓ 3 anos de garantia</div>
+</section>
+<section class="lp-offer">
+<h2>📦 Porque É Que Está Mais Em Conta</h2>
+<p class="lp-subt">Não é por ser pior — é por já ter saído um modelo mais recente</p>
+<div class="lp-offer-grid">
+<div class="lp-offer-box"><strong>Fim de Linha</strong><small>Últimas unidades disponíveis</small></div>
+<div class="lp-offer-box"><strong>3 Anos</strong><small>De garantia</small></div>
+<div class="lp-offer-box"><strong>Até 2029</strong><small>Atualizações da Samsung</small></div>
+</div>
+</section>
+<section class="lp-section">
+<h2>5 Razões Para Este Telemóvel</h2>
+<p class="lp-intro">Explicado sem palavras complicadas</p>
+<div class="lp-grid-5">
+<div class="lp-card"><div class="lp-icon">👀</div><h3>Ecrã Grande e Claro</h3><p>São 6,6 polegadas, com muito brilho. Lê-se bem à luz do sol e as letras podem ficar bem grandes</p></div>
+<div class="lp-card"><div class="lp-icon">🔋</div><h3>Bateria de Um Dia Inteiro</h3><p>Bateria de 5000, das maiores que existem. Sai de casa de manhã e não precisa de andar com carregador</p></div>
+<div class="lp-card"><div class="lp-icon">💧</div><h3>Não Se Estraga com Água</h3><p>Aguenta chuva e salpicos. Se cair um copo de água em cima, não acontece nada</p></div>
+<div class="lp-card"><div class="lp-icon">🔄</div><h3>Continua a Ser Atualizado</h3><p>A Samsung garante atualizações do sistema até 2028 e de segurança até 2029 — não fica desamparado</p></div>
+<div class="lp-card"><div class="lp-icon">📸</div><h3>Boa Máquina Fotográfica</h3><p>Fotografias nítidas dos netos e das festas de família, mesmo dentro de casa com pouca luz</p></div>
+</div>
+</section>
+<section class="lp-section">
+<h2>Um Telemóvel Que Dura Anos</h2>
+<div class="lp-grid-3">
+<div class="lp-card"><div class="lp-icon">🛡️</div><h3>Vidro Resistente e Alumínio</h3><p>Estrutura em alumínio e vidro Gorilla Glass Victus+, dos mais resistentes a riscos e quedas.</p></div>
+<div class="lp-card"><div class="lp-icon">💾</div><h3>Espaço a Mais</h3><p>Muito espaço para fotografias e vídeos, e ainda se pode acrescentar um cartão de memória.</p></div>
+<div class="lp-card"><div class="lp-icon">📞</div><h3>Videochamadas Sem Falhas</h3><p>Câmara à frente de boa qualidade, para falar com filhos e netos e ver bem a cara de quem está do outro lado.</p></div>
+</div>
+</section>
+<section class="lp-support">
+<h2>🚚 Compra e Entrega</h2>
+<p>Encomenda tratada de ponta a ponta pela loja.</p>
+<div class="lp-support-grid">
+<div><strong>📦 Envio</strong><br>Prazo conforme a sua morada</div>
+<div><strong>🔒 Compra Segura</strong><br>Pagamento processado com segurança</div>
+<div><strong>↩️ Devolução</strong><br>Conforme a política da loja</div>
+<div><strong>💳 Vários Métodos</strong><br>Pagamento disponível no checkout</div>
+</div>
+</section>
+<section class="lp-section">
+<h2>Depois da Sua Compra</h2>
+<div class="lp-timeline">
+<div class="lp-tl"><strong>1. Encomenda Confirmada</strong><p>Recebe a confirmação com todos os detalhes da compra.</p></div>
+<div class="lp-tl"><strong>2. Preparação e Envio</strong><p>O telemóvel segue na caixa original, selado e protegido.</p></div>
+<div class="lp-tl"><strong>3. Entrega na Sua Morada</strong><p>Chega dentro do prazo indicado na página do produto.</p></div>
+<div class="lp-tl"><strong>4. Ligar e Usar</strong><p>Mete-se o cartão, liga-se, e o próprio telemóvel ensina a passar os dados do antigo.</p></div>
+</div>
+</section>
+<section class="lp-section">
+<h2>Este Telemóvel Dá-Lhe Jeito Se...</h2>
+<div class="lp-grid-4">
+<div class="lp-card"><div class="lp-icon">🔍</div><h3>Custa-lhe Ver as Letras</h3><p>O ecrã é grande e claro, e as letras podem ficar do tamanho que precisar.</p></div>
+<div class="lp-card"><div class="lp-icon">🐌</div><h3>O Seu Está Lento</h3><p>Demora a abrir tudo, a bateria já não aguenta e as chamadas falham.</p></div>
+<div class="lp-card"><div class="lp-icon">📞</div><h3>Fala com a Família</h3><p>Videochamadas com filhos e netos, com boa imagem e bom som.</p></div>
+<div class="lp-card"><div class="lp-icon">📸</div><h3>Gosta de Tirar Fotografias</h3><p>Netos, festas, passeios — com boa qualidade e espaço para guardar tudo.</p></div>
+</div>
+</section>
+<section class="lp-section">
+<h2>Ficha do Produto</h2>
+<div class="lp-spec">
+<div>Produto</div><div>Samsung Galaxy A55 5G — telemóvel Android</div>
+<div>Situação</div><div><strong>Modelo de geração anterior, em fim de linha</strong> — a Samsung já lançou os modelos seguintes da série A</div>
+<div>Ecrã</div><div>Super AMOLED de 6,6 polegadas · alta definição · muito brilho, visível à luz do sol</div>
+<div>Bateria</div><div>5000 mAh · carregamento a 25 W</div>
+<div>Memória</div><div>8 GB de RAM · 128 GB ou 256 GB de espaço · aceita cartão de memória adicional</div>
+<div>Câmaras</div><div>Três câmaras atrás (principal de 50 MP, grande angular e macro) · câmara frontal de 32 MP</div>
+<div>Resistência</div><div>Certificação IP67 contra água e pó · estrutura em alumínio · vidro Gorilla Glass Victus+</div>
+<div>Atualizações</div><div>A Samsung garante 4 anos de atualizações do sistema Android e 5 anos de atualizações de segurança a partir do lançamento</div>
+<div>Rede</div><div>5G · Wi-Fi 6 · dois cartões SIM</div>
+<div>Tamanho e peso</div><div>161,1 × 77,4 × 8,2 mm · 213 g</div>
+<div>Garantia</div><div><strong>3 anos de garantia legal de conformidade</strong>, nos termos da lei portuguesa</div>
+</div>
+<div class="lp-warn">💡 <strong>Sobre a garantia de 3 anos:</strong> em Portugal, todos os bens móveis novos têm 3 anos de garantia legal de conformidade, prevista no Decreto-Lei n.º 84/2021. Essa garantia é prestada por quem lhe vende o aparelho — <strong>é connosco que a aciona</strong>, e não com outra loja onde não tenha comprado. Guarde sempre a fatura. <br><br><strong>Sobre o fim de linha:</strong> o Galaxy A55 foi lançado em março de 2024 e a Samsung já lançou modelos posteriores na série A. Continua a ser um telemóvel excelente e a receber atualizações, mas as unidades disponíveis são as que existem em stock. Confirme na página do produto a versão, a cor, a capacidade e o conteúdo da caixa antes de comprar.</div>
+</section>
+<section class="lp-section">
+<h2>Perguntas Frequentes</h2>
+<div class="lp-faq"><strong>Se já não é fabricado, vale a pena comprar?</strong><p>Vale. Não saiu de linha por ser mau — saiu porque a Samsung lança um modelo novo todos os anos. Este continua a fazer tudo o que precisa e continua a receber atualizações da Samsung durante vários anos.</p></div>
+<div class="lp-faq"><strong>A garantia é mesmo de 3 anos?</strong><p>É. Em Portugal, a lei dá 3 anos de garantia a qualquer aparelho novo. Essa garantia é acionada junto de quem lhe vendeu o telemóvel, por isso guarde a fatura em lugar seguro.</p></div>
+<div class="lp-faq"><strong>Vai deixar de funcionar quando parar de receber atualizações?</strong><p>Não. Continua a funcionar normalmente. As atualizações servem para manter o telemóvel seguro e com funções novas — e este ainda as vai receber durante anos.</p></div>
+<div class="lp-faq"><strong>Consigo pôr as letras maiores?</strong><p>Consegue, e facilmente. Nas definições aumenta-se o tamanho das letras e dos ícones. Como o ecrã é grande, fica tudo bem legível.</p></div>
+<div class="lp-faq"><strong>A bateria dura o dia todo?</strong><p>Dura. Tem 5000 mAh, que é das maiores capacidades que se encontram num telemóvel. Com uso normal — chamadas, mensagens, fotografias e alguma internet — passa o dia sem carregador.</p></div>
+<div class="lp-faq"><strong>E se apanhar chuva?</strong><p>Aguenta. Tem certificação IP67, o que significa resistência a pó e a água. Não é para levar a nadar, mas chuva ou um copo entornado não são problema.</p></div>
+<div class="lp-faq"><strong>É difícil passar as coisas do telemóvel antigo?</strong><p>Não. Ao ligar pela primeira vez, o próprio telemóvel pergunta se quer copiar os contactos, as fotografias e as aplicações do antigo, e faz isso sozinho.</p></div>
+</section>
+<section class="lp-cta">
+<h2>📦 ÚLTIMAS UNIDADES DO GALAXY A55</h2>
+<p>Um telemóvel excelente em fim de linha — com 3 anos de garantia</p>
+<div class="lp-pills">
+<span>✓ Ecrã grande de 6,6 polegadas</span>
+<span>✓ Bateria de 5000 mAh</span>
+<span>✓ Resiste a água e pó</span>
+<span>✓ Atualizações Samsung até 2029</span>
+<span>✓ 3 anos de garantia</span>
+<span>✓ Últimas unidades em stock</span>
+</div>
+</section>
+<section class="lp-section">
+<h2>Onde Este Telemóvel Faz a Diferença</h2>
+<div class="lp-reviews">
+<div class="lp-review">
+    <div class="lp-stars">📞</div>
+    <span class="lp-author">Falar com a Família</span>
+    <p>Videochamadas com imagem nítida e som claro, para ver os netos ao domingo.</p>
+</div>
+<div class="lp-review">
+    <div class="lp-stars">👀</div>
+    <span class="lp-author">Ler Sem Esforço</span>
+    <p>Ecrã de 6,6 polegadas com muito brilho, e letras que se aumentam nas definições.</p>
+</div>
+<div class="lp-review">
+    <div class="lp-stars">📸</div>
+    <span class="lp-author">Fotografias de Família</span>
+    <p>Três câmaras atrás e boa qualidade mesmo dentro de casa, com pouca luz.</p>
+</div>
+<div class="lp-review">
+    <div class="lp-stars">🔋</div>
+    <span class="lp-author">Sair Sem Carregador</span>
+    <p>Bateria de 5000 mAh que aguenta o dia inteiro em uso normal.</p>
+</div>
+</div>
+<p class="lp-note">As especificações exatas, a versão, a cor, a capacidade, o conteúdo da caixa e as condições de garantia são os indicados na página do produto. Samsung® e Galaxy® são marcas registadas do respetivo titular.</p>
+</section>
+</div>

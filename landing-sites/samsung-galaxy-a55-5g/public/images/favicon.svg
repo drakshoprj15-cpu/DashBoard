@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Flash Shopping">
+  <!-- Marca da Flash Shopping: o raio ("flash") sobre o azul-ardósia da marca.
+       Quadrado preenchido de propósito — o favicon aparece tanto em separadores
+       claros como escuros, e o fundo próprio garante contraste nos dois casos.
+       Desenhado em SVG (e não com um emoji) porque o emoji é renderizado pela
+       fonte do sistema: saía diferente no Windows, no macOS e no Android. -->
+  <rect width="24" height="24" rx="5.5" fill="#33415C"/>
+  <path d="M12.86 3.4 L4.26 13.72 L11.14 13.72 L10.28 20.6 L19.74 10.28 L12.86 10.28 Z" fill="#ffffff"/>
+</svg>

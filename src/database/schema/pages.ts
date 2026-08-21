@@ -77,6 +77,40 @@ export const landingPages = pgTable(
     previewToken: text("preview_token"),
     /** Mensagem do último erro de publicação (status `error` na UI) */
     lastError: text("last_error"),
+
+    /**
+     * Hospedagem da página.
+     *
+     * `infinity` (padrão) é o caminho normal: a rota `/lp/[slug]` desta
+     * aplicação serve o snapshot direto do banco. `vercel` é para páginas
+     * cujo HTML não nasce do editor — um site exportado, por exemplo —, e que
+     * por isso vivem num projeto estático próprio. Nesse caso o painel deixa
+     * de ser quem serve a página e passa a ser quem a publica e regista.
+     *
+     * Campos com nome genérico (`deployment*`) e não `vercel*`: quem diz qual
+     * é o serviço é `hostingProvider`, e trocar de serviço não obriga a mexer
+     * no schema.
+     */
+    hostingProvider: text("hosting_provider").default("infinity").notNull(),
+    /** Endereço público devolvido pelo serviço (ex.: `https://x.vercel.app`) */
+    deploymentUrl: text("deployment_url"),
+    /** Identificador do projeto no serviço de hospedagem */
+    deploymentProjectId: text("deployment_project_id"),
+    /** Identificador do último deploy — serve para abrir o registo no serviço */
+    deploymentId: text("deployment_id"),
+    /**
+     * Fase do último deploy: `idle`, `preparing`, `deploying`, `ready` ou
+     * `failed`. Separado de `status` de propósito — uma página pode estar
+     * publicada no painel e com o último deploy falhado, e a interface tem de
+     * conseguir mostrar as duas coisas.
+     */
+    deploymentStatus: text("deployment_status").default("idle").notNull(),
+    /** Saída técnica do último deploy, guardada para diagnóstico */
+    deploymentLog: text("deployment_log"),
+    deploymentUpdatedAt: timestamp("deployment_updated_at", {
+      withTimezone: true,
+    }),
+
     ...timestamps,
     ...softDelete,
   },
