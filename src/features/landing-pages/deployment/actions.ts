@@ -50,6 +50,10 @@ export async function deployLandingPageAction(
       id: landingPages.id,
       name: landingPages.name,
       slug: landingPages.slug,
+      publicName: landingPages.publicName,
+      logoUrl: landingPages.logoUrl,
+      faviconUrl: landingPages.faviconUrl,
+      draftVersion: landingPages.draftVersion,
       hostingProvider: landingPages.hostingProvider,
       deploymentId: landingPages.deploymentId,
       deploymentProjectId: landingPages.deploymentProjectId,
@@ -91,6 +95,11 @@ export async function deployLandingPageAction(
   const result = await deployStaticSite({
     projectName,
     slug: page.slug,
+    branding: {
+      logoUrl: page.logoUrl,
+      logoAlt: page.publicName?.trim() || page.name,
+      faviconUrl: page.faviconUrl,
+    },
   });
 
   const now = new Date();
@@ -126,6 +135,7 @@ export async function deployLandingPageAction(
       deploymentLog: result.log || null,
       deploymentUpdatedAt: now,
       publishedAt: now,
+      publishedVersion: page.draftVersion,
       // No modo demonstração o identificador não corresponde a um perfil real.
       publishedBy: demoMode ? null : userId,
       pausedAt: null,
