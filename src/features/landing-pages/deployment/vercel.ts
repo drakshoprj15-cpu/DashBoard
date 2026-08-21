@@ -147,6 +147,42 @@ export interface SiteBuildSettings {
   outputDirectory: string | null;
 }
 
+/**
+ * Caminho da página dentro do projeto, lido do redirecionamento da raiz.
+ *
+ * O endereço que o painel guarda é o que o lojista copia para o anúncio, e
+ * aterrar na raiz obriga a um salto de redirecionamento antes da página. O
+ * `vercel.json` já diz para onde a raiz aponta; usar esse destino dá o
+ * endereço final, sem inventar um caminho a partir do slug.
+ */
+export function readLandingPath(files: SiteFile[]): string {
+  const config = files.find((file) => file.path === "vercel.json");
+  if (!config) return "";
+
+  let parsed: { redirects?: unknown };
+  try {
+    parsed = JSON.parse(config.data.toString("utf8")) as { redirects?: unknown };
+  } catch {
+    return "";
+  }
+
+  if (!Array.isArray(parsed.redirects)) return "";
+
+  for (const entry of parsed.redirects) {
+    if (!entry || typeof entry !== "object") continue;
+    const { source, destination } = entry as Record<string, unknown>;
+    if (source !== "/") continue;
+    // Só um caminho literal serve: um destino noutro domínio, ou com padrões
+    // por expandir, não é um endereço que se possa colar num anúncio.
+    if (typeof destination !== "string") continue;
+    if (!destination.startsWith("/") || destination.startsWith("//")) continue;
+    if (/[:*?]/.test(destination)) continue;
+    return destination === "/" ? "" : destination.replace(/\/+$/, "");
+  }
+
+  return "";
+}
+
 export function readBuildSettings(files: SiteFile[]): SiteBuildSettings {
   const empty: SiteBuildSettings = {
     framework: null,
@@ -348,13 +384,14 @@ export async function deployStaticSite(options: {
         .sort((a, b) => a.length - b.length)
         .find((alias) => alias.endsWith(".vercel.app")) ?? current.url;
 
-    note(`pronto em ${stable}`);
+    const landingPath = readLandingPath(files);
+    note(`pronto em ${stable}${landingPath}`);
 
     return {
       ok: true,
       deploymentId: current.id,
       projectId: current.projectId,
-      url: `https://${stable}`,
+      url: `https://${stable}${landingPath}`,
       deploymentUrl: `https://${current.url}`,
       inspectorUrl: current.inspectorUrl,
       log: log.join("\n"),
