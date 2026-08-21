@@ -199,10 +199,10 @@ const { brand } = config;
 const brandName =
   brand.logoAlt || `${brand.wordMark} ${brand.wordMarkAccent}`.trim();
 const headerBrand = brand.logoUrl
-  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;height:40px;width:auto;max-width:180px;object-fit:contain;margin:0 auto">`
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;width:min(82vw,360px);height:auto;max-height:110px;object-fit:contain;margin:0 auto">`
   : `<span class="text-primaria">${brand.wordMark}</span><span class="text-tinta"> ${brand.wordMarkAccent}</span>`;
 const footerBrand = brand.logoUrl
-  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;height:40px;width:auto;max-width:180px;object-fit:contain">`
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;width:min(64vw,240px);height:auto;max-height:84px;object-fit:contain">`
   : `<span class="text-primaria-viva">${brand.wordMark}</span><span class="text-white"> ${brand.wordMarkAccent}</span>`;
 
 replaceAll(
