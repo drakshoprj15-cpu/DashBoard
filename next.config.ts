@@ -18,8 +18,13 @@ const nextConfig: NextConfig = {
   // módulo — são lidos do disco na hora de publicar. Sem os declarar aqui, o
   // rastreio de ficheiros não os inclui no pacote da função e o botão
   // "Republicar na Vercel" falha em produção com "pasta não encontrada".
+  //
+  // A pasta vai inteira, e não só `public/`: a página publicada sai do
+  // `build.mjs` para `public/lp/`, que não é versionado. Com apenas `public/`
+  // no pacote, o envio subia os recursos sem a página e sem o script que a
+  // gera, e o build do deploy morria em "Cannot find module build.mjs".
   outputFileTracingIncludes: {
-    "/landing-pages": ["./landing-sites/**/public/**"],
+    "/landing-pages": ["./landing-sites/**"],
   },
 };
 
