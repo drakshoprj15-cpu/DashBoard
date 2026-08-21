@@ -51,6 +51,7 @@ export async function deployLandingPageAction(
       name: landingPages.name,
       slug: landingPages.slug,
       hostingProvider: landingPages.hostingProvider,
+      deploymentId: landingPages.deploymentId,
       deploymentProjectId: landingPages.deploymentProjectId,
     })
     .from(landingPages)
@@ -95,13 +96,17 @@ export async function deployLandingPageAction(
   const now = new Date();
 
   if (!result.ok) {
+    // Um deploy que ainda constrói não é um deploy falhado: marcar "com erro"
+    // faria o cartão desmentir uma página que segundos depois está no ar.
     await db
       .update(landingPages)
       .set({
-        deploymentStatus: "failed",
+        deploymentStatus: result.pending ? "deploying" : "failed",
+        deploymentId: result.deploymentId ?? page.deploymentId,
+        deploymentProjectId: result.projectId ?? page.deploymentProjectId,
         deploymentLog: result.log || null,
         deploymentUpdatedAt: now,
-        lastError: result.error ?? "Falha no deploy.",
+        lastError: result.pending ? null : (result.error ?? "Falha no deploy."),
         updatedAt: now,
       })
       .where(eq(landingPages.id, page.id));
