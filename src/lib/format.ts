@@ -30,7 +30,10 @@ export function formatDate(
   locale: string = "pt-BR",
 ): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat(locale, { dateStyle: "short" }).format(d);
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "short",
+    timeZone: timeZoneFor(locale),
+  }).format(d);
 }
 
 export function formatDateTime(
@@ -41,5 +44,15 @@ export function formatDateTime(
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
+    // A renderização inicial acontece no servidor e depois hidrata no
+    // navegador. Um fuso explícito impede que os dois lados produzam textos
+    // diferentes (e o React reporte erro de hidratação em produção).
+    timeZone: timeZoneFor(locale),
   }).format(d);
+}
+
+function timeZoneFor(locale: string): string {
+  if (locale.toLowerCase().startsWith("pt-pt")) return "Europe/Lisbon";
+  if (locale.toLowerCase().startsWith("pt-br")) return "America/Sao_Paulo";
+  return "UTC";
 }
