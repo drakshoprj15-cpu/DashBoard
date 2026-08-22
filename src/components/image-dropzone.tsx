@@ -162,7 +162,9 @@ export function ImageDropzone({
             ou cole uma URL diretamente
           </summary>
           <Input
+            id={`${id}-url`}
             type="url"
+            aria-label={`URL de ${label.toLowerCase()}`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="https://…/imagem.png"

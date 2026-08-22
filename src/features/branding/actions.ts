@@ -55,6 +55,7 @@ export async function updateBrandingAction(
       });
 
     revalidatePath("/configuracoes");
+    revalidatePath("/emails");
     revalidatePath("/checkout/[slug]", "page");
     revalidatePath("/p/[slug]", "page");
 

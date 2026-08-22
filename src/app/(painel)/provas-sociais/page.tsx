@@ -180,7 +180,12 @@ export default async function ProvasSociaisPage() {
                     </form>
                     <form action={deleteReviewAction}>
                       <input type="hidden" name="id" value={r.id} />
-                      <Button size="sm" variant="ghost" type="submit">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        type="submit"
+                        aria-label={`Excluir avaliação de ${r.authorName}`}
+                      >
                         <Trash2 />
                       </Button>
                     </form>

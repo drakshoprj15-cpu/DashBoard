@@ -451,6 +451,8 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
               <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
               <Input
                 ref={searchInputRef}
+                type="search"
+                aria-label="Pesquisar clientes"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Pesquisar por nome, email, telefone, CPF ou número do pedido..."

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 interface EmptyStateProps extends React.ComponentProps<"div"> {
   icon?: LucideIcon;
   title: string;
+  titleAs?: "h2" | "h3" | "p";
   description?: string;
   action?: React.ReactNode;
 }
@@ -13,6 +14,7 @@ interface EmptyStateProps extends React.ComponentProps<"div"> {
 function EmptyState({
   icon: Icon,
   title,
+  titleAs: Title = "p",
   description,
   action,
   className,
@@ -33,7 +35,7 @@ function EmptyState({
         </div>
       )}
       <div className="space-y-1">
-        <p className="font-semibold">{title}</p>
+        <Title className="font-semibold">{title}</Title>
         {description && (
           <p className="text-muted-foreground mx-auto max-w-md text-sm text-balance">
             {description}

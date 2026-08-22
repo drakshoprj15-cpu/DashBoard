@@ -70,7 +70,7 @@ export function ShippingForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="priceCents">
+              <Label htmlFor="priceCentsDisplay">
                 Valor (€){" "}
                 <span className="text-muted-foreground font-normal">
                   — use vírgula, ex.: 4,99
@@ -94,7 +94,7 @@ export function ShippingForm() {
               <input type="hidden" name="priceCents" defaultValue={0} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="freeAboveCents">
+              <Label htmlFor="freeAboveCentsDisplay">
                 Grátis a partir de (€){" "}
                 <span className="text-muted-foreground font-normal">
                   (opcional)

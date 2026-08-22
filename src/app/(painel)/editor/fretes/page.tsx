@@ -141,7 +141,12 @@ export default async function FretesPage() {
                         </form>
                         <form action={deleteShippingMethodAction}>
                           <input type="hidden" name="id" value={m.id} />
-                          <Button size="sm" variant="ghost" type="submit">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            type="submit"
+                            aria-label={`Excluir frete ${m.name}`}
+                          >
                             <Trash2 />
                           </Button>
                         </form>

@@ -137,7 +137,7 @@ export function CampaignForm({
     DEFAULT_CAMPAIGN_TEMPLATE.preheader,
   );
   const [headerName, setHeaderName] = React.useState<string>(
-    DEFAULT_CAMPAIGN_TEMPLATE.headerName,
+    brand.name || DEFAULT_CAMPAIGN_TEMPLATE.headerName,
   );
   const [title, setTitle] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.title,
@@ -714,7 +714,7 @@ export function CampaignForm({
                     href="/configuracoes"
                     className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
                   >
-                    {brand.logoUrl ? "Trocar logo" : "Adicionar logo"}
+                    Configurar marca
                   </Link>
                 </div>
                 <div className="space-y-2">
@@ -746,7 +746,7 @@ export function CampaignForm({
                       className="size-3 rounded-sm bg-[#cc0000]"
                       aria-hidden="true"
                     />
-                    Nome no cabecalho (opcional)
+                    Nome no cabeçalho (opcional)
                   </Label>
                   <Input
                     id="headerName"
@@ -756,6 +756,13 @@ export function CampaignForm({
                     placeholder="Nome da sua marca"
                     maxLength={80}
                   />
+                  {brand.logoUrl && (
+                    <p className="text-muted-foreground text-xs">
+                      O logo salvo em Configurações substitui este nome no topo.
+                      O nome continua no rodapé. Para mostrar texto no
+                      cabeçalho, remova o logo da loja em Configurações.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="title">Titulo interno</Label>

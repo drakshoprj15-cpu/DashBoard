@@ -36,6 +36,7 @@ export function ModulePlaceholder({
       <EmptyState
         icon={Construction}
         title={`${title} — em desenvolvimento`}
+        titleAs="h2"
         description={description}
         action={
           <Badge variant="info">
