@@ -389,6 +389,12 @@
       "area": "checkout-branding",
       "decision": "Use merchant-controlled workspace branding by default, allow a per-checkout logo override, and fall back to the text 'Minha Loja'. Keep the public header at 65px with a centered 122x25px logo area and a red default background (#e30613).",
       "reason": "This gives the operator a predictable mobile and desktop checkout identity without hardcoded third-party branding, while keeping customization available in the panel."
+    },
+    {
+      "date": "2026-08-22",
+      "area": "checkout-footer",
+      "decision": "Use a red, responsive ecommerce footer with merchant branding, accepted payment badges, trust messages, grouped public navigation, legal links, and a copyright bar. Show only MB WAY and Multibanco because they are the supported payment methods.",
+      "reason": "This matches the selected Flash Shopping footer direction while keeping every claim, method, and link consistent with the checkout's actual capabilities and legal pages."
     }
   ],
   "evidence": [
