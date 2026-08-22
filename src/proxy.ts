@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { isPanelHost, isStorePath, normalizeHost } from "@/lib/hosts";
+import { isOwnerEmail } from "@/lib/auth/owner";
 
 const PUBLIC_PREFIXES = [
   "/login",
@@ -86,14 +87,19 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !isPublicPath(pathname)) {
+  // Sessão válida no Supabase não basta: fora da allowlist a conta é tratada
+  // como anónima aqui também. Sem isto o painel mandava para /login e o proxy
+  // devolvia para /dashboard — um ciclo infinito de redirecionamentos.
+  const owner = Boolean(user) && isOwnerEmail(user?.email);
+
+  if (!owner && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname === "/login" || pathname === "/cadastro")) {
+  if (owner && (pathname === "/login" || pathname === "/cadastro")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
