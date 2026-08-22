@@ -22,6 +22,10 @@ import {
   normalizePhone,
   resolveDuplicateCandidate,
 } from "@/features/customers/customer-utils";
+import {
+  storedNormalizedCustomerEmail,
+  storedNormalizedCustomerPhone,
+} from "@/features/customers/customer-sql";
 import { consumeCustomerRateLimit } from "@/features/customers/rate-limit";
 
 export const runtime = "nodejs";
@@ -285,18 +289,19 @@ export async function POST(request: Request) {
 
       try {
         const identityConditions = [
-          eq(customers.normalizedEmail, email),
-          sql`lower(trim(${customers.email})) = ${email}`,
+          sql`${storedNormalizedCustomerEmail} = ${email}`,
         ];
         if (phone)
-          identityConditions.push(eq(customers.normalizedPhone, phone));
+          identityConditions.push(
+            sql`${storedNormalizedCustomerPhone} = ${phone}`,
+          );
         if (document) identityConditions.push(eq(customers.document, document));
         const candidates = await db
           .select({
             id: customers.id,
             email: customers.email,
-            normalizedEmail: customers.normalizedEmail,
-            normalizedPhone: customers.normalizedPhone,
+            normalizedEmail: storedNormalizedCustomerEmail,
+            normalizedPhone: storedNormalizedCustomerPhone,
             normalizedDocument: customers.document,
             tags: customers.tags,
           })
@@ -304,6 +309,7 @@ export async function POST(request: Request) {
           .where(
             and(
               eq(customers.workspaceId, access.workspaceId),
+              isNull(customers.deletedAt),
               or(...identityConditions),
             ),
           )
