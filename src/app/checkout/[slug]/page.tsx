@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getProductBySlug } from "@/features/landing/queries";
 import { CheckoutForm } from "@/features/checkout/checkout-form";
+import { CheckoutFooter } from "@/features/checkout/checkout-footer";
 import { PixelScripts } from "@/features/pixels/pixel-scripts";
 import { Tracker } from "@/features/analytics/tracker";
 import { CookieBanner } from "@/features/consent/cookie-banner";
@@ -135,23 +136,13 @@ export default async function CheckoutSlugPage(
         />
       </main>
 
-      <footer className="border-t bg-white py-5 text-center text-xs text-zinc-500">
-        <p>
-          © {new Date().getFullYear()} {storeName} · Pagamento seguro por MB WAY
-          e Multibanco
-        </p>
-        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-          <Link href="/legal/termos" className="hover:text-zinc-800">
-            Termos
-          </Link>
-          <Link href="/legal/privacidade" className="hover:text-zinc-800">
-            Privacidade
-          </Link>
-          <Link href="/legal/devolucoes" className="hover:text-zinc-800">
-            Devoluções
-          </Link>
-        </p>
-      </footer>
+      <CheckoutFooter
+        backgroundColor={theme.bannerColor}
+        checkoutSlug={slug}
+        productSlug={product.slug}
+        storeName={storeName}
+        supportEmail={branding.supportEmail}
+      />
 
       <CookieBanner />
     </div>
