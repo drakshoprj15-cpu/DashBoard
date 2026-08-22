@@ -7,6 +7,7 @@ export const DEFAULT_CAMPAIGN_TEMPLATE = {
   subject: "{{PRIMEIRO_NOME}}, confirme os dados do seu pedido",
   preheader:
     "Retome o seu pedido e confirme os dados de entrega em poucos segundos.",
+  headerName: "",
   title: "Atualização do seu pedido",
   body: "Olá {{PRIMEIRO_NOME}},\n\nO seu pedido encontra-se pendente de conclusão. Para continuar, confirme os dados no botão abaixo apenas se reconhecer esta compra.",
   articleName: "O seu Produto",
@@ -40,6 +41,7 @@ export interface CampaignTemplateVars {
 
 export interface CampaignTemplateContent {
   body: string;
+  headerName?: string;
   title?: string;
   articleName?: string;
   ctaLabel?: string;
@@ -113,7 +115,6 @@ export function isValidCtaUrlTemplate(value: string): boolean {
 export function buildCampaignHtml(input: {
   body: string;
   preheader?: string;
-  /** Valores antigos são aceitos apenas para não quebrar campanhas salvas. */
   headerName?: string;
   title?: string;
   articleName?: string;
@@ -135,6 +136,9 @@ export function buildCampaignHtml(input: {
     .join("");
   const preheader = input.preheader
     ? renderCampaignText(input.preheader, input.vars)
+    : "";
+  const headerName = input.headerName
+    ? renderCampaignText(input.headerName, input.vars)
     : "";
   const title = renderCampaignText(
     input.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
@@ -166,6 +170,7 @@ export function buildCampaignHtml(input: {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
 <div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #cc0000">
 <div style="padding:34px 32px 30px">
+${headerName ? `<p style="margin:0 0 10px;font-size:18px;font-weight:700;line-height:1.3;color:#111827">${escapeHtml(headerName)}</p>` : ""}
 <p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
 <div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">

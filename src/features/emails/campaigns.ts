@@ -49,6 +49,8 @@ function campaignContent(content: unknown): CampaignTemplateContent {
   const value = content as Record<string, unknown>;
   return {
     body: typeof value.body === "string" ? value.body : "",
+    headerName:
+      typeof value.headerText === "string" ? value.headerText : undefined,
     title: typeof value.title === "string" ? value.title : undefined,
     articleName:
       typeof value.articleName === "string" ? value.articleName : undefined,
@@ -149,6 +151,7 @@ export async function getEmailDashboardOverview(): Promise<EmailDashboardOvervie
         previewHtml: buildCampaignHtml({
           body: content.body || "O conteudo deste disparo nao esta disponivel.",
           preheader,
+          headerName: content.headerName,
           title: content.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
           articleName:
             content.articleName ?? DEFAULT_CAMPAIGN_TEMPLATE.articleName,

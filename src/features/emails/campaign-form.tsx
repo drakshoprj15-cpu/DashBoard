@@ -132,6 +132,9 @@ export function CampaignForm({
   const [preheader, setPreheader] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.preheader,
   );
+  const [headerName, setHeaderName] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.headerName,
+  );
   const [title, setTitle] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.title,
   );
@@ -229,6 +232,7 @@ export function CampaignForm({
   const previewHtml = buildCampaignHtml({
     body,
     preheader,
+    headerName,
     title,
     articleName,
     ctaLabel,
@@ -721,6 +725,21 @@ export function CampaignForm({
                     onChange={(event) => setPreheader(event.target.value)}
                     maxLength={180}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="headerName">Nome no cabeçalho</Label>
+                  <Input
+                    id="headerName"
+                    name="headerName"
+                    value={headerName}
+                    onChange={(event) => setHeaderName(event.target.value)}
+                    maxLength={80}
+                    placeholder="Nome da sua empresa"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Aparece como texto no topo do e-mail. Nenhuma logo será
+                    adicionada.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="title">Titulo interno</Label>

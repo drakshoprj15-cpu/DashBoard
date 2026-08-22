@@ -51,7 +51,7 @@ describe("email campaign template", () => {
     expect(html).not.toContain("{{");
   });
 
-  it("ignores old header names and logos", () => {
+  it("renders the header name safely and ignores old logos", () => {
     const html = buildCampaignHtml({
       body: "Olá {{PRIMEIRO_NOME}}.",
       headerName: "Loja <Principal>",
@@ -62,7 +62,7 @@ describe("email campaign template", () => {
       },
     });
 
-    expect(html).not.toContain("Loja &lt;Principal&gt;");
+    expect(html).toContain("Loja &lt;Principal&gt;");
     expect(html).not.toContain("PCDIGA");
     expect(html).not.toContain("cdn.example.com/logo.png");
     expect(html).not.toContain("<img");
