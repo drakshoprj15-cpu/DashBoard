@@ -30,7 +30,7 @@ export {
 } from "@/features/emails/types";
 
 const STATUS_BY_SEGMENT: Record<string, string[]> = {
-  paid: ["paid", "shipped", "delivered"],
+  paid: ["paid", "preparing", "shipped", "delivered"],
   pending: ["created", "awaiting_payment", "processing"],
   refused: ["refused", "expired", "cancelled"],
 };
@@ -57,7 +57,7 @@ type RecipientWithoutContext = Omit<
   | "checkoutUrl"
   | "orderTotalCents"
   | "currency"
->;
+> & { fallbackProductName?: string | null };
 
 async function addOrderContext(
   recipients: RecipientWithoutContext[],
@@ -100,11 +100,12 @@ async function addOrderContext(
 
   return recipients.map((recipient) => {
     const context = latestByCustomer.get(recipient.id);
+    const { fallbackProductName, ...baseRecipient } = recipient;
     return {
-      ...recipient,
+      ...baseRecipient,
       orderId: context?.orderId ?? null,
       orderReference: context?.reference ?? null,
-      productName: context?.productName ?? null,
+      productName: context?.productName ?? fallbackProductName ?? null,
       checkoutUrl: context?.checkoutUrl ?? null,
       orderTotalCents: context ? Number(context.totalCents) : null,
       currency: context?.currency ?? null,
@@ -135,24 +136,17 @@ export async function getSegmentRecipients(
   const blocked = new Set(suppressed.map((s) => s.email.toLowerCase()));
 
   const statuses = STATUS_BY_SEGMENT[segment];
-
-  // "Compras pagas" também inclui clientes com histórico de compra
-  // importado (first_purchase_at preenchido) sem pedido correspondente na
-  // tabela `orders` — caso de importações antigas de compradores reais.
-  const membershipCondition =
-    segment === "paid"
+  // A tag de importação foi gravada em praticamente toda a base, então não
+  // distingue quem pagou. `first_purchase_at` é o sinal confiável de compra
+  // anterior nos registos importados.
+  const audienceCondition = statuses
+    ? segment === "paid"
       ? or(
           inArray(orders.status, statuses as never),
           isNotNull(customers.firstPurchaseAt),
         )
-      : statuses
-        ? inArray(orders.status, statuses as never)
-        : undefined;
-
-  const orderCountExpr =
-    segment === "paid"
-      ? sql<number>`count(*) filter (where ${orders.status} in ('paid','shipped','delivered'))::int`
-      : sql<number>`count(${orders.id})::int`;
+      : inArray(orders.status, statuses as never)
+    : undefined;
 
   const rows = await db
     .select({
@@ -160,8 +154,9 @@ export async function getSegmentRecipients(
       email: customers.email,
       firstName: customers.firstName,
       lastName: customers.lastName,
-      orderCount: orderCountExpr,
-      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
+      importedProductName: customers.importedProductName,
+      orderCount: sql<number>`count(${orders.id})::int`,
+      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','preparing','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
     })
     .from(customers)
     .leftJoin(orders, eq(orders.customerId, customers.id))
@@ -171,7 +166,7 @@ export async function getSegmentRecipients(
         isNull(customers.deletedAt),
         eq(customers.marketingOptOut, false),
         eq(customers.isBlocked, false),
-        membershipCondition,
+        audienceCondition,
       ),
     )
     .groupBy(
@@ -179,6 +174,7 @@ export async function getSegmentRecipients(
       customers.email,
       customers.firstName,
       customers.lastName,
+      customers.importedProductName,
     );
 
   const filtered =
@@ -192,6 +188,7 @@ export async function getSegmentRecipients(
       name: [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email,
       orderCount: r.orderCount,
       totalSpentCents: r.totalSpentCents,
+      fallbackProductName: r.importedProductName,
     }));
 
   return includeOrderContext
@@ -232,6 +229,7 @@ export async function searchEmailRecipients(
         email: customers.email,
         firstName: customers.firstName,
         lastName: customers.lastName,
+        importedProductName: customers.importedProductName,
       })
       .from(customers)
       .where(
@@ -264,6 +262,7 @@ export async function searchEmailRecipients(
         [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email,
       orderCount: 0,
       totalSpentCents: 0,
+      fallbackProductName: row.importedProductName,
     }));
 
   return addOrderContext(recipients);
@@ -330,10 +329,11 @@ export async function getCustomRecipients(
       email: customers.email,
       firstName: customers.firstName,
       lastName: customers.lastName,
+      importedProductName: customers.importedProductName,
       marketingOptOut: customers.marketingOptOut,
       isBlocked: customers.isBlocked,
       orderCount: sql<number>`count(${orders.id})::int`,
-      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
+      totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','preparing','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
     })
     .from(customers)
     .leftJoin(orders, eq(orders.customerId, customers.id))
@@ -349,6 +349,7 @@ export async function getCustomRecipients(
       customers.email,
       customers.firstName,
       customers.lastName,
+      customers.importedProductName,
       customers.marketingOptOut,
       customers.isBlocked,
     );
@@ -379,6 +380,7 @@ export async function getCustomRecipients(
       name: [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email,
       orderCount: r.orderCount,
       totalSpentCents: r.totalSpentCents,
+      fallbackProductName: r.importedProductName,
     });
   }
 

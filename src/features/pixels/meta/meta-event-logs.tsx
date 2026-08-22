@@ -26,18 +26,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { listAllPixelsForFilter, listPixelEvents } from "@/features/pixels/queries";
+import {
+  listAllPixelsForFilter,
+  listPixelEvents,
+} from "@/features/pixels/queries";
 import { reprocessPixelEventAction } from "@/features/pixels/actions";
 import type { LandingPagePickerItem } from "./landing-page-selector";
 
-const EVENT_NAME_OPTIONS = ["Purchase", "InitiateCheckout", "ViewContent", "PageView"];
+const EVENT_NAME_OPTIONS = [
+  "Purchase",
+  "InitiateCheckout",
+  "ViewContent",
+  "PageView",
+];
 const STATUS_OPTIONS = [
   { value: "sent", label: "Enviado" },
+  { value: "processing", label: "Processando" },
   { value: "pending", label: "Pendente" },
   { value: "failed", label: "Falhou" },
 ];
-const STATUS_BADGE: Record<string, "success" | "info" | "destructive" | "muted"> = {
+const STATUS_BADGE: Record<
+  string,
+  "success" | "info" | "destructive" | "muted"
+> = {
   sent: "success",
+  processing: "info",
   pending: "info",
   failed: "destructive",
 };
@@ -56,11 +69,13 @@ function asString(value: string | string[] | undefined): string {
 interface MetaEventLogsProps {
   searchParams: Record<string, string | string[] | undefined>;
   landingPages: LandingPagePickerItem[];
+  workspaceId: string;
 }
 
 export async function MetaEventLogs({
   searchParams,
   landingPages,
+  workspaceId,
 }: MetaEventLogsProps) {
   const page = Math.max(1, Number(asString(searchParams.logPage)) || 1);
   const filters = {
@@ -74,8 +89,8 @@ export async function MetaEventLogs({
   };
 
   const [{ rows, total, pageSize }, pixelOptions] = await Promise.all([
-    listPixelEvents(filters),
-    listAllPixelsForFilter(),
+    listPixelEvents(filters, workspaceId),
+    listAllPixelsForFilter(workspaceId),
   ]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
@@ -87,7 +102,8 @@ export async function MetaEventLogs({
     const params = new URLSearchParams();
     params.set("tab", "meta");
     if (preservedLp) params.set("lp", preservedLp);
-    if (filters.landingPageId) params.set("logLandingPageId", filters.landingPageId);
+    if (filters.landingPageId)
+      params.set("logLandingPageId", filters.landingPageId);
     if (filters.pixelId) params.set("logPixelId", filters.pixelId);
     if (filters.eventName) params.set("logEventName", filters.eventName);
     if (filters.status) params.set("logStatus", filters.status);
@@ -99,10 +115,12 @@ export async function MetaEventLogs({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Histórico de eventos da Meta</CardTitle>
+        <CardTitle className="text-base">
+          Histórico de eventos da Meta
+        </CardTitle>
         <CardDescription>
-          Eventos enviados pelo Pixel e pela API de Conversões, com o
-          disparo que originou cada envio.
+          Eventos enviados pelo Pixel e pela API de Conversões, com o disparo
+          que originou cada envio.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -112,7 +130,9 @@ export async function MetaEventLogs({
           className="flex flex-wrap items-end gap-2"
         >
           <input type="hidden" name="tab" value="meta" />
-          {preservedLp ? <input type="hidden" name="lp" value={preservedLp} /> : null}
+          {preservedLp ? (
+            <input type="hidden" name="lp" value={preservedLp} />
+          ) : null}
 
           <FilterSelect
             name="logLandingPageId"
@@ -155,7 +175,11 @@ export async function MetaEventLogs({
           <Button type="submit" size="sm" variant="outline">
             Filtrar
           </Button>
-          {(filters.landingPageId || filters.pixelId || filters.eventName || filters.status || filters.q) && (
+          {(filters.landingPageId ||
+            filters.pixelId ||
+            filters.eventName ||
+            filters.status ||
+            filters.q) && (
             <Link
               href={`/pixel?tab=meta${preservedLp ? `&lp=${preservedLp}` : ""}`}
               className="text-muted-foreground text-xs underline"
@@ -215,7 +239,9 @@ export async function MetaEventLogs({
                           ?.label ?? event.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs">{event.retryCount}</TableCell>
+                    <TableCell className="text-xs">
+                      {event.retryCount}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Dialog>

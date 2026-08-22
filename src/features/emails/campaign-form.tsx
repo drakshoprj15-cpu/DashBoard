@@ -136,8 +136,14 @@ export function CampaignForm({
   const [preheader, setPreheader] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.preheader,
   );
+  const [headerName, setHeaderName] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.headerName,
+  );
   const [title, setTitle] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.title,
+  );
+  const [articleName, setArticleName] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.articleName,
   );
   const [body, setBody] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.body,
@@ -147,6 +153,9 @@ export function CampaignForm({
   );
   const [ctaUrl, setCtaUrl] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
+  );
+  const [fallbackText, setFallbackText] = React.useState<string>(
+    DEFAULT_CAMPAIGN_TEMPLATE.fallbackText,
   );
   const [previewRecipientId, setPreviewRecipientId] = React.useState(
     pendingRecipients[0]?.id ?? "",
@@ -227,9 +236,12 @@ export function CampaignForm({
   const previewHtml = buildCampaignHtml({
     body,
     preheader,
+    headerName,
     title,
+    articleName,
     ctaLabel,
     ctaUrl,
+    fallbackText,
     vars: previewVars,
     brand,
   });
@@ -726,12 +738,43 @@ export function CampaignForm({
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label
+                    htmlFor="headerName"
+                    className="flex items-center gap-2"
+                  >
+                    <span
+                      className="size-3 rounded-sm bg-[#cc0000]"
+                      aria-hidden="true"
+                    />
+                    Nome no cabecalho (opcional)
+                  </Label>
+                  <Input
+                    id="headerName"
+                    name="headerName"
+                    value={headerName}
+                    onChange={(event) => setHeaderName(event.target.value)}
+                    placeholder="Nome da sua marca"
+                    maxLength={80}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="title">Titulo interno</Label>
                   <Input
                     id="title"
                     name="title"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
+                    maxLength={160}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="articleName">Nome do artigo</Label>
+                  <Input
+                    id="articleName"
+                    name="articleName"
+                    value={articleName}
+                    onChange={(event) => setArticleName(event.target.value)}
                     maxLength={160}
                     required
                   />
@@ -797,6 +840,23 @@ export function CampaignForm({
                       />
                     </div>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fallbackText">
+                    Texto do link alternativo
+                  </Label>
+                  <Input
+                    id="fallbackText"
+                    name="fallbackText"
+                    value={fallbackText}
+                    onChange={(event) => setFallbackText(event.target.value)}
+                    maxLength={240}
+                    required
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    O endereço mostrado abaixo deste texto acompanha sempre o
+                    Link do botão.
+                  </p>
                 </div>
               </div>
 

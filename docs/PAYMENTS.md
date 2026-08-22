@@ -81,7 +81,7 @@ implementação paralela.
 
 | Peça                              | Onde                                       |
 | --------------------------------- | ------------------------------------------ |
-| Configuração + snapshot publicado | `payment_links` (migrations 0018 e 0019)   |
+| Configuração + snapshot publicado | `payment_links` (migration 0017)           |
 | Funil (visita → pago)             | `payment_link_events`                      |
 | Cobranças                         | `orders` + `payments`, como qualquer venda |
 | Escolha do gateway                | `src/payment-providers/resolve.ts`         |

@@ -16,6 +16,7 @@ import {
   getSegmentRecipients,
   type Recipient,
 } from "@/features/emails/segments";
+import { splitProviderBatches } from "@/features/emails/batching";
 import type { SegmentKey } from "@/features/emails/types";
 import {
   isResendConfigured,
@@ -37,7 +38,7 @@ import { getSession } from "@/lib/auth/session";
 import { formatMoney } from "@/lib/format";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
-const MAX_CAMPAIGN_RECIPIENTS = 500;
+const RESEND_BATCH_INTERVAL_MS = 250;
 
 const campaignSchema = z.object({
   dispatchId: z.string().uuid(),
@@ -45,7 +46,9 @@ const campaignSchema = z.object({
   customerIds: z.string().trim().optional().or(z.literal("")),
   subject: z.string().trim().min(3, "Escreva um assunto").max(160),
   preheader: z.string().trim().max(180).optional().or(z.literal("")),
+  headerName: z.string().trim().max(80).optional().or(z.literal("")),
   title: z.string().trim().min(3, "Escreva o titulo do e-mail").max(160),
+  articleName: z.string().trim().min(2, "Escreva o nome do artigo").max(160),
   body: z.string().trim().min(10, "Escreva a mensagem").max(10_000),
   ctaLabel: z.string().trim().min(2, "Escreva o texto do botao").max(80),
   ctaUrl: z
@@ -57,6 +60,11 @@ const campaignSchema = z.object({
       isValidCtaUrlTemplate,
       "Use um link http(s) valido ou {{CHECKOUT_URL}}.",
     ),
+  fallbackText: z
+    .string()
+    .trim()
+    .min(3, "Escreva o texto do link alternativo")
+    .max(240),
   testEmail: z
     .string()
     .trim()
@@ -77,8 +85,7 @@ async function resolveRecipients(
             (customerIdsRaw ?? "")
               .split(",")
               .map((value) => value.trim())
-              .filter(Boolean)
-              .slice(0, MAX_CAMPAIGN_RECIPIENTS),
+              .filter(Boolean),
           )
         ).recipients
       : await getSegmentRecipients(segment);
@@ -100,6 +107,12 @@ export interface EmailActionResult {
   sent?: number;
   failed?: number;
   queued?: number;
+}
+
+function waitForNextProviderBatch() {
+  return new Promise((resolve) =>
+    setTimeout(resolve, RESEND_BATCH_INTERVAL_MS),
+  );
 }
 
 function templateVars(
@@ -173,10 +186,13 @@ export async function sendCampaignAction(
     customerIds: formData.get("customerIds") ?? "",
     subject: formData.get("subject"),
     preheader: formData.get("preheader") ?? "",
+    headerName: formData.get("headerName") ?? "",
     title: formData.get("title"),
+    articleName: formData.get("articleName"),
     body: formData.get("body"),
     ctaLabel: formData.get("ctaLabel"),
     ctaUrl: formData.get("ctaUrl"),
+    fallbackText: formData.get("fallbackText"),
     testEmail: formData.get("testEmail") ?? "",
     mode: formData.get("mode"),
   });
@@ -198,10 +214,13 @@ export async function sendCampaignAction(
     customerIds,
     subject,
     preheader,
+    headerName,
     title,
+    articleName,
     body,
     ctaLabel,
     ctaUrl,
+    fallbackText,
     testEmail,
     mode,
   } = parsed.data;
@@ -219,9 +238,12 @@ export async function sendCampaignAction(
       html: buildCampaignHtml({
         body,
         preheader,
+        headerName,
         title,
+        articleName,
         ctaLabel,
         ctaUrl,
+        fallbackText,
         vars,
         brand,
       }),
@@ -244,12 +266,10 @@ export async function sendCampaignAction(
       error: "Este recorte não tem destinatários elegíveis.",
     };
   }
-  if (recipients.length > MAX_CAMPAIGN_RECIPIENTS) {
-    return {
-      ok: false,
-      error: `Este disparo tem ${recipients.length} contatos. O limite por operação é ${MAX_CAMPAIGN_RECIPIENTS}.`,
-    };
-  }
+  const providerBatches = splitProviderBatches(
+    recipients,
+    MAX_EMAILS_PER_BATCH,
+  );
 
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
@@ -263,7 +283,15 @@ export async function sendCampaignAction(
       preheader: preheader || null,
       fromEmail: process.env.RESEND_FROM_EMAIL,
       replyTo: company.email,
-      content: { body, title, ctaLabel, ctaUrl },
+      content: {
+        body,
+        headerName,
+        title,
+        articleName,
+        ctaLabel,
+        ctaUrl,
+        fallbackText,
+      },
       audienceFilter: { segment, customerIds: customerIds || null },
       status: "sending",
       stats: {
@@ -292,12 +320,7 @@ export async function sendCampaignAction(
   let failed = 0;
   const errors: string[] = [];
 
-  for (
-    let offset = 0;
-    offset < recipients.length;
-    offset += MAX_EMAILS_PER_BATCH
-  ) {
-    const chunk = recipients.slice(offset, offset + MAX_EMAILS_PER_BATCH);
+  for (const [providerBatchIndex, chunk] of providerBatches.entries()) {
     const result = await sendEmailBatch(
       chunk.map((recipient) => {
         const vars = templateVars(recipient, appUrl);
@@ -307,16 +330,19 @@ export async function sendCampaignAction(
           html: buildCampaignHtml({
             body,
             preheader,
+            headerName,
             title,
+            articleName,
             ctaLabel,
             ctaUrl,
+            fallbackText,
             vars,
             brand,
           }),
           replyTo: company.email,
         };
       }),
-      `campaign/${dispatchId}/${Math.floor(offset / MAX_EMAILS_PER_BATCH)}`,
+      `campaign/${dispatchId}/${providerBatchIndex}`,
     );
 
     if (result.ok && result.externalIds?.length === chunk.length) {
@@ -342,10 +368,11 @@ export async function sendCampaignAction(
           },
         });
       queued += chunk.length;
+      await waitForNextProviderBatch();
       continue;
     }
 
-    const error = result.error ?? "O Resend não confirmou o lote enviado.";
+    const error = result.error ?? "O Resend não confirmou o envio.";
     errors.push(error);
     failed += chunk.length;
     const emails = chunk.map((recipient) => recipient.email);
@@ -380,6 +407,7 @@ export async function sendCampaignAction(
         })),
       );
     }
+    await waitForNextProviderBatch();
   }
 
   const now = new Date();

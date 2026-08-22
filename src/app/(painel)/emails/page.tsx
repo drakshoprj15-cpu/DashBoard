@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = { title: "Emails" };
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -52,8 +53,7 @@ export default async function EmailsPage({
   const customerIds = (recipientsParamRaw ?? "")
     .split(",")
     .map((value) => value.trim())
-    .filter((value) => UUID_REGEX.test(value))
-    .slice(0, 500);
+    .filter((value) => UUID_REGEX.test(value));
 
   const [counts, customRecipients, overview, pendingRecipients, brand] =
     await Promise.all([

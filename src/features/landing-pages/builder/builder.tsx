@@ -16,6 +16,7 @@ import {
   Layers,
   Loader2,
   Monitor,
+  MoreHorizontal,
   Package,
   Palette,
   Radar,
@@ -31,6 +32,12 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -45,7 +52,7 @@ import type {
   LandingSourceRow,
   LandingVersionRow,
 } from "../queries";
-import type { LandingSnapshot } from "../types";
+import { resolveLandingPublicUrl, type LandingSnapshot } from "../types";
 import { StatusBadge } from "../panel/landing-pages-view";
 import { BlockPalette } from "./block-palette";
 import { BuilderCanvas, type Viewport } from "./canvas";
@@ -72,6 +79,16 @@ const TABS = [
   { id: "historico", label: "Histórico", icon: History },
   { id: "metricas", label: "Métricas", icon: BarChart3 },
 ] as const;
+
+const PRIMARY_TAB_IDS = new Set([
+  "conteudo",
+  "produto",
+  "pixels",
+  "dominio",
+  "publicacao",
+]);
+
+const EXTERNAL_TAB_IDS = new Set(["produto", "publicacao", "metricas"]);
 
 type TabId = (typeof TABS)[number]["id"];
 
@@ -113,10 +130,23 @@ export function LandingBuilder({
 }: BuilderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get("tab") as TabId | null) ?? "conteudo";
+  const isExternal = page.deployment.provider === "vercel";
+  const availableTabs = isExternal
+    ? TABS.filter((item) => EXTERNAL_TAB_IDS.has(item.id))
+    : TABS;
+  const primaryTabs = isExternal
+    ? availableTabs
+    : availableTabs.filter((item) => PRIMARY_TAB_IDS.has(item.id));
+  const advancedTabs = isExternal
+    ? []
+    : availableTabs.filter((item) => !PRIMARY_TAB_IDS.has(item.id));
+  const defaultTab: TabId = isExternal ? "produto" : "conteudo";
+  const initialTab = (searchParams.get("tab") as TabId | null) ?? defaultTab;
 
   const [tab, setTab] = React.useState<TabId>(
-    TABS.some((item) => item.id === initialTab) ? initialTab : "conteudo",
+    availableTabs.some((item) => item.id === initialTab)
+      ? initialTab
+      : defaultTab,
   );
   const [viewport, setViewport] = React.useState<Viewport>("desktop");
 
@@ -149,7 +179,7 @@ export function LandingBuilder({
     [page, state.doc],
   );
 
-  const publicUrl = `${appUrl}/lp/${page.slug}`;
+  const publicUrl = resolveLandingPublicUrl(page, appUrl);
 
   // Atalhos de teclado do editor.
   React.useEffect(() => {
@@ -166,7 +196,7 @@ export function LandingBuilder({
       ) {
         event.preventDefault();
         state.redo();
-      } else if (event.key.toLowerCase() === "s") {
+      } else if (event.key.toLowerCase() === "s" && !isExternal) {
         event.preventDefault();
         void state.save();
       }
@@ -174,7 +204,7 @@ export function LandingBuilder({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [state]);
+  }, [isExternal, state]);
 
   return (
     <div className="-m-4 flex h-[calc(100svh-4rem)] flex-col md:-m-6 md:h-[calc(100svh-4.5rem)]">
@@ -189,7 +219,9 @@ export function LandingBuilder({
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{page.name}</p>
             <p className="text-muted-foreground truncate font-mono text-[11px]">
-              /lp/{page.slug}
+              {isExternal
+                ? publicUrl.replace(/^https?:\/\//, "")
+                : `/lp/${page.slug}`}
             </p>
           </div>
           <StatusBadge status={page.status} />
@@ -201,37 +233,43 @@ export function LandingBuilder({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <SaveIndicator state={state.saveState} error={state.saveError} />
+          {!isExternal ? (
+            <SaveIndicator state={state.saveState} error={state.saveError} />
+          ) : null}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={state.undo}
-                disabled={!state.canUndo}
-                aria-label="Desfazer"
-              >
-                <Undo2 />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Desfazer (Ctrl+Z)</TooltipContent>
-          </Tooltip>
+          {!isExternal ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={state.undo}
+                  disabled={!state.canUndo}
+                  aria-label="Desfazer"
+                >
+                  <Undo2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Desfazer (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+          ) : null}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={state.redo}
-                disabled={!state.canRedo}
-                aria-label="Refazer"
-              >
-                <Redo2 />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Refazer (Ctrl+Shift+Z)</TooltipContent>
-          </Tooltip>
+          {!isExternal ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={state.redo}
+                  disabled={!state.canRedo}
+                  aria-label="Refazer"
+                >
+                  <Redo2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refazer (Ctrl+Shift+Z)</TooltipContent>
+            </Tooltip>
+          ) : null}
 
           {page.status === "published" ? (
             <Button size="sm" variant="outline" asChild>
@@ -244,7 +282,7 @@ export function LandingBuilder({
           <Button
             size="sm"
             onClick={async () => {
-              await state.save();
+              if (!isExternal) await state.save();
               setTab("publicacao");
               router.refresh();
             }}
@@ -256,7 +294,7 @@ export function LandingBuilder({
 
       {/* Abas */}
       <nav className="flex gap-1 overflow-x-auto border-b px-3 py-1.5">
-        {TABS.map((item) => (
+        {primaryTabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -273,6 +311,36 @@ export function LandingBuilder({
             {item.label}
           </button>
         ))}
+        {advancedTabs.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-current={advancedTabs.some((item) => item.id === tab)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  advancedTabs.some((item) => item.id === tab)
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent",
+                )}
+              >
+                <MoreHorizontal className="size-4" />
+                {advancedTabs.find((item) => item.id === tab)?.label ?? "Mais"}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {advancedTabs.map((item) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  onSelect={() => setTab(item.id)}
+                >
+                  <item.icon />
+                  {item.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </nav>
 
       <div className="min-h-0 flex-1 overflow-hidden">

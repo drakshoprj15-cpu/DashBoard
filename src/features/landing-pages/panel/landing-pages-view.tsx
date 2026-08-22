@@ -6,10 +6,12 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
+  Cloud,
   ExternalLink,
   FileEdit,
   ImageOff,
   LayoutGrid,
+  Loader2,
   MousePointerClick,
   Pause,
   Pencil,
@@ -38,7 +40,13 @@ import {
 import type { ProductOption } from "@/features/products/queries";
 
 import type { LandingPageRow } from "../queries";
-import type { LandingStatus } from "../types";
+import {
+  DEPLOYMENT_STATUS_LABEL,
+  HOSTING_PROVIDER_LABEL,
+  resolveLandingPublicUrl,
+  type LandingDeployment,
+  type LandingStatus,
+} from "../types";
 import { CreateLandingWizard } from "./create-wizard";
 import { CopyUrlButton, LandingPageActions } from "./page-actions";
 
@@ -152,7 +160,12 @@ export function LandingPagesView({
     };
   }, [pages]);
 
-  const publicUrlOf = (page: LandingPageRow) => `${appUrl}/lp/${page.slug}`;
+  // Uma página hospedada fora responde no endereço que o serviço devolveu;
+  // as do editor respondem na rota desta aplicação. O cartão, o botão de
+  // abrir e o "copiar URL" têm de concordar com isso, senão o lojista copia
+  // um endereço que não é o do anúncio.
+  const publicUrlOf = (page: LandingPageRow) =>
+    resolveLandingPublicUrl(page, appUrl);
 
   return (
     <div className="space-y-6">
@@ -335,28 +348,38 @@ function PageCard({
   return (
     <Card className="gap-3 overflow-hidden py-0 pb-4">
       <div className="bg-muted relative aspect-[16/9] w-full overflow-hidden border-b">
+        <div className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-1 text-xs">
+          <ImageOff className="size-5" />
+          Sem imagem cadastrada
+        </div>
         {page.thumbnailUrl ? (
           // A miniatura vem de um endereço arbitrário definido pelo lojista;
           // o next/image exigiria listar cada domínio em next.config.ts.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={page.thumbnailUrl}
-            alt=""
-            className="size-full object-contain p-4"
+            alt={`Imagem de ${page.productName ?? page.name}`}
+            className="bg-muted relative z-10 size-full object-contain p-4"
             loading="lazy"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
           />
-        ) : (
-          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1 text-xs">
-            <ImageOff className="size-5" />
-            Sem imagem na página
-          </div>
-        )}
+        ) : null}
         <div className="absolute top-2 left-2 flex flex-wrap gap-1">
           <StatusBadge status={page.status} />
           {page.hasUnpublishedChanges && page.status === "published" ? (
             <Badge variant="warning">Alterações não publicadas</Badge>
           ) : null}
         </div>
+        {page.deployment.provider !== "infinity" ? (
+          <div className="absolute top-2 right-2">
+            <Badge variant="info">
+              <Cloud className="size-3" />
+              {HOSTING_PROVIDER_LABEL[page.deployment.provider]}
+            </Badge>
+          </div>
+        ) : null}
       </div>
 
       <CardContent className="space-y-3 px-4">
@@ -379,6 +402,7 @@ function PageCard({
             status={page.status}
             publicUrl={publicUrl}
             hasUnpublishedChanges={page.hasUnpublishedChanges}
+            deployment={page.deployment}
           />
         </div>
 
@@ -399,6 +423,8 @@ function PageCard({
         <code className="bg-muted text-muted-foreground block truncate rounded px-1.5 py-1 font-mono text-[11px]">
           {publicUrl}
         </code>
+
+        <DeploymentLine deployment={page.deployment} />
 
         <dl className="grid grid-cols-4 gap-2 text-center">
           <Metric label="Visitas" value={page.metrics.views} />
@@ -434,6 +460,50 @@ function PageCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Estado da hospedagem no cartão.
+ *
+ * Só aparece nas páginas servidas fora: nas do editor não há deploy nenhum a
+ * relatar, e uma linha a dizer "sem deploy" em todas as páginas seria ruído.
+ */
+function DeploymentLine({ deployment }: { deployment: LandingDeployment }) {
+  if (deployment.provider === "infinity") return null;
+
+  const tone: Record<string, string> = {
+    ready: "text-emerald-600 dark:text-emerald-400",
+    failed: "text-destructive",
+    preparing: "text-muted-foreground",
+    deploying: "text-muted-foreground",
+    idle: "text-muted-foreground",
+  };
+
+  const Icon =
+    deployment.status === "ready"
+      ? CheckCircle2
+      : deployment.status === "failed"
+        ? AlertTriangle
+        : Loader2;
+
+  return (
+    <p
+      className={`flex items-center gap-1.5 text-xs ${tone[deployment.status]}`}
+    >
+      <Icon
+        className={`size-3.5 shrink-0 ${
+          deployment.status === "deploying" || deployment.status === "preparing"
+            ? "animate-spin"
+            : ""
+        }`}
+      />
+      Hospedagem: {HOSTING_PROVIDER_LABEL[deployment.provider]} ·{" "}
+      {DEPLOYMENT_STATUS_LABEL[deployment.status]}
+      {deployment.updatedAt
+        ? ` · ${formatDateTime(deployment.updatedAt, "pt-PT")}`
+        : ""}
+    </p>
   );
 }
 
@@ -474,7 +544,7 @@ function PagesTable({
           </TableHeader>
           <TableBody>
             {pages.map((page) => {
-              const publicUrl = `${appUrl}/lp/${page.slug}`;
+              const publicUrl = resolveLandingPublicUrl(page, appUrl);
               return (
                 <TableRow key={page.id}>
                   <TableCell>
@@ -484,8 +554,11 @@ function PagesTable({
                     >
                       {page.name}
                     </Link>
-                    <p className="text-muted-foreground font-mono text-xs">
-                      /lp/{page.slug}
+                    <p className="text-muted-foreground truncate font-mono text-xs">
+                      {page.deployment.provider === "vercel" &&
+                      page.deployment.url
+                        ? page.deployment.url.replace(/^https?:\/\//, "")
+                        : `/lp/${page.slug}`}
                     </p>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
@@ -522,6 +595,7 @@ function PagesTable({
                       status={page.status}
                       publicUrl={publicUrl}
                       hasUnpublishedChanges={page.hasUnpublishedChanges}
+                      deployment={page.deployment}
                     />
                   </TableCell>
                 </TableRow>

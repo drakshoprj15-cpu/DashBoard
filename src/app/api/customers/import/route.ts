@@ -1,11 +1,12 @@
 import readXlsxFile from "read-excel-file/node";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/database/client";
 import {
   customerActivities,
   customerAddresses,
   customers,
+  products,
 } from "@/database/schema";
 import { recordAuditLog } from "@/features/audit/log";
 import {
@@ -13,8 +14,11 @@ import {
   requireCustomerPermission,
 } from "@/features/customers/access";
 import {
+  isCustomerImportClassification,
+  mergeCustomerImportTags,
   normalizeDocument,
   normalizeEmail,
+  normalizeImportedProductName,
   normalizePhone,
   resolveDuplicateCandidate,
 } from "@/features/customers/customer-utils";
@@ -80,6 +84,13 @@ const HEADER_ALIASES: Record<string, string[]> = {
   postalCode: ["cep", "codigo_postal", "postal_code", "postcode"],
   tags: ["tags", "etiquetas"],
   consent: ["consentimento", "aceita_comunicacoes", "opt_in"],
+  product: [
+    "produto",
+    "produto_comprado",
+    "nome_do_produto",
+    "product",
+    "product_name",
+  ],
 };
 
 function findColumn(headers: string[], key: string): number {
@@ -109,6 +120,20 @@ export async function POST(request: Request) {
       );
     const formData = await request.formData();
     const file = formData.get("file");
+    const requestedClassification = formData.get("classification") ?? "contact";
+    const requestedProductId = String(
+      formData.get("defaultProductId") ?? "",
+    ).trim();
+    const requestedProductName = String(
+      formData.get("defaultProductName") ?? "",
+    ).trim();
+    if (!isCustomerImportClassification(requestedClassification)) {
+      return Response.json(
+        { error: "Selecione uma classificação válida para esta lista." },
+        { status: 400 },
+      );
+    }
+    const classification = requestedClassification;
     if (!(file instanceof File)) {
       return Response.json(
         { error: "Selecione um arquivo CSV ou XLSX." },
@@ -162,6 +187,45 @@ export async function POST(request: Request) {
     }
 
     const db = getDb();
+    const catalogProducts = await db
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(
+        and(
+          eq(products.workspaceId, access.workspaceId),
+          isNull(products.deletedAt),
+        ),
+      );
+    const productsById = new Map(
+      catalogProducts.map((product) => [product.id, product]),
+    );
+    const productsByName = new Map(
+      catalogProducts.map((product) => [
+        product.name.trim().toLocaleLowerCase("pt"),
+        product,
+      ]),
+    );
+    const selectedProduct = requestedProductId
+      ? productsById.get(requestedProductId)
+      : null;
+    if (requestedProductId && !selectedProduct) {
+      return Response.json(
+        { error: "O produto selecionado não pertence a este workspace." },
+        { status: 400 },
+      );
+    }
+    const customDefaultProductName = requestedProductName
+      ? normalizeImportedProductName(requestedProductName)
+      : null;
+    if (requestedProductName && !customDefaultProductName) {
+      return Response.json(
+        { error: "Informe um nome de produto válido, com até 160 caracteres." },
+        { status: 400 },
+      );
+    }
+    const defaultProductName =
+      selectedProduct?.name ?? customDefaultProductName;
+    const defaultProductId = selectedProduct?.id ?? null;
     const result = {
       total: rawRows.length - 1,
       imported: 0,
@@ -180,6 +244,32 @@ export async function POST(request: Request) {
       const document = documentOriginal
         ? normalizeDocument(documentOriginal)
         : null;
+      const rawProductName = cellValue(row, columns.product);
+      const rowProductName = rawProductName
+        ? normalizeImportedProductName(rawProductName)
+        : null;
+      if (rawProductName && !rowProductName) {
+        result.invalid += 1;
+        result.errors.push({
+          line,
+          message: "Produto inválido. Use um nome com até 160 caracteres.",
+        });
+        continue;
+      }
+      const importedProductName = defaultProductName ?? rowProductName;
+      if (classification !== "contact" && !importedProductName) {
+        result.invalid += 1;
+        result.errors.push({
+          line,
+          message:
+            "Produto é obrigatório para compras pagas e pedidos pendentes. Adicione a coluna Produto ou escolha um produto padrão.",
+        });
+        continue;
+      }
+      const matchedProduct = importedProductName
+        ? productsByName.get(importedProductName.toLocaleLowerCase("pt"))
+        : null;
+      const importedProductId = defaultProductId ?? matchedProduct?.id ?? null;
       if (
         !email ||
         (phoneOriginal && !phone) ||
@@ -194,16 +284,21 @@ export async function POST(request: Request) {
       }
 
       try {
-        const identityConditions = [eq(customers.normalizedEmail, email)];
+        const identityConditions = [
+          eq(customers.normalizedEmail, email),
+          sql`lower(trim(${customers.email})) = ${email}`,
+        ];
         if (phone)
           identityConditions.push(eq(customers.normalizedPhone, phone));
         if (document) identityConditions.push(eq(customers.document, document));
         const candidates = await db
           .select({
             id: customers.id,
+            email: customers.email,
             normalizedEmail: customers.normalizedEmail,
             normalizedPhone: customers.normalizedPhone,
             normalizedDocument: customers.document,
+            tags: customers.tags,
           })
           .from(customers)
           .where(
@@ -232,6 +327,11 @@ export async function POST(request: Request) {
         const consent = /^(sim|yes|true|1)$/i.test(
           cellValue(row, columns.consent),
         );
+        const classifiedTags = mergeCustomerImportTags(
+          existing?.tags,
+          tags,
+          classification,
+        );
         const now = new Date();
 
         if (existing) {
@@ -244,7 +344,12 @@ export async function POST(request: Request) {
               normalizedPhone: phone || undefined,
               document: document || undefined,
               country: country || undefined,
-              tags: tags.length > 0 ? tags : undefined,
+              importedProductId: importedProductName
+                ? importedProductId
+                : undefined,
+              importedProductName: importedProductName || undefined,
+              tags: classifiedTags,
+              normalizedEmail: email,
               acceptsEmail: consent,
               marketingOptOut: !consent,
               lastActivityAt: now,
@@ -275,7 +380,9 @@ export async function POST(request: Request) {
             normalizedPhone: phone,
             document,
             country: country || null,
-            tags,
+            importedProductId,
+            importedProductName,
+            tags: classifiedTags,
             source: "import",
             firstSource: "import",
             acceptsEmail: consent,
@@ -300,7 +407,11 @@ export async function POST(request: Request) {
             type: "customer_imported",
             source: "import",
             createdBy: access.userId,
-            metadata: { line },
+            metadata: {
+              line,
+              classification,
+              importedProductName,
+            },
           });
         });
         result.imported += 1;
@@ -321,6 +432,8 @@ export async function POST(request: Request) {
         imported: result.imported,
         updated: result.updated,
         invalid: result.invalid,
+        classification,
+        hasDefaultProduct: Boolean(defaultProductName),
       },
       workspaceId: access.workspaceId,
       actorId: access.userId,

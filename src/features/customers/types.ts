@@ -18,6 +18,8 @@ export type CustomerSort = (typeof CUSTOMER_SORTS)[number];
 export const CUSTOMER_TYPES = [
   "all",
   "buyer",
+  "imported_paid",
+  "imported_pending",
   "lead",
   "abandoned",
   "checkout",
@@ -61,9 +63,23 @@ export interface CustomerListFilters {
 }
 
 export interface CustomerStatusTag {
-  key: "buyer" | "lead" | "abandoned" | "recurring" | "pending" | "refused";
+  key:
+    | "buyer"
+    | "imported_paid"
+    | "imported_pending"
+    | "lead"
+    | "abandoned"
+    | "recurring"
+    | "pending"
+    | "refused";
   label: string;
 }
+
+export type CustomerImportClassification = "paid" | "pending" | "contact";
+export type CustomerImportedStatus = Exclude<
+  CustomerImportClassification,
+  "contact"
+>;
 
 export interface CustomerListRow {
   id: string;
@@ -76,6 +92,9 @@ export interface CustomerListRow {
   state: string | null;
   country: string | null;
   source: string;
+  importedStatus: CustomerImportedStatus | null;
+  productNames: string[];
+  productSource: "order" | "import" | "missing";
   tags: string[];
   statuses: CustomerStatusTag[];
   orderCount: number;
@@ -100,6 +119,8 @@ export interface CustomerListRow {
 export interface CustomerStats {
   totalContacts: number;
   buyers: number;
+  importedPaid: number;
+  importedPending: number;
   leads: number;
   abandonedCarts: number;
   recurring: number;

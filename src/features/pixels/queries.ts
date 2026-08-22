@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
@@ -34,12 +34,7 @@ export {
 /** Tipos geridos pela aba Meta — os únicos que podem ser específicos de landing page. */
 const META_PIXEL_TYPES = ["meta_pixel", "meta_capi"] as const;
 /** Tipos que continuam só globais (fora do escopo desta feature). */
-const OTHER_PUBLIC_PIXEL_TYPES = [
-  "gtm",
-  "ga4",
-  "google_ads",
-  "tiktok_pixel",
-] as const;
+const OTHER_PUBLIC_PIXEL_TYPES = ["gtm", "ga4", "google_ads"] as const;
 const PUBLIC_PIXEL_TYPES = ["meta_pixel", ...OTHER_PUBLIC_PIXEL_TYPES] as const;
 
 function toPixelRow(p: typeof pixels.$inferSelect): PixelRow {
@@ -60,12 +55,15 @@ function toPixelRow(p: typeof pixels.$inferSelect): PixelRow {
   };
 }
 
-/** Pixels globais do workspace (aba "Geral" — GTM/GA4/Ads/TikTok/UTMify/Meta). */
-export async function listPixels(): Promise<PixelRow[]> {
+/** Pixels globais do workspace disponíveis na aba Geral. */
+export async function listPixels(
+  requestedWorkspaceId?: string,
+): Promise<PixelRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const rows = await db
     .select()
@@ -76,6 +74,7 @@ export async function listPixels(): Promise<PixelRow[]> {
         isNull(pixels.landingPageId),
         isNull(pixels.deletedAt),
         sql`${pixels.type} <> 'utmify'`,
+        ne(pixels.type, "tiktok_pixel"),
       ),
     )
     .orderBy(desc(pixels.createdAt));
@@ -86,11 +85,13 @@ export async function listPixels(): Promise<PixelRow[]> {
 /** Confirma que a landing page pertence ao workspace atual — nunca confiar num id vindo do cliente. */
 export async function landingPageBelongsToWorkspace(
   landingPageId: string,
+  requestedWorkspaceId?: string,
 ): Promise<boolean> {
   if (!isDatabaseConfigured()) return false;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [lp] = await db
     .select({ id: landingPages.id })
@@ -114,11 +115,13 @@ export async function landingPageBelongsToWorkspace(
  */
 export async function listLandingPagePixels(
   landingPageId: string,
+  requestedWorkspaceId?: string,
 ): Promise<PixelRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [lp] = await db
     .select({ id: landingPages.id })
@@ -160,13 +163,16 @@ export async function listLandingPagePixels(
 export async function resolveEffectivePixelRows(
   landingPageId: string | null,
   type: PixelType,
-  explicitWorkspaceId?: string,
+  requestedWorkspaceId?: string,
 ): Promise<(typeof pixels.$inferSelect)[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId =
-    explicitWorkspaceId ?? (await getOrCreateDefaultWorkspace());
+  const workspaceId = await resolvePublicWorkspaceId(
+    landingPageId,
+    requestedWorkspaceId,
+  );
+  if (!workspaceId) return [];
 
   const candidates = await db
     .select()
@@ -188,13 +194,81 @@ export async function resolveEffectivePixelRows(
   return pickEffectivePixels(candidates, landingPageId);
 }
 
-/** Vínculos explícitos vencem o fallback global; sem vínculo, preserva o comportamento atual. */
+/**
+ * Resolve o tenant a partir da própria landing page pública. Quando um
+ * chamador interno informa o workspace esperado, uma página de outro tenant
+ * é recusada em vez de trocar silenciosamente de contexto.
+ */
+async function resolvePublicWorkspaceId(
+  landingPageId: string | null,
+  requestedWorkspaceId?: string,
+): Promise<string | null> {
+  if (!landingPageId) {
+    return requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
+  }
+
+  const db = getDb();
+  const [page] = await db
+    .select({ workspaceId: landingPages.workspaceId })
+    .from(landingPages)
+    .where(
+      and(eq(landingPages.id, landingPageId), isNull(landingPages.deletedAt)),
+    )
+    .limit(1);
+
+  if (
+    !page ||
+    (requestedWorkspaceId && page.workspaceId !== requestedWorkspaceId)
+  ) {
+    return null;
+  }
+  return page.workspaceId;
+}
+
+/** Resolve o conjunto Meta como um todo, para o fallback ser por página e
+ * não por tipo. Um pixel CAPI é também um pixel de navegador; o token apenas
+ * habilita o envio server-side. */
+export async function resolveEffectiveMetaRows(
+  landingPageId: string | null,
+  requestedWorkspaceId?: string,
+): Promise<(typeof pixels.$inferSelect)[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  const workspaceId = await resolvePublicWorkspaceId(
+    landingPageId,
+    requestedWorkspaceId,
+  );
+  if (!workspaceId) return [];
+
+  const db = getDb();
+  const candidates = await db
+    .select()
+    .from(pixels)
+    .where(
+      and(
+        eq(pixels.workspaceId, workspaceId),
+        inArray(pixels.type, META_PIXEL_TYPES),
+        isNull(pixels.deletedAt),
+        landingPageId
+          ? or(
+              eq(pixels.landingPageId, landingPageId),
+              isNull(pixels.landingPageId),
+            )
+          : isNull(pixels.landingPageId),
+      ),
+    );
+
+  return pickEffectivePixels(candidates, landingPageId);
+}
+
+/** Vínculos explícitos vencem o fallback global; sem vínculo, preserva a configuração global. */
 export async function resolveBoundPixelRows(
   workspaceId: string,
   target: { type: string; id: string },
   type: PixelType,
 ): Promise<(typeof pixels.$inferSelect)[]> {
   if (!isDatabaseConfigured()) return [];
+
   const rows = await getDb()
     .select({ pixel: pixels })
     .from(pixelBindings)
@@ -209,6 +283,7 @@ export async function resolveBoundPixelRows(
         isNull(pixels.deletedAt),
       ),
     );
+
   return rows.length > 0
     ? rows.map((row) => row.pixel)
     : resolveEffectivePixelRows(null, type, workspaceId);
@@ -229,15 +304,18 @@ export async function getActivePixelsForPublic(
    * (o Meta Pixel resolve seu próprio fallback independentemente disso).
    */
   includeOtherGlobals = true,
-  explicitWorkspaceId?: string,
+  requestedWorkspaceId?: string,
   target?: { type: string; id: string },
 ): Promise<{ type: PixelType; pixelId: string }[]> {
   if (!isDatabaseConfigured()) return [];
 
   try {
     const db = getDb();
-    const workspaceId =
-      explicitWorkspaceId ?? (await getOrCreateDefaultWorkspace());
+    const workspaceId = await resolvePublicWorkspaceId(
+      landingPageId ?? null,
+      requestedWorkspaceId,
+    );
+    if (!workspaceId) return [];
 
     if (target) {
       const boundRows = await db
@@ -254,17 +332,25 @@ export async function getActivePixelsForPublic(
             inArray(pixels.type, PUBLIC_PIXEL_TYPES),
           ),
         );
+
       if (boundRows.length > 0) {
-        return boundRows.filter(
-          (row): row is { type: PixelType; pixelId: string } =>
+        return boundRows
+          .filter((row): row is { type: PixelType; pixelId: string } =>
             Boolean(row.pixelId),
-        );
+          )
+          .filter(
+            (row, index, all) =>
+              all.findIndex(
+                (candidate) =>
+                  candidate.type === row.type &&
+                  candidate.pixelId === row.pixelId,
+              ) === index,
+          );
       }
     }
 
-    const metaRows = await resolveEffectivePixelRows(
+    const metaRows = await resolveEffectiveMetaRows(
       landingPageId ?? null,
-      "meta_pixel",
       workspaceId,
     );
 
@@ -285,13 +371,21 @@ export async function getActivePixelsForPublic(
 
     return [
       ...metaRows.map((r) => ({
-        type: r.type as PixelType,
+        type: "meta_pixel" as PixelType,
         pixelId: r.pixelId,
       })),
       ...otherRows,
-    ].filter((r): r is { type: PixelType; pixelId: string } =>
-      Boolean(r.pixelId),
-    );
+    ]
+      .filter((r): r is { type: PixelType; pixelId: string } =>
+        Boolean(r.pixelId),
+      )
+      .filter(
+        (row, index, all) =>
+          all.findIndex(
+            (candidate) =>
+              candidate.type === row.type && candidate.pixelId === row.pixelId,
+          ) === index,
+      );
   } catch {
     // Páginas públicas nunca podem quebrar por causa de rastreamento.
     return [];
@@ -311,11 +405,14 @@ const DEFAULT_WORKSPACE_META_SETTINGS: WorkspaceMetaSettings = {
   countGeneratedOrdersAsPurchase: false,
 };
 
-export async function getWorkspaceMetaSettings(): Promise<WorkspaceMetaSettings> {
+export async function getWorkspaceMetaSettings(
+  requestedWorkspaceId?: string,
+): Promise<WorkspaceMetaSettings> {
   if (!isDatabaseConfigured()) return DEFAULT_WORKSPACE_META_SETTINGS;
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const [row] = await db
     .select({ settings: workspaces.settings })
@@ -340,8 +437,15 @@ export interface LandingPageMetaSettings {
 /** Valida que a landing page pertence ao workspace atual antes de ler tracking. */
 export async function getLandingPageMetaSettings(
   landingPageId: string | null,
+  requestedWorkspaceId?: string,
 ): Promise<LandingPageMetaSettings> {
-  const workspaceSettings = await getWorkspaceMetaSettings();
+  const workspaceId = await resolvePublicWorkspaceId(
+    landingPageId,
+    requestedWorkspaceId,
+  );
+  const workspaceSettings = await getWorkspaceMetaSettings(
+    workspaceId ?? requestedWorkspaceId,
+  );
 
   if (!landingPageId || !isDatabaseConfigured()) {
     return {
@@ -354,7 +458,15 @@ export async function getLandingPageMetaSettings(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  if (!workspaceId) {
+    return {
+      rule: resolvePurchaseRule(
+        workspaceSettings.countGeneratedOrdersAsPurchase,
+        null,
+      ),
+      hasOverride: false,
+    };
+  }
 
   const [row] = await db
     .select({ tracking: landingPages.tracking })
@@ -389,97 +501,73 @@ export interface PixelOverviewStats {
   landingPagesConfigured: number;
   eventsLast24h: number;
   eventsWithError: number;
-  integrationsWithError: number;
 }
 
-export async function getPixelOverviewStats(): Promise<PixelOverviewStats> {
+export async function getPixelOverviewStats(
+  requestedWorkspaceId?: string,
+): Promise<PixelOverviewStats> {
   if (!isDatabaseConfigured()) {
     return {
       activePixels: 0,
       landingPagesConfigured: 0,
       eventsLast24h: 0,
       eventsWithError: 0,
-      integrationsWithError: 0,
     };
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [
-    activePixelsRows,
-    lpConfiguredRows,
-    events24hRows,
-    errorsRows,
-    integrationErrorRows,
-  ] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(pixels)
-      .where(
-        and(
-          eq(pixels.workspaceId, workspaceId),
-          eq(pixels.isActive, true),
-          isNull(pixels.deletedAt),
-          sql`${pixels.type} <> 'utmify'`,
+  const [activePixelsRows, lpConfiguredRows, events24hRows, errorsRows] =
+    await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(pixels)
+        .where(
+          and(
+            eq(pixels.workspaceId, workspaceId),
+            eq(pixels.isActive, true),
+            isNull(pixels.deletedAt),
+          ),
         ),
-      ),
-    db
-      .selectDistinct({ landingPageId: pixels.landingPageId })
-      .from(pixels)
-      .where(
-        and(
-          eq(pixels.workspaceId, workspaceId),
-          isNull(pixels.deletedAt),
-          sql`${pixels.landingPageId} is not null`,
+      db
+        .selectDistinct({ landingPageId: pixels.landingPageId })
+        .from(pixels)
+        .where(
+          and(
+            eq(pixels.workspaceId, workspaceId),
+            isNull(pixels.deletedAt),
+            sql`${pixels.landingPageId} is not null`,
+          ),
         ),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(pixelEvents)
-      .innerJoin(pixels, eq(pixels.id, pixelEvents.pixelId))
-      .where(
-        and(
-          eq(pixelEvents.workspaceId, workspaceId),
-          gte(pixelEvents.createdAt, since),
-          sql`${pixels.type} <> 'utmify'`,
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(pixelEvents)
+        .where(
+          and(
+            eq(pixelEvents.workspaceId, workspaceId),
+            gte(pixelEvents.createdAt, since),
+          ),
         ),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(pixelEvents)
-      .innerJoin(pixels, eq(pixels.id, pixelEvents.pixelId))
-      .where(
-        and(
-          eq(pixelEvents.workspaceId, workspaceId),
-          eq(pixelEvents.status, "failed"),
-          gte(pixelEvents.createdAt, since),
-          sql`${pixels.type} <> 'utmify'`,
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(pixelEvents)
+        .where(
+          and(
+            eq(pixelEvents.workspaceId, workspaceId),
+            eq(pixelEvents.status, "failed"),
+            gte(pixelEvents.createdAt, since),
+          ),
         ),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(pixels)
-      .where(
-        and(
-          eq(pixels.workspaceId, workspaceId),
-          isNull(pixels.deletedAt),
-          inArray(pixels.connectionStatus, [
-            "invalid_token",
-            "invalid_pixel",
-            "connection_error",
-          ]),
-        ),
-      ),
-  ]);
+    ]);
 
   return {
     activePixels: activePixelsRows[0]?.count ?? 0,
     landingPagesConfigured: lpConfiguredRows.length,
     eventsLast24h: events24hRows[0]?.count ?? 0,
     eventsWithError: errorsRows[0]?.count ?? 0,
-    integrationsWithError: integrationErrorRows[0]?.count ?? 0,
   };
 }
 
@@ -519,13 +607,14 @@ export interface PixelEventRow {
 }
 
 /** Pixels do workspace (globais e por landing page) para o filtro do log. */
-export async function listAllPixelsForFilter(): Promise<
-  { id: string; name: string }[]
-> {
+export async function listAllPixelsForFilter(
+  requestedWorkspaceId?: string,
+): Promise<{ id: string; name: string }[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   return db
     .select({ id: pixels.id, name: pixels.name })
@@ -538,6 +627,7 @@ const DEFAULT_EVENT_PAGE_SIZE = 20;
 
 export async function listPixelEvents(
   filters: PixelEventFilters,
+  requestedWorkspaceId?: string,
 ): Promise<{
   rows: PixelEventRow[];
   total: number;
@@ -555,7 +645,8 @@ export async function listPixelEvents(
   }
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const conditions = [eq(pixelEvents.workspaceId, workspaceId)];
   if (filters.landingPageId) {

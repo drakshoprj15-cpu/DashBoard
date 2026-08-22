@@ -27,7 +27,34 @@ DATABASE_URL=...
 DIRECT_URL=...
 ENCRYPTION_KEY=...   # 32 bytes base64: openssl rand -base64 32
 PANEL_HOST=painelinfinitydash.online   # ver secção 9
+OWNER_EMAILS=dono@exemplo.com          # ver secção 2.1
 ```
+
+### 2.1 Restringir o acesso ao painel
+
+O painel é de uso privado. Duas variáveis controlam quem entra:
+
+```
+OWNER_EMAILS=dono@exemplo.com,segundo@exemplo.com
+ALLOW_DEMO_MODE=
+```
+
+`OWNER_EMAILS` é a allowlist de donos. A `anon key` do Supabase é pública por
+natureza (vai no bundle do browser), então qualquer pessoa pode criar conta
+direto na API do Supabase mesmo com o cadastro desativado aqui. Sem allowlist,
+essa conta entraria no painel. Com ela, só os e-mails listados recebem sessão —
+os demais são recusados no login com "Esta conta não tem acesso ao painel".
+
+Deixe `OWNER_EMAILS` vazia apenas se o controle por associação de workspace já
+for suficiente; `/configuracoes` avisa quando a trava está desligada.
+
+> ⚠️ O e-mail precisa ser o mesmo cadastrado em *Authentication → Users* do
+> Supabase — que **não** é o e-mail da sua conta do site supabase.com. Se não
+> baterem, você tranca a si mesmo para fora.
+
+`ALLOW_DEMO_MODE=true` abre o painel **sem login** quando o Supabase não está
+configurado. Serve só para inspecionar a interface sem backend — mantenha vazia
+em produção, senão o painel abre para qualquer visitante.
 
 ## 3. Executar migrations
 

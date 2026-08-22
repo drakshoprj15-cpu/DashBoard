@@ -1,13 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { Download, FileSpreadsheet, Upload } from "lucide-react";
+import {
+  CircleCheckBig,
+  Clock3,
+  Download,
+  FileSpreadsheet,
+  Info,
+  Package2,
+  Upload,
+  UsersRound,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
   createCustomerAction,
   createCustomerSegmentAction,
 } from "@/features/customers/actions";
+import type { CustomerImportClassification } from "@/features/customers/types";
+import type { ProductOption } from "@/features/products/queries";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -71,7 +83,7 @@ export function AddCustomerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Adicionar cliente</DialogTitle>
           <DialogDescription>
@@ -223,15 +235,51 @@ export function AddCustomerDialog({
 
 interface ImportCustomersDialogProps extends ControlledDialogProps {
   onImported: () => void;
+  products: ProductOption[];
 }
+
+const IMPORT_CLASSIFICATION_OPTIONS = [
+  {
+    value: "paid",
+    label: "Compras pagas",
+    description: "A planilha informa que estes clientes já pagaram.",
+    icon: CircleCheckBig,
+    tone: "success",
+  },
+  {
+    value: "pending",
+    label: "Pedidos pendentes",
+    description: "O pagamento ainda precisa ser confirmado.",
+    icon: Clock3,
+    tone: "warning",
+  },
+  {
+    value: "contact",
+    label: "Apenas contatos",
+    description: "Importa a base sem atribuir situação de compra.",
+    icon: UsersRound,
+    tone: "neutral",
+  },
+] as const satisfies ReadonlyArray<{
+  value: CustomerImportClassification;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: "success" | "warning" | "neutral";
+}>;
 
 export function ImportCustomersDialog({
   open,
   onOpenChange,
   onImported,
+  products,
 }: ImportCustomersDialogProps) {
   const [file, setFile] = React.useState<File | null>(null);
+  const [classification, setClassification] =
+    React.useState<CustomerImportClassification>("contact");
   const [pending, setPending] = React.useState(false);
+  const [productChoice, setProductChoice] = React.useState("spreadsheet");
+  const [customProductName, setCustomProductName] = React.useState("");
   const [result, setResult] = React.useState<Record<string, unknown> | null>(
     null,
   );
@@ -263,6 +311,11 @@ export function ImportCustomersDialog({
     setPending(true);
     const formData = new FormData();
     formData.set("file", file);
+    formData.set("classification", classification);
+    if (productChoice === "custom")
+      formData.set("defaultProductName", customProductName);
+    else if (productChoice !== "spreadsheet")
+      formData.set("defaultProductId", productChoice);
     try {
       const response = await fetch("/api/customers/import", {
         method: "POST",
@@ -285,14 +338,136 @@ export function ImportCustomersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Importar clientes</DialogTitle>
           <DialogDescription>
             Envie CSV ou XLSX de até 5 MB. Reconhecemos automaticamente nome,
-            e-mail, telefone, CPF/NIF, localização, tags e consentimento.
+            e-mail, telefone, produto, CPF/NIF, localização, tags e
+            consentimento.
           </DialogDescription>
         </DialogHeader>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold">
+            Como esta lista deve ser organizada?
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {IMPORT_CLASSIFICATION_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const selected = classification === option.value;
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "group relative cursor-pointer rounded-xl border p-3 transition-colors",
+                    "hover:border-primary/35 hover:bg-muted/30",
+                    selected &&
+                      "border-primary bg-primary/6 ring-primary/15 ring-2",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="classification"
+                    value={option.value}
+                    checked={selected}
+                    onChange={() => {
+                      setClassification(option.value);
+                      setResult(null);
+                    }}
+                    className="sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "mb-3 flex size-8 items-center justify-center rounded-lg border",
+                      option.tone === "success" &&
+                        "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
+                      option.tone === "warning" &&
+                        "border-amber-500/20 bg-amber-500/10 text-amber-500",
+                      option.tone === "neutral" &&
+                        "border-border bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="block text-sm font-semibold">
+                    {option.label}
+                  </span>
+                  <span className="text-muted-foreground mt-1 block text-xs leading-relaxed">
+                    {option.description}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute top-3 right-3 size-2 rounded-full border",
+                      selected
+                        ? "border-primary bg-primary"
+                        : "border-muted-foreground/40",
+                    )}
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+        <div className="border-info/20 bg-info/8 text-muted-foreground flex gap-2 rounded-lg border p-3 text-xs leading-relaxed">
+          <Info className="text-info mt-0.5 size-4 shrink-0" />
+          <p>
+            A classificação organiza a sua lista, mas não cria pedidos, receita
+            ou pagamentos. A confirmação financeira continua vindo do pedido e
+            do gateway.
+          </p>
+        </div>
+        <fieldset className="border-border bg-muted/15 space-y-3 rounded-xl border p-4">
+          <legend className="px-1 text-sm font-semibold">
+            Produto dos contatos
+          </legend>
+          <div className="flex gap-3">
+            <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+              <Package2 className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1 space-y-2">
+              <Label htmlFor="import-product">
+                Como identificar o produto?
+              </Label>
+              <select
+                id="import-product"
+                value={productChoice}
+                onChange={(event) => {
+                  setProductChoice(event.target.value);
+                  setResult(null);
+                }}
+                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+              >
+                <option value="spreadsheet">
+                  Usar a coluna Produto da planilha
+                </option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    Aplicar a todos: {product.name}
+                  </option>
+                ))}
+                <option value="custom">Informar outro produto</option>
+              </select>
+              {productChoice === "custom" && (
+                <Input
+                  value={customProductName}
+                  onChange={(event) => {
+                    setCustomProductName(event.target.value);
+                    setResult(null);
+                  }}
+                  maxLength={160}
+                  placeholder="Nome exato do produto"
+                  aria-label="Nome do produto para todos os contatos"
+                />
+              )}
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {classification === "contact"
+                  ? "Opcional para uma lista apenas de contatos."
+                  : "Obrigatório para compras pagas e pedidos pendentes. O produto informado não cria pedido nem receita."}
+              </p>
+            </div>
+          </div>
+        </fieldset>
         <label className="border-border hover:bg-muted/30 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
           <Upload className="text-primary size-8" />
           <span className="text-sm font-medium">
@@ -358,7 +533,17 @@ export function ImportCustomersDialog({
           >
             Fechar
           </Button>
-          <Button type="button" disabled={!file || pending} onClick={submit}>
+          <Button
+            type="button"
+            disabled={
+              !file ||
+              pending ||
+              (classification !== "contact" &&
+                productChoice === "custom" &&
+                !customProductName.trim())
+            }
+            onClick={submit}
+          >
             <FileSpreadsheet />{" "}
             {pending ? "Importando..." : "Validar e importar"}
           </Button>

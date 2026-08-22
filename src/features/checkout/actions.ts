@@ -53,6 +53,13 @@ export type CheckoutActionResult =
       method: "mbway" | "multibanco";
       orderReference: string;
       totalCents: number;
+      /** Presente apenas quando a regra da landing conta o pedido gerado. */
+      metaPurchase?: {
+        eventId: string;
+        currency: string;
+        contentIds: string[];
+        contentName: string;
+      };
       /** MB WAY: telemóvel que receberá a notificação */
       mbwayPhone?: string;
       /** Multibanco: voucher para exibir ao cliente */
@@ -426,7 +433,11 @@ export async function submitCheckoutAction(
 
     await db
       .update(orders)
-      .set({ status: "awaiting_payment", updatedAt: new Date() })
+      .set({
+        status: "awaiting_payment",
+        checkoutUrl: `${appUrl}/checkout/${product.slug}`,
+        updatedAt: new Date(),
+      })
       .where(eq(orders.id, order.id));
 
     await db
@@ -470,6 +481,15 @@ export async function submitCheckoutAction(
       console.error("[checkout] falha ao notificar venda gerada:", error);
     }
 
+    let metaPurchase:
+      | {
+          eventId: string;
+          currency: string;
+          contentIds: string[];
+          contentName: string;
+        }
+      | undefined;
+
     // Atribuição da Meta (fbp/fbc/IP/UA) e Purchase do pedido gerado: nunca
     // podem impedir a resposta do checkout — o pagamento já foi criado.
     try {
@@ -486,25 +506,42 @@ export async function submitCheckoutAction(
 
       const { rule } = await getLandingPageMetaSettings(
         data.landingPageId || null,
+        workspaceId,
       );
 
       if (rule === "generated") {
+        const eventId = buildPurchaseEventId(order.id);
+        const contentName = chosenVariant
+          ? `${product.name} — ${chosenVariant.label}`
+          : product.name;
+        const contentIds = chosenVariant?.sku ? [chosenVariant.sku] : [];
         await sendPurchaseToMetaCapi({
           workspaceId,
           orderId: order.id,
           landingPageId: data.landingPageId || null,
-          eventId: buildPurchaseEventId(order.id),
+          eventId,
           triggerType: "generated_order",
           valueCents: total,
           currency: "EUR",
           email: data.email,
           phone,
-          productName: chosenVariant
-            ? `${product.name} — ${chosenVariant.label}`
-            : product.name,
-          contentIds: chosenVariant?.sku ? [chosenVariant.sku] : undefined,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          city: data.city,
+          postalCode: data.postalCode,
+          country: "pt",
+          externalId: customerId,
+          productName: contentName,
+          contentIds,
+          quantity: data.quantity,
           ...attribution,
         });
+        metaPurchase = {
+          eventId,
+          currency: "EUR",
+          contentIds,
+          contentName,
+        };
       }
     } catch (error) {
       console.error(
@@ -518,6 +555,7 @@ export async function submitCheckoutAction(
       method: data.paymentMethod,
       orderReference: reference,
       totalCents: total,
+      metaPurchase,
       mbwayPhone: data.paymentMethod === "mbway" ? phone : undefined,
       multibanco:
         data.paymentMethod === "multibanco" &&

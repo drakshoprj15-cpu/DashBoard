@@ -12,6 +12,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-PT", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: "Europe/Lisbon",
   }).format(new Date(value));
 }
 

@@ -16,6 +16,8 @@ const PUBLIC_PREFIXES = [
   "/checkout/",
   "/loja",
   "/api/public",
+  // Rotas de cron não têm sessão do painel. Cada uma valida CRON_SECRET.
+  "/api/cron/",
   // Webhooks NUNCA podem exigir sessão: são chamados por servidores
   // externos (Broski, Resend...). A autenticidade é garantida pela
   // verificação de assinatura HMAC dentro de cada rota.

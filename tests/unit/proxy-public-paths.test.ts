@@ -12,9 +12,15 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/webhooks/broski")).toBe(true);
   });
 
+  it("libera a sincronização agendada, que valida CRON_SECRET na rota", () => {
+    expect(isPublicPath("/api/cron/milluni-customers")).toBe(true);
+  });
+
   it("libera páginas públicas da loja", () => {
     expect(isPublicPath("/p/cadeira-gaming-alpha-gamer-nebula")).toBe(true);
-    expect(isPublicPath("/checkout/cadeira-gaming-alpha-gamer-nebula")).toBe(true);
+    expect(isPublicPath("/checkout/cadeira-gaming-alpha-gamer-nebula")).toBe(
+      true,
+    );
     expect(isPublicPath("/login")).toBe(true);
   });
 

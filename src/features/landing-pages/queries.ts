@@ -19,15 +19,18 @@ import {
   withTrackingDefaults,
 } from "./defaults";
 import { parseProductSnapshot, resolveLandingProduct } from "./product-data";
-import type {
-  LandingContentDoc,
-  LandingCustomCode,
-  LandingProductData,
-  LandingSeo,
-  LandingSnapshot,
-  LandingStatus,
-  LandingTheme,
-  LandingTracking,
+import {
+  asDeploymentStatus,
+  asHostingProvider,
+  type LandingContentDoc,
+  type LandingCustomCode,
+  type LandingDeployment,
+  type LandingProductData,
+  type LandingSeo,
+  type LandingSnapshot,
+  type LandingStatus,
+  type LandingTheme,
+  type LandingTracking,
 } from "./types";
 
 export interface LandingPageMetrics {
@@ -67,9 +70,11 @@ export interface LandingPageRow {
   lastError: string | null;
   updatedAt: Date;
   createdAt: Date;
-  /** Primeira imagem encontrada no rascunho — miniatura do cartão */
+  /** Imagem do rascunho, do produto ou da marca — miniatura do cartão. */
   thumbnailUrl: string | null;
   hasUnpublishedChanges: boolean;
+  /** Onde a página é servida e como correu o último envio */
+  deployment: LandingDeployment;
   metrics: LandingPageMetrics;
 }
 
@@ -115,11 +120,14 @@ function findThumbnail(content: LandingContentDoc): string | null {
 }
 
 /** Listagem do painel, com métricas reais agregadas dos eventos. */
-export async function listLandingPages(): Promise<LandingPageRow[]> {
+export async function listLandingPages(
+  requestedWorkspaceId?: string,
+): Promise<LandingPageRow[]> {
   if (!isDatabaseConfigured()) return [];
 
   const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+  const workspaceId =
+    requestedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
 
   const rows = await db
     .select({
@@ -132,6 +140,7 @@ export async function listLandingPages(): Promise<LandingPageRow[]> {
       productId: landingPages.productId,
       productName: products.name,
       productSlug: products.slug,
+      productMainImageUrl: products.mainImageUrl,
       content: landingPages.content,
       publishedVersion: landingPages.publishedVersion,
       draftVersion: landingPages.draftVersion,
@@ -140,6 +149,13 @@ export async function listLandingPages(): Promise<LandingPageRow[]> {
       pausedAt: landingPages.pausedAt,
       lastError: landingPages.lastError,
       logoUrl: landingPages.logoUrl,
+      hostingProvider: landingPages.hostingProvider,
+      deploymentUrl: landingPages.deploymentUrl,
+      deploymentProjectId: landingPages.deploymentProjectId,
+      deploymentId: landingPages.deploymentId,
+      deploymentStatus: landingPages.deploymentStatus,
+      deploymentLog: landingPages.deploymentLog,
+      deploymentUpdatedAt: landingPages.deploymentUpdatedAt,
       updatedAt: landingPages.updatedAt,
       createdAt: landingPages.createdAt,
     })
@@ -179,10 +195,20 @@ export async function listLandingPages(): Promise<LandingPageRow[]> {
       lastError: row.lastError,
       updatedAt: row.updatedAt,
       createdAt: row.createdAt,
-      thumbnailUrl: findThumbnail(content) ?? row.logoUrl,
+      thumbnailUrl:
+        findThumbnail(content) ?? row.productMainImageUrl ?? row.logoUrl,
       hasUnpublishedChanges:
         row.publishedVersion === null ||
         row.draftVersion > row.publishedVersion,
+      deployment: {
+        provider: asHostingProvider(row.hostingProvider),
+        status: asDeploymentStatus(row.deploymentStatus),
+        url: row.deploymentUrl,
+        projectId: row.deploymentProjectId,
+        deploymentId: row.deploymentId,
+        log: row.deploymentLog,
+        updatedAt: row.deploymentUpdatedAt,
+      },
       metrics: metricsByPage.get(row.id) ?? EMPTY_METRICS,
     };
   });
@@ -233,7 +259,7 @@ async function aggregateMetrics(
         and(
           eq(orders.workspaceId, workspaceId),
           inArray(orders.status, ["paid", "shipped", "delivered"]),
-          sql`${orders.utm} ->> 'lp' = any(${pageIds}::text[])`,
+          inArray(sql<string>`${orders.utm} ->> 'lp'`, pageIds),
         ),
       )
       .groupBy(sql`${orders.utm} ->> 'lp'`),
@@ -298,6 +324,8 @@ export interface LandingPageDetail {
   previewToken: string | null;
   lastError: string | null;
   hasUnpublishedChanges: boolean;
+  /** Onde a página é servida e como correu o último envio. */
+  deployment: LandingDeployment;
   updatedAt: Date;
   metrics: LandingPageMetrics;
 }
@@ -367,6 +395,15 @@ export async function getLandingPage(
     lastError: row.lastError,
     hasUnpublishedChanges:
       row.publishedVersion === null || row.draftVersion > row.publishedVersion,
+    deployment: {
+      provider: asHostingProvider(row.hostingProvider),
+      status: asDeploymentStatus(row.deploymentStatus),
+      url: row.deploymentUrl,
+      projectId: row.deploymentProjectId,
+      deploymentId: row.deploymentId,
+      log: row.deploymentLog,
+      updatedAt: row.deploymentUpdatedAt,
+    },
     updatedAt: row.updatedAt,
     metrics: metrics.get(row.id) ?? EMPTY_METRICS,
   };

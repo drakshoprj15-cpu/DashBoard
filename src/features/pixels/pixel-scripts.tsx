@@ -1,4 +1,5 @@
 import Script from "next/script";
+import { randomUUID } from "node:crypto";
 
 import { getActivePixelsForPublic } from "@/features/pixels/queries";
 import type { PixelType } from "@/features/pixels/types";
@@ -16,12 +17,14 @@ interface PixelScriptsProps {
   /**
    * Landing page de origem — aplica o fallback do Meta Pixel (pixels
    * específicos da página, se houver algum ativo; senão os globais do
-   * workspace). Os demais tipos (GTM/GA4/Ads/TikTok) continuam só globais.
+   * workspace). Os demais tipos (GTM/GA4/Ads) continuam só globais.
    */
   landingPageId?: string | null;
-  /** GTM/GA4/Ads/TikTok globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
+  /** GTM/GA4/Ads globais só entram se `true` (padrão) — Meta Pixel sempre resolve seu próprio fallback. */
   includeOtherGlobals?: boolean;
+  /** Workspace resolvido pelo recurso público; evita fallback para outro tenant. */
   workspaceId?: string;
+  /** Recurso com vínculos explícitos de pixels, como um link de pagamento. */
   target?: { type: string; id: string };
 }
 
@@ -57,32 +60,67 @@ export async function PixelScripts({
   const ga4 = byType("ga4");
   const gtm = byType("gtm");
   const googleAds = byType("google_ads");
-  const tiktok = byType("tiktok_pixel");
 
-  const value = content ? (content.valueCents / 100).toFixed(2) : undefined;
+  const value = content ? content.valueCents / 100 : undefined;
+  const metaConfig = {
+    pixelIds: metaPixels.map((pixel) => pixel.pixelId),
+    pageViewEventId: `page_view_${randomUUID()}`,
+    contentEventId: event ? `${event.toLowerCase()}_${randomUUID()}` : null,
+    event: event ?? null,
+    content:
+      event && content
+        ? {
+            content_ids: [content.id],
+            content_name: content.name,
+            content_type: "product",
+            value,
+            currency: content.currency,
+          }
+        : null,
+  };
+  const serializedMetaConfig = JSON.stringify(metaConfig).replace(
+    /</g,
+    "\\u003c",
+  );
+  const metaScriptId = [
+    "infinity-meta-pixels",
+    landingPageId ?? "global",
+    event ?? "page-view",
+    content?.id ?? "page",
+    ...metaConfig.pixelIds,
+  ]
+    .join("-")
+    .replace(/[^a-zA-Z0-9_-]/g, "-");
 
   return (
     <ConsentGate>
-      {metaPixels.map((p) => (
-        <Script
-          key={`meta-${p.pixelId}`}
-          id={`meta-pixel-${p.pixelId}`}
-          strategy="afterInteractive"
-        >
+      {metaPixels.length > 0 ? (
+        <Script id={metaScriptId} strategy="afterInteractive">
           {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
 n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
 document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','${p.pixelId}');
-fbq('track','PageView');
-${
-  event && content
-    ? `fbq('track','${event}',{content_ids:['${content.id}'],content_name:${JSON.stringify(content.name)},content_type:'product',value:${value},currency:'${content.currency}'});`
-    : ""
-}`}
+var c=${serializedMetaConfig};
+window.__infinityMetaPixelIds=c.pixelIds;
+window.__infinityMetaTracked=window.__infinityMetaTracked||{};
+c.pixelIds.forEach(function(id){
+  fbq('init',id);
+  var pvKey=id+':'+c.pageViewEventId;
+  if(!window.__infinityMetaTracked[pvKey]){
+    window.__infinityMetaTracked[pvKey]=true;
+    fbq('trackSingle',id,'PageView',{}, {eventID:c.pageViewEventId});
+  }
+  if(c.event&&c.content){
+    var contentKey=id+':'+c.contentEventId;
+    if(!window.__infinityMetaTracked[contentKey]){
+      window.__infinityMetaTracked[contentKey]=true;
+      fbq('trackSingle',id,c.event,c.content,{eventID:c.contentEventId});
+    }
+  }
+});`}
         </Script>
-      ))}
+      ) : null}
 
       {gtm.map((p) => (
         <Script
@@ -118,27 +156,6 @@ ${
     ? `gtag('event','${event === "ViewContent" ? "view_item" : "begin_checkout"}',{currency:'${content.currency}',value:${value},items:[{item_id:'${content.id}',item_name:${JSON.stringify(content.name)}}]});`
     : ""
 }`}
-        </Script>
-      ))}
-
-      {tiktok.map((p) => (
-        <Script
-          key={`tt-${p.pixelId}`}
-          id={`tiktok-${p.pixelId}`}
-          strategy="afterInteractive"
-        >
-          {`!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
-ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
-ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
-for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
-ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};
-ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js";
-ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=r;ttq._t=ttq._t||{};ttq._t[e]=+new Date;
-ttq._o=ttq._o||{};ttq._o[e]=n||{};var o=d.createElement("script");o.type="text/javascript";
-o.async=!0;o.src=r+"?sdkid="+e+"&lib="+t;var a=d.getElementsByTagName("script")[0];
-a.parentNode.insertBefore(o,a)};
-ttq.load('${p.pixelId}');ttq.page();
-}(window,document,'ttq');`}
         </Script>
       ))}
     </ConsentGate>

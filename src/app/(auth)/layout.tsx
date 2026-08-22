@@ -1,7 +1,7 @@
 import { Zap } from "lucide-react";
 
 import { brand } from "@/lib/brand";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isSupabaseConfigured, isDemoModeAllowed } from "@/lib/supabase/config";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const configured = isSupabaseConfigured();
+  const demoAllowed = isDemoModeAllowed();
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6">
@@ -21,7 +22,7 @@ export default function AuthLayout({
       </Link>
 
       <div className="w-full max-w-sm space-y-4">
-        {!configured && (
+        {!configured && demoAllowed && (
           <Alert variant="info">
             <Info />
             <AlertTitle>Modo demonstração</AlertTitle>
@@ -32,6 +33,17 @@ export default function AuthLayout({
                 abrir o painel em modo demonstração
               </Link>{" "}
               ou configurar as variáveis no arquivo .env (ver docs/DEPLOY.md).
+            </AlertDescription>
+          </Alert>
+        )}
+        {!configured && !demoAllowed && (
+          <Alert variant="info">
+            <Info />
+            <AlertTitle>Configuração necessária</AlertTitle>
+            <AlertDescription>
+              O login exige o Supabase configurado. Preencha
+              NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no
+              arquivo .env (ver docs/DEPLOY.md). O painel não abre sem login.
             </AlertDescription>
           </Alert>
         )}

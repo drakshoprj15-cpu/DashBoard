@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import type { PublicReview } from "@/features/reviews/queries";
+import { STANDARD_STOREFRONT } from "@/features/storefront/standard-brand";
 import { buildPriceView, isPurchasable } from "@/features/variants/pricing";
 
 import {
@@ -337,71 +338,25 @@ function AnnouncementBlock({ block }: { block: LandingBlock }) {
   );
 }
 
-function HeaderBlock({ block }: { block: LandingBlock }) {
-  const { snapshot } = useRuntime();
-  const showLogo = propBool(block.props, "showLogo", true);
-  const items = propPairs(block.props, "menuItems");
-  const sticky = propBool(block.props, "sticky");
-  const showCta = propBool(block.props, "showCta");
-  const logoUrl = snapshot.logoUrl;
-
+function StandardLandingHeader() {
+  const { product } = useRuntime();
   return (
     <header
-      className={cn(
-        "z-30 px-4 py-4",
-        sticky && "sticky top-0",
-        visibilityClass(block.style),
-      )}
-      style={{
-        backgroundColor: "var(--lp-header-bg)",
-        color: "var(--lp-header-text)",
-        ...blockStyleToCss(block.style),
-      }}
+      className="z-30 flex min-h-20 items-center justify-center px-4 py-5 md:min-h-24 md:py-6"
+      style={{ backgroundColor: STANDARD_STOREFRONT.headerBackground }}
     >
-      <div
-        className="mx-auto flex w-full flex-wrap items-center justify-between gap-3"
-        style={{ maxWidth: "var(--lp-max-width)" }}
+      <a
+        href={product ? `/p/${product.slug}` : "#comprar"}
+        className="flex items-center justify-center"
+        aria-label={STANDARD_STOREFRONT.name}
       >
-        {showLogo ? (
-          logoUrl ? (
-            <Img
-              src={logoUrl}
-              alt={snapshot.publicName}
-              priority
-              className="h-9 max-w-[200px] object-contain md:h-10"
-            />
-          ) : (
-            <span className="text-lg font-black tracking-tight">
-              {snapshot.publicName}
-            </span>
-          )
-        ) : (
-          <span />
-        )}
-
-        <nav className="flex flex-wrap items-center gap-4 text-sm">
-          {items.map(([label, href], index) => (
-            <a
-              key={`${label}-${index}`}
-              href={href || "#"}
-              className="hover:opacity-80"
-            >
-              {label}
-            </a>
-          ))}
-          {showCta && (
-            <a
-              href={
-                propText(block.props, "ctaTarget", "#comprar") || "#comprar"
-              }
-              className="inline-flex min-h-10 items-center px-4 text-sm font-bold"
-              style={buttonStyle(snapshot.theme)}
-            >
-              {propText(block.props, "ctaLabel", "Comprar")}
-            </a>
-          )}
-        </nav>
-      </div>
+        <Img
+          src={STANDARD_STOREFRONT.logoUrl}
+          alt={STANDARD_STOREFRONT.name}
+          priority
+          className="h-9 w-auto max-w-[220px] object-contain md:h-11"
+        />
+      </a>
     </header>
   );
 }
@@ -2148,54 +2103,24 @@ function FormBlock({ block }: { block: LandingBlock }) {
   );
 }
 
-function FooterBlock({ block }: { block: LandingBlock }) {
-  const { snapshot } = useRuntime();
-  const links = propPairs(block.props, "links");
-  const showLegal = propBool(block.props, "showLegalLinks", true);
-  const text =
-    propText(block.props, "text") ||
-    `© ${new Date().getFullYear()} ${snapshot.publicName}`;
-
+function StandardLandingFooter() {
   return (
-    <footer
-      className={cn(
-        "px-4 py-8 text-center text-sm",
-        visibilityClass(block.style),
-      )}
-      style={{
-        backgroundColor: "var(--lp-footer-bg)",
-        color: "var(--lp-footer-text)",
-        ...blockStyleToCss(block.style),
-      }}
-    >
-      <div
-        className="mx-auto w-full"
-        style={{ maxWidth: "var(--lp-max-width)" }}
-      >
-        <p>{text}</p>
-        <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          {links.map(([label, href], index) => (
-            <a
-              key={`${label}-${index}`}
-              href={href || "#"}
-              className="hover:opacity-80"
-            >
-              {label}
-            </a>
-          ))}
-          {showLegal ? (
-            <>
-              <a href="/legal/termos" className="hover:opacity-80">
-                Termos
-              </a>
-              <a href="/legal/privacidade" className="hover:opacity-80">
-                Privacidade
-              </a>
-              <a href="/legal/devolucoes" className="hover:opacity-80">
-                Devoluções
-              </a>
-            </>
-          ) : null}
+    <footer className="border-t border-zinc-200 bg-white px-4 py-5 text-center text-xs text-zinc-500">
+      <div className="mx-auto w-full max-w-6xl">
+        <p>
+          © {new Date().getFullYear()} {STANDARD_STOREFRONT.name} · Pagamento
+          seguro por MB WAY e Multibanco
+        </p>
+        <nav className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <a href="/legal/termos" className="hover:text-zinc-800">
+            Termos
+          </a>
+          <a href="/legal/privacidade" className="hover:text-zinc-800">
+            Privacidade
+          </a>
+          <a href="/legal/devolucoes" className="hover:text-zinc-800">
+            Devoluções
+          </a>
         </nav>
       </div>
     </footer>
@@ -2219,7 +2144,6 @@ const BLOCK_COMPONENTS: Record<
   React.ComponentType<{ block: LandingBlock }>
 > = {
   announcement: AnnouncementBlock,
-  header: HeaderBlock,
   logo: LogoBlock,
   menu: MenuBlock,
   hero: HeroBlock,
@@ -2248,7 +2172,6 @@ const BLOCK_COMPONENTS: Record<
   guarantee: GuaranteeBlock,
   form: FormBlock,
   countdown: CountdownBlock,
-  footer: FooterBlock,
   custom_html: CustomHtmlBlock,
 };
 
@@ -2452,7 +2375,8 @@ export function LandingRenderer({
   }, [mode]);
 
   const visibleBlocks = snapshot.content.blocks.filter(
-    (block) => !block.hidden,
+    (block) =>
+      !block.hidden && block.type !== "header" && block.type !== "footer",
   );
 
   return (
@@ -2462,19 +2386,23 @@ export function LandingRenderer({
         <style dangerouslySetInnerHTML={{ __html: snapshot.customCode.css }} />
       ) : null}
       <div
-        className={cn("lp-root min-h-svh", className)}
+        className={cn("lp-root flex min-h-svh flex-col", className)}
         style={themeToCssVars(snapshot.theme)}
       >
-        {visibleBlocks.map((block) => {
-          const node = <RenderBlock key={block.id} block={block} />;
-          return wrapBlock ? (
-            <React.Fragment key={block.id}>
-              {wrapBlock(block, node)}
-            </React.Fragment>
-          ) : (
-            node
-          );
-        })}
+        <StandardLandingHeader />
+        <div className="flex-1">
+          {visibleBlocks.map((block) => {
+            const node = <RenderBlock key={block.id} block={block} />;
+            return wrapBlock ? (
+              <React.Fragment key={block.id}>
+                {wrapBlock(block, node)}
+              </React.Fragment>
+            ) : (
+              node
+            );
+          })}
+        </div>
+        <StandardLandingFooter />
       </div>
     </RuntimeContext.Provider>
   );

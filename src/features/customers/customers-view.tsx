@@ -3,6 +3,8 @@
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  CircleCheckBig,
+  Clock3,
   Download,
   Filter,
   ListFilter,
@@ -52,6 +54,24 @@ const SORT_OPTIONS = [
   ["name_desc", "Nome Z–A"],
   ["approval_desc", "Maior taxa de aprovação"],
 ] as const;
+
+const CUSTOMER_TYPE_LABELS: Record<string, string> = {
+  imported_paid: "Pagos informados",
+  imported_pending: "Pendentes informados",
+  buyer: "Compradores confirmados",
+  lead: "Leads sem situação",
+  abandoned: "Carrinhos abandonados",
+  checkout: "Checkout iniciado",
+  recurring: "Recorrentes",
+  pending: "Pedidos reais pendentes",
+  refused: "Pagamentos recusados",
+  no_purchase: "Clientes sem compra confirmada",
+};
+
+function activeFilterLabel(key: string, value: string): string {
+  if (key === "type") return CUSTOMER_TYPE_LABELS[value] ?? value;
+  return `${key}: ${value}`;
+}
 
 function selectClass() {
   return "border-input bg-background h-9 rounded-md border px-2.5 text-xs shadow-xs outline-none focus:ring-2 focus:ring-ring/40";
@@ -338,7 +358,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
           <h2 className="text-2xl font-bold tracking-tight">Clientes</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {stats
-              ? `${formatNumber(stats.totalContacts)} contatos · ${formatNumber(stats.buyers)} compradores · ${formatNumber(stats.abandonedCarts)} leads de carrinho`
+              ? `${formatNumber(stats.totalContacts)} contatos · ${formatNumber(stats.importedPaid)} pagos informados · ${formatNumber(stats.importedPending)} pendentes informados`
               : "Clientes, compradores e leads em um só lugar"}
           </p>
         </div>
@@ -373,7 +393,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <StatCard
           label="Total de contatos"
           value={formatNumber(stats?.totalContacts ?? 0)}
@@ -381,15 +401,27 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
           icon={Users}
         />
         <StatCard
-          label="Compradores"
+          label="Pagos informados"
+          value={formatNumber(stats?.importedPaid ?? 0)}
+          description="classificados na importação"
+          icon={CircleCheckBig}
+        />
+        <StatCard
+          label="Pendentes informados"
+          value={formatNumber(stats?.importedPending ?? 0)}
+          description="aguardando confirmação"
+          icon={Clock3}
+        />
+        <StatCard
+          label="Compradores confirmados"
           value={formatNumber(stats?.buyers ?? 0)}
-          description="ao menos 1 compra"
+          description="pedido aprovado no sistema"
           icon={UserRoundCheck}
         />
         <StatCard
-          label="Leads"
+          label="Leads sem situação"
           value={formatNumber(stats?.leads ?? 0)}
-          description="ainda sem compra"
+          description="sem compra informada"
           icon={UserRoundPlus}
         />
         <StatCard
@@ -399,15 +431,15 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
           icon={WalletCards}
         />
         <StatCard
-          label="Recorrentes"
+          label="Recorrentes confirmados"
           value={formatNumber(stats?.recurring ?? 0)}
-          description="2 ou mais compras"
+          description="2 ou mais compras reais"
           icon={RefreshCw}
         />
         <StatCard
-          label="Pedidos pendentes"
+          label="Pedidos reais pendentes"
           value={formatNumber(stats?.pending ?? 0)}
-          description="aguardando pagamento"
+          description="criados no sistema"
           icon={UserX}
         />
       </div>
@@ -445,12 +477,18 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                 className={selectClass()}
               >
                 <option value="all">Todos os contatos</option>
-                <option value="buyer">Compradores</option>
-                <option value="lead">Leads</option>
+                <option value="imported_paid">
+                  Pagos informados pela planilha
+                </option>
+                <option value="imported_pending">
+                  Pendentes informados pela planilha
+                </option>
+                <option value="buyer">Compradores confirmados</option>
+                <option value="lead">Leads sem situação</option>
                 <option value="abandoned">Carrinhos abandonados</option>
                 <option value="checkout">Checkout iniciado</option>
                 <option value="recurring">Recorrentes</option>
-                <option value="pending">Pedidos pendentes</option>
+                <option value="pending">Pedidos reais pendentes</option>
                 <option value="refused">Pagamentos recusados</option>
                 <option value="no_purchase">Clientes sem compra</option>
               </select>
@@ -790,7 +828,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                   className="bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px]"
                   onClick={() => updateParams({ [key]: "" })}
                 >
-                  {key}: {value} <X className="size-3" />
+                  {activeFilterLabel(key, value)} <X className="size-3" />
                 </button>
               ))}
             </div>
@@ -953,6 +991,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
         open={importOpen}
         onOpenChange={setImportOpen}
         onImported={() => setRefreshToken((token) => token + 1)}
+        products={products}
       />
       <ExportCustomersDialog
         open={exportOpen}

@@ -58,7 +58,8 @@ export default function TermosPage() {
       <p>
         Os pagamentos são processados por MB WAY e Multibanco através de um
         prestador de serviços de pagamento licenciado na União Europeia. Não
-        recolhemos nem armazenamos dados completos de cartão.
+        recolhemos nem armazenamos credenciais bancárias ou códigos de
+        autenticação do cliente.
       </p>
 
       <h2>5. Entrega</h2>

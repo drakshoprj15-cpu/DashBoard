@@ -8,6 +8,7 @@ import {
   Mail,
   MessageCircle,
   MoreHorizontal,
+  Package2,
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -49,6 +50,10 @@ interface CustomersTableProps {
 const statusClasses: Record<CustomerStatusTag["key"], string> = {
   buyer:
     "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300",
+  imported_paid:
+    "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-300",
+  imported_pending:
+    "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-300",
   lead: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300",
   abandoned:
     "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950 dark:text-orange-300",
@@ -109,6 +114,34 @@ function StatusBadges({ statuses }: { statuses: CustomerStatusTag[] }) {
           +{statuses.length - 2}
         </Badge>
       )}
+    </div>
+  );
+}
+
+function ProductCell({ row }: { row: CustomerListRow }) {
+  if (row.productNames.length === 0) {
+    return (
+      <span className="text-muted-foreground text-xs">
+        Produto não informado
+      </span>
+    );
+  }
+  const label = row.productNames.join(" · ");
+  return (
+    <div className="flex max-w-[230px] items-start gap-2">
+      <span className="bg-primary/8 text-primary mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md">
+        <Package2 className="size-3.5" />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium" title={label}>
+          {label}
+        </p>
+        <p className="text-muted-foreground text-[10px]">
+          {row.productSource === "order"
+            ? "Confirmado pelo pedido"
+            : "Informado na importação"}
+        </p>
+      </div>
     </div>
   );
 }
@@ -193,6 +226,7 @@ export function CustomersTable({
               <TableHead>E-mail</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Produto</TableHead>
               <TableHead className="text-right">Pedidos</TableHead>
               <TableHead className="text-right">Total gasto</TableHead>
               <TableHead>Última atividade</TableHead>
@@ -287,6 +321,9 @@ export function CustomersTable({
                 <TableCell>
                   <StatusBadges statuses={row.statuses} />
                 </TableCell>
+                <TableCell>
+                  <ProductCell row={row} />
+                </TableCell>
                 <TableCell className="text-right">
                   <span className="font-medium">
                     {formatNumber(row.orderCount)}
@@ -355,6 +392,7 @@ export function CustomersTable({
               </div>
             </div>
             <StatusBadges statuses={row.statuses} />
+            <ProductCell row={row} />
             <dl className="grid grid-cols-3 gap-2 text-xs">
               <div>
                 <dt className="text-muted-foreground">Pedidos</dt>

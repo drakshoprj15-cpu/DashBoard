@@ -1,6 +1,6 @@
 {
-  "id": "06ab4860-9eb5-4b50-9be7-9aa83934f1d0",
-  "prevId": "e3654bcc-6151-43d5-93d6-23bfd8a2ede8",
+  "id": "2826181f-473e-4930-b33b-869e40944db1",
+  "prevId": "ca8a46ac-abf5-4833-9bcf-e7e7c1ad723b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -6040,6 +6040,18 @@
           "notNull": true,
           "default": "'unknown'"
         },
+        "imported_product_id": {
+          "name": "imported_product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "imported_product_name": {
+          "name": "imported_product_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "first_source": {
           "name": "first_source",
           "type": "text",
@@ -6196,8 +6208,29 @@
           "method": "btree",
           "with": {}
         },
-        "customers_normalized_email_idx": {
-          "name": "customers_normalized_email_idx",
+        "customers_imported_product_idx": {
+          "name": "customers_imported_product_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "imported_product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "customers_ws_normalized_email_idx": {
+          "name": "customers_ws_normalized_email_idx",
           "columns": [
             {
               "expression": "workspace_id",
@@ -6212,7 +6245,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -6335,6 +6368,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "customers_imported_product_id_products_id_fk": {
+          "name": "customers_imported_product_id_products_id_fk",
+          "tableFrom": "customers",
+          "tableTo": "products",
+          "columnsFrom": [
+            "imported_product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -6577,13 +6623,6 @@
         },
         "utm": {
           "name": "utm",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "last_utm": {
-          "name": "last_utm",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
@@ -7519,13 +7558,6 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
-        "last_utm": {
-          "name": "last_utm",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
         "origin": {
           "name": "origin",
           "type": "text",
@@ -7576,18 +7608,6 @@
         },
         "paid_at": {
           "name": "paid_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_at": {
-          "name": "refunded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "chargeback_at": {
-          "name": "chargeback_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -9881,13 +9901,6 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
-        "last_utm": {
-          "name": "last_utm",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
         "device_type": {
           "name": "device_type",
           "type": "text",
@@ -10789,436 +10802,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.integration_deliveries": {
-      "name": "integration_deliveries",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "integration_id": {
-          "name": "integration_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "order_id": {
-          "name": "order_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sale_status": {
-          "name": "sale_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "integration_delivery_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "attempt_count": {
-          "name": "attempt_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "max_attempts": {
-          "name": "max_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 6
-        },
-        "next_attempt_at": {
-          "name": "next_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "locked_at": {
-          "name": "locked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lock_token": {
-          "name": "lock_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "http_status": {
-          "name": "http_status",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error_code": {
-          "name": "error_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error_message": {
-          "name": "error_message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration_ms": {
-          "name": "duration_ms",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "integration_deliveries_order_status_idx": {
-          "name": "integration_deliveries_order_status_idx",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "integration_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "order_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "sale_status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "integration_deliveries_idempotency_idx": {
-          "name": "integration_deliveries_idempotency_idx",
-          "columns": [
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "integration_deliveries_queue_idx": {
-          "name": "integration_deliveries_queue_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_attempt_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "integration_deliveries_workspace_idx": {
-          "name": "integration_deliveries_workspace_idx",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "integration_deliveries_workspace_id_workspaces_id_fk": {
-          "name": "integration_deliveries_workspace_id_workspaces_id_fk",
-          "tableFrom": "integration_deliveries",
-          "tableTo": "workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "integration_deliveries_integration_id_integrations_id_fk": {
-          "name": "integration_deliveries_integration_id_integrations_id_fk",
-          "tableFrom": "integration_deliveries",
-          "tableTo": "integrations",
-          "columnsFrom": [
-            "integration_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "integration_deliveries_order_id_orders_id_fk": {
-          "name": "integration_deliveries_order_id_orders_id_fk",
-          "tableFrom": "integration_deliveries",
-          "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.integration_delivery_attempts": {
-      "name": "integration_delivery_attempts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "integration_id": {
-          "name": "integration_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "delivery_id": {
-          "name": "delivery_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "attempt_number": {
-          "name": "attempt_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "http_status": {
-          "name": "http_status",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error_code": {
-          "name": "error_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error_message": {
-          "name": "error_message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration_ms": {
-          "name": "duration_ms",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "integration_delivery_attempts_delivery_idx": {
-          "name": "integration_delivery_attempts_delivery_idx",
-          "columns": [
-            {
-              "expression": "delivery_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "attempt_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "integration_delivery_attempts_workspace_idx": {
-          "name": "integration_delivery_attempts_workspace_idx",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "integration_delivery_attempts_workspace_id_workspaces_id_fk": {
-          "name": "integration_delivery_attempts_workspace_id_workspaces_id_fk",
-          "tableFrom": "integration_delivery_attempts",
-          "tableTo": "workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "integration_delivery_attempts_integration_id_integrations_id_fk": {
-          "name": "integration_delivery_attempts_integration_id_integrations_id_fk",
-          "tableFrom": "integration_delivery_attempts",
-          "tableTo": "integrations",
-          "columnsFrom": [
-            "integration_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "integration_delivery_attempts_delivery_id_integration_deliveries_id_fk": {
-          "name": "integration_delivery_attempts_delivery_id_integration_deliveries_id_fk",
-          "tableFrom": "integration_delivery_attempts",
-          "tableTo": "integration_deliveries",
-          "columnsFrom": [
-            "delivery_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.integration_logs": {
       "name": "integration_logs",
       "schema": "",
@@ -11431,50 +11014,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'::jsonb"
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "connection_status": {
-          "name": "connection_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'not_tested'"
-        },
-        "last_connection_test_at": {
-          "name": "last_connection_test_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_connection_ok": {
-          "name": "last_connection_ok",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_connection_http_status": {
-          "name": "last_connection_http_status",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_connection_message": {
-          "name": "last_connection_message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_connection_duration_ms": {
-          "name": "last_connection_duration_ms",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         },
         "last_sync_at": {
           "name": "last_sync_at",
@@ -13165,17 +12704,6 @@
         "automation",
         "storage",
         "webhooks"
-      ]
-    },
-    "public.integration_delivery_status": {
-      "name": "integration_delivery_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "processing",
-        "success",
-        "failed",
-        "dead_letter"
       ]
     },
     "public.integration_status": {

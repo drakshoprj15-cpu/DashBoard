@@ -3,12 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   buildCustomerStatuses,
   calculateNetSpent,
+  isCustomerImportClassification,
   maskDocument,
   maskPhone,
+  mergeCustomerImportTags,
   normalizeDocument,
   normalizeEmail,
+  normalizeImportedProductName,
   normalizePhone,
   parseCustomerFilters,
+  readCustomerImportedStatus,
   resolveDuplicateCandidate,
   sanitizeCsvCell,
 } from "@/features/customers/customer-utils";
@@ -26,6 +30,14 @@ describe("normalização de clientes", () => {
     expect(maskDocument("12345678901")).toMatch(/^123\./);
     expect(maskPhone("+55 21 99999-0000")).toMatch(/^\+55 .*00$/);
     expect(maskPhone("+55 21 99999-0000")).not.toContain("99999");
+  });
+
+  it("normaliza o produto importado e rejeita valores ausentes ou excessivos", () => {
+    expect(normalizeImportedProductName("  Cadeira\nGaming   Nébula  ")).toBe(
+      "Cadeira Gaming Nébula",
+    );
+    expect(normalizeImportedProductName(" \n\t ")).toBeNull();
+    expect(normalizeImportedProductName("x".repeat(161))).toBeNull();
   });
 
   it("calcula gasto líquido sem permitir total negativo", () => {
@@ -82,9 +94,50 @@ describe("normalização de clientes", () => {
       }),
     ).toBeNull();
   });
+
+  it("reconhece cliente legado pelo email quando normalizedEmail está vazio", () => {
+    const candidates = [
+      {
+        id: "legado",
+        email: " Cliente.Legado@Exemplo.COM ",
+        normalizedEmail: null,
+        normalizedPhone: null,
+        normalizedDocument: null,
+      },
+    ];
+
+    expect(
+      resolveDuplicateCandidate(candidates, {
+        normalizedEmail: "cliente.legado@exemplo.com",
+        normalizedPhone: null,
+        normalizedDocument: null,
+      })?.id,
+    ).toBe("legado");
+  });
 });
 
 describe("filtros e classificação de clientes", () => {
+  it("troca somente a classificação reservada e preserva as tags do cliente", () => {
+    const paidTags = mergeCustomerImportTags(
+      ["VIP", "__infinity_import_status:pending"],
+      ["Newsletter", "VIP"],
+      "paid",
+    );
+
+    expect(paidTags).toEqual([
+      "VIP",
+      "Newsletter",
+      "__infinity_import_status:paid",
+    ]);
+    expect(readCustomerImportedStatus(paidTags)).toBe("paid");
+    expect(mergeCustomerImportTags(paidTags, [], "contact")).toEqual([
+      "VIP",
+      "Newsletter",
+    ]);
+    expect(isCustomerImportClassification("pending")).toBe(true);
+    expect(isCustomerImportClassification("approved")).toBe(false);
+  });
+
   it("limita valores inválidos e converte valores monetários para centavos", () => {
     const filters = parseCustomerFilters(
       new URLSearchParams(
@@ -118,6 +171,26 @@ describe("filtros e classificação de clientes", () => {
   });
 
   it("identifica lead, comprador recorrente e sinais de recuperação", () => {
+    expect(
+      buildCustomerStatuses({
+        paidCount: 0,
+        pendingCount: 0,
+        refusedCount: 0,
+        abandonedCarts: 0,
+        importedStatus: "paid",
+      }).map((status) => status.key),
+    ).toEqual(["imported_paid"]);
+
+    expect(
+      buildCustomerStatuses({
+        paidCount: 0,
+        pendingCount: 0,
+        refusedCount: 0,
+        abandonedCarts: 0,
+        importedStatus: "pending",
+      }).map((status) => status.key),
+    ).toEqual(["imported_pending"]);
+
     expect(
       buildCustomerStatuses({
         paidCount: 0,

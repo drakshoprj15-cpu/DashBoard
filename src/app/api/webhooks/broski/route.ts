@@ -310,6 +310,8 @@ export async function POST(request: Request) {
             createdAt: orders.createdAt,
             paidAt: orders.paidAt,
             utm: orders.utm,
+            shippingAddress: orders.shippingAddress,
+            checkoutUrl: orders.checkoutUrl,
             clientFbp: orders.clientFbp,
             clientFbc: orders.clientFbc,
             clientIp: orders.clientIp,
@@ -491,6 +493,10 @@ export async function POST(request: Request) {
           ) {
             const landingPageId =
               (orderRow.utm as Record<string, string> | null)?.lp ?? null;
+            const shippingAddress = (orderRow.shippingAddress ?? {}) as Record<
+              string,
+              string | undefined
+            >;
 
             await sendPurchaseToMetaCapi({
               workspaceId: orderRow.workspaceId,
@@ -503,6 +509,13 @@ export async function POST(request: Request) {
               currency: orderRow.currency,
               email: customerRow?.email,
               phone: customerRow?.phone,
+              firstName: customerRow?.firstName,
+              lastName: customerRow?.lastName,
+              city: shippingAddress.city,
+              state: shippingAddress.state,
+              postalCode: shippingAddress.postal_code,
+              country: customerRow?.country ?? shippingAddress.country,
+              externalId: orderRow.customerId,
               productName: itemRows[0]
                 ? itemRows[0].variantName
                   ? `${itemRows[0].productName} — ${itemRows[0].variantName}`
@@ -511,6 +524,8 @@ export async function POST(request: Request) {
               contentIds: itemRows
                 .map((item) => item.sku)
                 .filter((sku): sku is string => Boolean(sku)),
+              quantity: itemRows.reduce((sum, item) => sum + item.quantity, 0),
+              sourceUrl: orderRow.checkoutUrl,
               fbp: orderRow.clientFbp,
               fbc: orderRow.clientFbc,
               ip: orderRow.clientIp,

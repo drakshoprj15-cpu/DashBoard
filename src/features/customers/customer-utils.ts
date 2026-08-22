@@ -2,11 +2,73 @@ import {
   CUSTOMER_PAGE_SIZES,
   CUSTOMER_SORTS,
   CUSTOMER_TYPES,
+  type CustomerImportClassification,
+  type CustomerImportedStatus,
   type CustomerListFilters,
   type CustomerStatusTag,
 } from "@/features/customers/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const CUSTOMER_IMPORT_CLASSIFICATIONS = [
+  "paid",
+  "pending",
+  "contact",
+] as const satisfies readonly CustomerImportClassification[];
+
+export const CUSTOMER_IMPORT_STATUS_TAGS = {
+  paid: "__infinity_import_status:paid",
+  pending: "__infinity_import_status:pending",
+} as const satisfies Record<CustomerImportedStatus, string>;
+
+const CUSTOMER_IMPORT_STATUS_PREFIX = "__infinity_import_status:";
+
+export function isCustomerImportSystemTag(tag: string): boolean {
+  return tag.startsWith(CUSTOMER_IMPORT_STATUS_PREFIX);
+}
+
+export function isCustomerImportClassification(
+  value: unknown,
+): value is CustomerImportClassification {
+  return CUSTOMER_IMPORT_CLASSIFICATIONS.includes(
+    value as CustomerImportClassification,
+  );
+}
+
+export function readCustomerImportedStatus(
+  tags: unknown,
+): CustomerImportedStatus | null {
+  if (!Array.isArray(tags)) return null;
+  if (tags.includes(CUSTOMER_IMPORT_STATUS_TAGS.paid)) return "paid";
+  if (tags.includes(CUSTOMER_IMPORT_STATUS_TAGS.pending)) return "pending";
+  return null;
+}
+
+/** Mantém tags do cliente e troca somente a classificação reservada do Infinity. */
+export function mergeCustomerImportTags(
+  existingTags: unknown,
+  importedTags: string[],
+  classification: CustomerImportClassification,
+): string[] {
+  const current = Array.isArray(existingTags)
+    ? existingTags.filter((tag): tag is string => typeof tag === "string")
+    : [];
+  const userTags = Array.from(
+    new Set(
+      [...current, ...importedTags]
+        .map((tag) => tag.trim())
+        .filter((tag) => tag && !isCustomerImportSystemTag(tag)),
+    ),
+  );
+  const systemTag =
+    classification === "contact"
+      ? null
+      : CUSTOMER_IMPORT_STATUS_TAGS[classification];
+  return [
+    ...userTags.slice(0, systemTag ? 19 : 20),
+    ...(systemTag ? [systemTag] : []),
+  ];
+}
 
 export function normalizeEmail(value: string): string | null {
   const normalized = value.trim().toLowerCase();
@@ -27,11 +89,23 @@ export function normalizeDocument(value: string): string | null {
   return digits.length >= 9 && digits.length <= 14 ? digits : null;
 }
 
+/** Normaliza o nome informado sem transformar a importação num pedido real. */
+export function normalizeImportedProductName(value: string): string | null {
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized || normalized.length > 160) return null;
+  return normalized;
+}
+
 export interface CustomerIdentityCandidate {
   id: string;
+  email?: string | null;
   normalizedEmail: string | null;
   normalizedPhone: string | null;
   normalizedDocument: string | null;
+  tags?: unknown;
 }
 
 /** Mantém a prioridade de identidade sem jamais comparar apenas pelo nome. */
@@ -48,7 +122,9 @@ export function resolveDuplicateCandidate(
   }
   if (identity.normalizedEmail) {
     const byEmail = candidates.find(
-      (candidate) => candidate.normalizedEmail === identity.normalizedEmail,
+      (candidate) =>
+        candidate.normalizedEmail === identity.normalizedEmail ||
+        normalizeEmail(candidate.email ?? "") === identity.normalizedEmail,
     );
     if (byEmail) return byEmail;
   }
@@ -100,9 +176,14 @@ export function buildCustomerStatuses(input: {
   pendingCount: number;
   refusedCount: number;
   abandonedCarts: number;
+  importedStatus?: CustomerImportedStatus | null;
 }): CustomerStatusTag[] {
   const statuses: CustomerStatusTag[] = [];
   if (input.paidCount > 0) statuses.push({ key: "buyer", label: "Comprador" });
+  else if (input.importedStatus === "paid")
+    statuses.push({ key: "imported_paid", label: "Pago informado" });
+  else if (input.importedStatus === "pending")
+    statuses.push({ key: "imported_pending", label: "Pendente informado" });
   else statuses.push({ key: "lead", label: "Lead" });
   if (input.paidCount >= 2)
     statuses.push({ key: "recurring", label: "Recorrente" });

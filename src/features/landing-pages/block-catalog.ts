@@ -6,7 +6,6 @@ import {
   Clock,
   Code2,
   Columns2,
-  CreditCard,
   FileText,
   Gift,
   Hash,
@@ -23,6 +22,7 @@ import {
   PanelBottom,
   Play,
   Quote,
+  ReceiptText,
   Rows3,
   ShieldCheck,
   ShoppingCart,
@@ -938,7 +938,7 @@ export function createBlock(type: BlockType): LandingBlock {
 }
 
 /** Ícones auxiliares usados pela paleta e pelo canvas. */
-export const PALETTE_ICONS = { CreditCard, Blocks } satisfies Record<
+export const PALETTE_ICONS = { ReceiptText, Blocks } satisfies Record<
   string,
   LucideIcon
 >;

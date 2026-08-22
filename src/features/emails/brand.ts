@@ -1,18 +1,18 @@
 import { getWorkspaceBranding } from "@/features/branding/queries";
 import {
-  EMAIL_BRAND_NAME,
+  DEFAULT_CAMPAIGN_TEMPLATE,
   type EmailBrand,
 } from "@/features/emails/template";
 
 /**
  * Marca aplicada ao cabeçalho dos e-mails. Reaproveita a identidade
  * configurada em /configuracoes para que a logo da loja substitua o nome
- * fixo do template.
+ * no topo do template.
  */
 export async function getEmailBrand(): Promise<EmailBrand> {
   const branding = await getWorkspaceBranding();
   return {
-    name: branding.storeName || EMAIL_BRAND_NAME,
+    name: branding.storeName || DEFAULT_CAMPAIGN_TEMPLATE.headerName,
     logoUrl: branding.logoUrl,
   };
 }

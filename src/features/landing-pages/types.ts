@@ -210,6 +210,80 @@ export interface LandingSnapshot {
 export type LandingStatus =
   "draft" | "published" | "paused" | "scheduled" | "error";
 
+/**
+ * Onde a página é servida.
+ *
+ * `infinity` é o caminho normal: a rota `/lp/[slug]` desta aplicação lê o
+ * snapshot do banco e desenha a página. `vercel` é para as páginas cujo HTML
+ * não nasce do editor — um site já exportado, por exemplo — e que por isso
+ * vivem num projeto estático próprio; aqui o painel publica e regista, mas
+ * quem serve o endereço é o outro projeto.
+ */
+export type LandingHostingProvider = "infinity" | "vercel";
+
+/**
+ * Fase do último envio para o serviço de hospedagem.
+ *
+ * Independente de `LandingStatus`: uma página pode continuar publicada no
+ * painel com o último deploy em `failed`, e a interface precisa de mostrar
+ * as duas coisas ao mesmo tempo em vez de escolher uma.
+ */
+export type LandingDeploymentStatus =
+  "idle" | "preparing" | "deploying" | "ready" | "failed";
+
+export interface LandingDeployment {
+  provider: LandingHostingProvider;
+  status: LandingDeploymentStatus;
+  url: string | null;
+  projectId: string | null;
+  deploymentId: string | null;
+  /** Saída técnica do último envio, para diagnóstico quando falha */
+  log: string | null;
+  updatedAt: Date | null;
+}
+
+export const DEPLOYMENT_STATUS_LABEL: Record<LandingDeploymentStatus, string> =
+  {
+    idle: "Sem deploy",
+    preparing: "Preparando",
+    deploying: "Fazendo deploy",
+    ready: "Publicado",
+    failed: "Falhou",
+  };
+
+export const HOSTING_PROVIDER_LABEL: Record<LandingHostingProvider, string> = {
+  infinity: "Infinity",
+  vercel: "Vercel",
+};
+
+/** Normaliza o que veio do banco, que é texto livre. */
+export function asHostingProvider(value: unknown): LandingHostingProvider {
+  return value === "vercel" ? "vercel" : "infinity";
+}
+
+export function asDeploymentStatus(value: unknown): LandingDeploymentStatus {
+  const allowed: LandingDeploymentStatus[] = [
+    "idle",
+    "preparing",
+    "deploying",
+    "ready",
+    "failed",
+  ];
+  return allowed.includes(value as LandingDeploymentStatus)
+    ? (value as LandingDeploymentStatus)
+    : "idle";
+}
+
+/** Um único endereço para cartões, editor, copiar URL e botão de abrir. */
+export function resolveLandingPublicUrl(
+  page: { slug: string; deployment: LandingDeployment },
+  appUrl: string,
+): string {
+  return page.deployment.provider === "vercel" && page.deployment.url
+    ? page.deployment.url
+    : `${appUrl}/lp/${page.slug}`;
+}
+
 // ---------------------------------------------------------------------------
 // Leitura segura de `props`
 // ---------------------------------------------------------------------------

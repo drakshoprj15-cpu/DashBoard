@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Database, Info, Radar, Power, Trash2 } from "lucide-react";
 
 import { isDatabaseConfigured } from "@/database/client";
@@ -17,9 +16,9 @@ import {
 import { PixelForm } from "@/features/pixels/pixel-form";
 import { MetaPixelPage } from "@/features/pixels/meta/meta-pixel-page";
 import { MetaEventLogs } from "@/features/pixels/meta/meta-event-logs";
-import { PixelTabs } from "@/features/pixels/meta/pixel-tabs";
 import { getUtmifyPageData } from "@/features/pixels/utmify-queries";
 import { UtmifyPage } from "@/features/pixels/utmify-page";
+import { PixelTabs } from "@/features/pixels/meta/pixel-tabs";
 import { listLandingPages } from "@/features/landing-pages/queries";
 import { getAppUrl } from "@/lib/app-url";
 import { alphaGamerNebula } from "@/features/landing/technebula-data";
@@ -34,6 +33,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePixelPermission } from "@/features/pixels/access";
 
 export const metadata: Metadata = { title: "Pixel" };
 export const dynamic = "force-dynamic";
@@ -59,15 +59,18 @@ export default async function PixelPage(props: PageProps<"/pixel">) {
     );
   }
 
-  const searchParams = await props.searchParams;
+  const { workspaceId } = await requirePixelPermission("view");
 
-  const stringParam = (value: string | string[] | undefined) => typeof value === "string" ? value : undefined;
+  const searchParams = await props.searchParams;
+  const stringParam = (value: string | string[] | undefined) =>
+    typeof value === "string" ? value : undefined;
+
   const [rows, stats, landingPageRows, workspaceMetaSettings, utmifyData] =
     await Promise.all([
-      listPixels(),
-      getPixelOverviewStats(),
-      listLandingPages(),
-      getWorkspaceMetaSettings(),
+      listPixels(workspaceId),
+      getPixelOverviewStats(workspaceId),
+      listLandingPages(workspaceId),
+      getWorkspaceMetaSettings(workspaceId),
       getUtmifyPageData({
         order: stringParam(searchParams.order),
         saleStatus: stringParam(searchParams.saleStatus),
@@ -92,15 +95,29 @@ export default async function PixelPage(props: PageProps<"/pixel">) {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold tracking-tight">
-          Pixels e integrações
+          Meta Pixel e API de Conversões
         </h2>
         <p className="text-muted-foreground text-sm">
-          Configure o rastreamento de campanhas, eventos e vendas pelo navegador e pelo servidor.
+          Configure o rastreamento pelo navegador e pelo servidor para cada
+          landing page.
         </p>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <OverviewStat label="Pixels ativos" value={stats.activePixels} />
+        <OverviewStat
+          label="Landing pages configuradas"
+          value={stats.landingPagesConfigured}
+        />
+        <OverviewStat
+          label="Eventos nas últimas 24h"
+          value={stats.eventsLast24h}
+        />
+        <OverviewStat label="Eventos com erro" value={stats.eventsWithError} />
+      </div>
+
       <PixelTabs
-        general={<PixelGeneralTab rows={rows} appUrl={appUrl} stats={stats} utmifyData={utmifyData} />}
+        general={<PixelGeneralTab rows={rows} appUrl={appUrl} />}
         meta={
           <>
             <MetaPixelPage
@@ -112,6 +129,7 @@ export default async function PixelPage(props: PageProps<"/pixel">) {
             <MetaEventLogs
               searchParams={searchParams}
               landingPages={landingPagesForPicker}
+              workspaceId={workspaceId}
             />
           </>
         }
@@ -124,28 +142,12 @@ export default async function PixelPage(props: PageProps<"/pixel">) {
 function PixelGeneralTab({
   rows,
   appUrl,
-  stats,
-  utmifyData,
 }: {
   rows: Awaited<ReturnType<typeof listPixels>>;
   appUrl: string;
-  stats: Awaited<ReturnType<typeof getPixelOverviewStats>>;
-  utmifyData: Awaited<ReturnType<typeof getUtmifyPageData>>;
 }) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <OverviewStat label="Integrações ativas" value={stats.activePixels + utmifyData.stats.active} />
-        <OverviewStat label="Integrações com erro" value={stats.integrationsWithError + (utmifyData.integration?.status === "error" ? 1 : 0)} />
-        <OverviewStat label="Eventos Meta · 24h" value={stats.eventsLast24h} />
-        <OverviewStat label="Vendas UTMify · 24h" value={utmifyData.stats.generated24h + utmifyData.stats.approved24h} />
-        <OverviewStat label="Aguardando envio" value={utmifyData.stats.pending} />
-        <div className="rounded-lg border bg-card px-3 py-2"><p className="text-muted-foreground text-xs">Última sincronização</p><p className="mt-1 text-sm font-semibold">{utmifyData.integration?.lastSyncAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(utmifyData.integration.lastSyncAt) : "Ainda não realizada"}</p></div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm"><Link href="/pixel?tab=meta">Configurar Meta</Link></Button>
-        <Button asChild variant="outline" size="sm"><Link href="/pixel?tab=utmify">Configurar UTMify</Link></Button>
-      </div>
       <Alert variant="info">
         <Info />
         <AlertTitle>Como os eventos disparam</AlertTitle>

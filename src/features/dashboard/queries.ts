@@ -110,9 +110,6 @@ export interface DashboardSnapshot {
 const METHOD_LABEL: Record<string, string> = {
   mbway: "MB WAY",
   multibanco: "Multibanco",
-  card: "Cartão",
-  pix: "Pix",
-  boleto: "Boleto",
 };
 
 function bucketLabel(date: Date, granularity: ChartGranularity): string {

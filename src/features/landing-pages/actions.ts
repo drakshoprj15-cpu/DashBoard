@@ -485,6 +485,18 @@ export async function publishLandingPageAction(
 
     if (!row) return { ok: false, error: "Página não encontrada." };
 
+    // Uma página hospedada fora não se publica com uma escrita no banco: o
+    // que está no ar é o site do outro projeto, e gravar aqui um snapshot
+    // vazio só criaria uma segunda versão da página em `/lp/<slug>` — a
+    // divergir da que o anúncio aponta.
+    if (row.hostingProvider !== "infinity") {
+      return {
+        ok: false,
+        error:
+          "Esta página é servida fora do Infinity. Use “Republicar na Vercel” para pôr no ar a versão nova.",
+      };
+    }
+
     const content = withContentDefaults(row.content);
     const product = row.productId
       ? await loadProductData(row.productId, context.workspaceId)

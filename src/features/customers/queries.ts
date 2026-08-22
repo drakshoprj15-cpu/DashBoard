@@ -13,8 +13,10 @@ import {
 } from "@/database/schema";
 import { requireCustomerPermission } from "@/features/customers/access";
 import {
+  CUSTOMER_IMPORT_STATUS_TAGS,
   activityLabel,
   buildCustomerStatuses,
+  isCustomerImportSystemTag,
   maskDocument,
   maskPhone,
 } from "@/features/customers/customer-utils";
@@ -28,6 +30,11 @@ import type {
 } from "@/features/customers/types";
 
 type RawRow = Record<string, unknown>;
+
+const IMPORTED_STATUS_JSON = {
+  paid: JSON.stringify([CUSTOMER_IMPORT_STATUS_TAGS.paid]),
+  pending: JSON.stringify([CUSTOMER_IMPORT_STATUS_TAGS.pending]),
+} as const;
 
 function numberValue(value: unknown): number {
   const parsed = Number(value ?? 0);
@@ -82,6 +89,19 @@ function customerBaseCte(workspaceId: string) {
       where o.workspace_id = ${workspaceId}
       group by o.customer_id
     ),
+    order_products as (
+      select
+        o.customer_id,
+        coalesce(
+          jsonb_agg(distinct oi.product_name order by oi.product_name)
+            filter (where oi.product_name is not null),
+          '[]'::jsonb
+        ) as product_names
+      from orders o
+      join order_items oi on oi.order_id = o.id and oi.workspace_id = ${workspaceId}
+      where o.workspace_id = ${workspaceId}
+      group by o.customer_id
+    ),
     approved_payments as (
       select o.customer_id, coalesce(sum(p.amount_cents), 0)::bigint as approved_cents
       from payments p
@@ -132,9 +152,17 @@ function customerBaseCte(workspaceId: string) {
         c.phone_country_code,
         c.country,
         c.source,
+        c.imported_product_id,
+        c.imported_product_name,
+        coalesce(op.product_names, '[]'::jsonb) as order_product_names,
         c.first_landing_page_id,
         c.last_landing_page_id,
         c.tags as legacy_tags,
+        case
+          when coalesce(c.tags, '[]'::jsonb) @> ${IMPORTED_STATUS_JSON.paid}::jsonb then 'paid'
+          when coalesce(c.tags, '[]'::jsonb) @> ${IMPORTED_STATUS_JSON.pending}::jsonb then 'pending'
+          else null
+        end as imported_status,
         coalesce(ts.assigned_tags, '[]'::jsonb) as assigned_tags,
         c.marketing_opt_out,
         c.accepts_email,
@@ -171,6 +199,7 @@ function customerBaseCte(workspaceId: string) {
         )::bigint as total_spent_cents
       from customers c
       left join order_stats os on os.customer_id = c.id
+      left join order_products op on op.customer_id = c.id
       left join approved_payments ap on ap.customer_id = c.id
       left join refunded_payments rp on rp.customer_id = c.id
       left join disputed_payments dp on dp.customer_id = c.id
@@ -198,6 +227,8 @@ function filteredWhere(filters: CustomerListFilters) {
       or lower(b.email) like lower(${like})
       or coalesce(b.phone, '') ilike ${like}
       or coalesce(b.document, '') ilike ${like}
+      or coalesce(b.imported_product_name, '') ilike ${like}
+      or b.order_product_names::text ilike ${like}
       or exists (
         select 1 from orders so
         where so.customer_id = b.id and so.reference ilike ${like}
@@ -206,7 +237,12 @@ function filteredWhere(filters: CustomerListFilters) {
     )`);
   }
   if (filters.type === "buyer") conditions.push(sql`b.paid_count > 0`);
-  if (filters.type === "lead") conditions.push(sql`b.paid_count = 0`);
+  if (filters.type === "imported_paid")
+    conditions.push(sql`b.imported_status = 'paid'`);
+  if (filters.type === "imported_pending")
+    conditions.push(sql`b.imported_status = 'pending'`);
+  if (filters.type === "lead")
+    conditions.push(sql`b.paid_count = 0 and b.imported_status is null`);
   if (filters.type === "abandoned") conditions.push(sql`b.abandoned_carts > 0`);
   if (filters.type === "checkout")
     conditions.push(
@@ -222,10 +258,13 @@ function filteredWhere(filters: CustomerListFilters) {
     )`);
   if (filters.origin) conditions.push(sql`b.source = ${filters.origin}`);
   if (filters.productId)
-    conditions.push(sql`exists (
-      select 1 from orders po
-      join order_items poi on poi.order_id = po.id
-      where po.customer_id = b.id and poi.product_id = ${filters.productId}
+    conditions.push(sql`(
+      b.imported_product_id = ${filters.productId}::uuid
+      or exists (
+        select 1 from orders po
+        join order_items poi on poi.order_id = po.id
+        where po.customer_id = b.id and poi.product_id = ${filters.productId}::uuid
+      )
     )`);
   if (filters.landingPageId)
     conditions.push(sql`(
@@ -306,6 +345,10 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
   const pendingCount = numberValue(row.pending_count);
   const refusedCount = numberValue(row.refused_count);
   const abandonedCarts = numberValue(row.abandoned_carts);
+  const importedStatus =
+    row.imported_status === "paid" || row.imported_status === "pending"
+      ? row.imported_status
+      : null;
   const totalSpentCents = numberValue(row.total_spent_cents);
   const firstName = stringValue(row.first_name);
   const lastName = stringValue(row.last_name);
@@ -316,6 +359,14 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
   const cartIsLatest =
     abandonedCarts > 0 &&
     (!lastOrderAt || new Date(lastActivityAt) > new Date(lastOrderAt));
+  const orderProductNames = stringArray(row.order_product_names);
+  const importedProductName = nullableString(row.imported_product_name);
+  const productNames =
+    orderProductNames.length > 0
+      ? orderProductNames
+      : importedProductName
+        ? [importedProductName]
+        : [];
 
   return {
     id: stringValue(row.id),
@@ -330,17 +381,26 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
     state: nullableString(row.state),
     country: nullableString(row.country),
     source: stringValue(row.source, "unknown"),
+    importedStatus,
+    productNames,
+    productSource:
+      orderProductNames.length > 0
+        ? "order"
+        : importedProductName
+          ? "import"
+          : "missing",
     tags: Array.from(
       new Set([
         ...stringArray(row.legacy_tags),
         ...stringArray(row.assigned_tags),
       ]),
-    ),
+    ).filter((tag) => !isCustomerImportSystemTag(tag)),
     statuses: buildCustomerStatuses({
       paidCount,
       pendingCount,
       refusedCount,
       abandonedCarts,
+      importedStatus,
     }),
     orderCount,
     paidCount,
@@ -399,7 +459,9 @@ export async function listCustomers(
       select
         count(*)::int as total_contacts,
         count(*) filter (where b.paid_count > 0)::int as buyers,
-        count(*) filter (where b.paid_count = 0)::int as leads,
+        count(*) filter (where b.imported_status = 'paid')::int as imported_paid,
+        count(*) filter (where b.imported_status = 'pending')::int as imported_pending,
+        count(*) filter (where b.paid_count = 0 and b.imported_status is null)::int as leads,
         count(*) filter (where b.abandoned_carts > 0)::int as abandoned_carts,
         count(*) filter (where b.paid_count >= 2)::int as recurring,
         count(*) filter (where b.pending_count > 0)::int as pending,
@@ -436,6 +498,8 @@ export async function listCustomers(
   const stats: CustomerStats = {
     totalContacts: numberValue(statsRow.total_contacts),
     buyers: numberValue(statsRow.buyers),
+    importedPaid: numberValue(statsRow.imported_paid),
+    importedPending: numberValue(statsRow.imported_pending),
     leads: numberValue(statsRow.leads),
     abandonedCarts: numberValue(statsRow.abandoned_carts),
     recurring: numberValue(statsRow.recurring),

@@ -2,6 +2,10 @@
   "name": "clauddddee",
   "version": "0.1.0",
   "private": true,
+  "allowScripts": {
+    "sharp": true,
+    "unrs-resolver": true
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,9 +16,13 @@
     "format:check": "prettier --check src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:setup": "npm install --prefix tools/drizzle --no-audit --no-fund",
+    "predb:generate": "npm run db:setup",
+    "db:generate": "npm --prefix tools/drizzle exec -- drizzle-kit generate --config drizzle.config.ts",
+    "predb:migrate": "npm run db:setup",
+    "db:migrate": "npm --prefix tools/drizzle exec -- drizzle-kit migrate --config drizzle.config.ts",
+    "predb:studio": "npm run db:setup",
+    "db:studio": "npm --prefix tools/drizzle exec -- drizzle-kit studio --config drizzle.config.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -58,7 +66,6 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^6.0.4",
-    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "jsdom": "^30.0.0",
