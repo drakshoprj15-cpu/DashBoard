@@ -398,11 +398,10 @@ export function CheckoutForm({
 
         {variants.length > 0 && (
           <section className="rounded-2xl border bg-white p-5 md:p-6">
-            <h2 className="text-base font-bold">Opção escolhida</h2>
             <div
               role="radiogroup"
               aria-label="Opção do produto"
-              className="mt-4 flex flex-wrap gap-2"
+              className="flex flex-wrap gap-2"
             >
               {variants.map((variant) => {
                 const selected = variant.publicId === variantId;
