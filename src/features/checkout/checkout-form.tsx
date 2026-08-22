@@ -107,7 +107,7 @@ export function CheckoutForm({
   const [shippingMethodId, setShippingMethodId] = React.useState(
     shippingMethods[0]?.id ?? "",
   );
-  const [variantId, setVariantId] = React.useState(initialVariantId);
+  const [variantId] = React.useState(initialVariantId);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
 
   const selectedVariant =
@@ -394,77 +394,6 @@ export function CheckoutForm({
             <AlertTitle>Pagamento ainda não ativado</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
-        )}
-
-        {variants.length > 0 && (
-          <section className="rounded-2xl border bg-white p-5 md:p-6">
-            <div
-              role="radiogroup"
-              aria-label="Opção do produto"
-              className="flex flex-wrap gap-2"
-            >
-              {variants.map((variant) => {
-                const selected = variant.publicId === variantId;
-                return (
-                  <button
-                    key={variant.publicId}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={!variant.purchasable}
-                    onClick={() => setVariantId(variant.publicId)}
-                    className={cn(
-                      "flex min-h-11 items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors",
-                      selected ? "" : "border-zinc-200 hover:border-zinc-300",
-                      !variant.purchasable && "cursor-not-allowed opacity-50",
-                    )}
-                    style={
-                      selected
-                        ? {
-                            borderColor: "var(--checkout-primary)",
-                            backgroundColor:
-                              "color-mix(in srgb, var(--checkout-primary) 8%, white)",
-                          }
-                        : undefined
-                    }
-                  >
-                    {variant.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={variant.thumbnailUrl}
-                        alt=""
-                        className="size-8 rounded object-cover"
-                      />
-                    ) : variant.hexColor ? (
-                      <span
-                        aria-hidden
-                        className="size-5 rounded-full border"
-                        style={{ backgroundColor: variant.hexColor }}
-                      />
-                    ) : null}
-                    <span>
-                      <span className="block font-semibold">
-                        {variant.label}
-                      </span>
-                      <span className="block text-xs text-zinc-500">
-                        {variant.purchasable
-                          ? fmt(variant.priceCents)
-                          : "Esgotado"}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {selectedVariant &&
-            selectedVariant.trackInventory &&
-            !selectedVariant.allowBackorder ? (
-              <p className="mt-3 text-xs text-zinc-500">
-                {selectedVariant.stockQuantity} unidade(s) disponíveis desta
-                opção.
-              </p>
-            ) : null}
-          </section>
         )}
 
         <Section step={1} icon={User} title="Contacto">
