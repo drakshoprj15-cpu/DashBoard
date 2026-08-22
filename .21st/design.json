@@ -383,6 +383,12 @@
       "area": "payment-methods",
       "decision": "Expose only MB WAY and Multibanco throughout checkout and payment administration, using phone, receipt, bank, or confirmation iconography instead of credit-card symbols.",
       "reason": "Broski is the only active processor and the product does not accept card payments."
+    },
+    {
+      "date": "2026-08-22",
+      "area": "checkout-branding",
+      "decision": "Use merchant-controlled workspace branding by default, allow a per-checkout logo override, and fall back to the text 'Minha Loja'. Keep the public header at 65px with a centered 122x25px logo area and a red default background (#e30613).",
+      "reason": "This gives the operator a predictable mobile and desktop checkout identity without hardcoded third-party branding, while keeping customization available in the panel."
     }
   ],
   "evidence": [

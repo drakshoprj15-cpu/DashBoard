@@ -8,6 +8,7 @@ import {
   updateCheckoutThemeAction,
   type CheckoutActionResult,
 } from "@/features/checkouts/actions";
+import { CheckoutBrand } from "@/features/branding/checkout-brand";
 import type { CheckoutTheme } from "@/features/checkouts/queries";
 import { LogoDropzone } from "@/components/logo-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -67,10 +68,14 @@ export function CheckoutThemeSheet({
   checkoutId,
   checkoutName,
   theme,
+  storeName,
+  inheritedLogoUrl,
 }: {
   checkoutId: string;
   checkoutName: string;
   theme: CheckoutTheme;
+  storeName: string;
+  inheritedLogoUrl: string | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const [primaryColor, setPrimaryColor] = React.useState(theme.primaryColor);
@@ -130,8 +135,8 @@ export function CheckoutThemeSheet({
             onChange={setLogoUrl}
           />
           <p className="text-muted-foreground -mt-2 text-xs">
-            Aparece sempre centralizada no banner. Sem logo, mostra o nome da
-            loja.
+            Aparece centralizada neste checkout. Sem uma logo própria, usa a
+            identidade geral definida no Editor de checkout.
           </p>
 
           <ColorField
@@ -160,24 +165,13 @@ export function CheckoutThemeSheet({
             <p className="text-muted-foreground text-xs">Pré-visualização</p>
 
             <div
-              className="flex h-14 items-center justify-center rounded-lg"
+              className="flex h-[65px] items-center justify-center rounded-lg px-4"
               style={{ backgroundColor: bannerColor }}
             >
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt="Logo"
-                  className="h-8 max-w-[70%] object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <span className="text-sm font-black text-white">
-                  {checkoutName}
-                </span>
-              )}
+              <CheckoutBrand
+                logoUrl={logoUrl || inheritedLogoUrl}
+                storeName={storeName}
+              />
             </div>
 
             <div

@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import { workspaceBranding } from "@/database/schema";
@@ -21,23 +22,25 @@ export const DEFAULT_BRANDING: WorkspaceBranding = {
 };
 
 /** Identidade da loja usada no checkout público. Sem configuração, cai no padrão. */
-export async function getWorkspaceBranding(): Promise<WorkspaceBranding> {
-  if (!isDatabaseConfigured()) return DEFAULT_BRANDING;
+export const getWorkspaceBranding = cache(
+  async (): Promise<WorkspaceBranding> => {
+    if (!isDatabaseConfigured()) return DEFAULT_BRANDING;
 
-  const db = getDb();
-  const workspaceId = await getOrCreateDefaultWorkspace();
+    const db = getDb();
+    const workspaceId = await getOrCreateDefaultWorkspace();
 
-  const [row] = await db
-    .select({
-      storeName: workspaceBranding.storeName,
-      logoUrl: workspaceBranding.logoUrl,
-      supportEmail: workspaceBranding.supportEmail,
-      country: workspaceBranding.country,
-      currency: workspaceBranding.currency,
-    })
-    .from(workspaceBranding)
-    .where(eq(workspaceBranding.workspaceId, workspaceId))
-    .limit(1);
+    const [row] = await db
+      .select({
+        storeName: workspaceBranding.storeName,
+        logoUrl: workspaceBranding.logoUrl,
+        supportEmail: workspaceBranding.supportEmail,
+        country: workspaceBranding.country,
+        currency: workspaceBranding.currency,
+      })
+      .from(workspaceBranding)
+      .where(eq(workspaceBranding.workspaceId, workspaceId))
+      .limit(1);
 
-  return row ?? DEFAULT_BRANDING;
-}
+    return row ?? DEFAULT_BRANDING;
+  },
+);
