@@ -46,6 +46,39 @@ describe("email campaign template", () => {
     expect(html).not.toContain("{{");
   });
 
+  it("uses the workspace logo in the header when configured", () => {
+    const html = buildCampaignHtml({
+      body: "Olá {{NOME}}.",
+      vars,
+      brand: {
+        name: "Loja da Maria",
+        logoUrl: "https://cdn.example.com/logo.png",
+      },
+    });
+
+    expect(html).toContain('src="https://cdn.example.com/logo.png"');
+    expect(html).toContain('alt="Loja da Maria"');
+    expect(html).not.toContain("PCG VIP");
+  });
+
+  it("falls back to the brand name when the logo url is unsafe or absent", () => {
+    const withoutLogo = buildCampaignHtml({
+      body: "Olá {{NOME}}.",
+      vars,
+      brand: { name: "Loja da Maria", logoUrl: null },
+    });
+    expect(withoutLogo).toContain("Loja da Maria");
+    expect(withoutLogo).not.toContain("<img");
+
+    const unsafeLogo = buildCampaignHtml({
+      body: "Olá {{NOME}}.",
+      vars,
+      brand: { name: "Loja da Maria", logoUrl: "javascript:alert(1)" },
+    });
+    expect(unsafeLogo).not.toContain("<img");
+    expect(unsafeLogo).toContain("Loja da Maria");
+  });
+
   it("accepts a dynamic checkout link and rejects unsafe protocols", () => {
     expect(isValidCtaUrlTemplate("{{CHECKOUT_URL}}")).toBe(true);
     expect(isValidCtaUrlTemplate("https://example.com/p/{{PEDIDO}}")).toBe(

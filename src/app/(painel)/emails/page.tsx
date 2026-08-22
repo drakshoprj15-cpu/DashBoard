@@ -19,6 +19,7 @@ import {
   getSegmentRecipients,
 } from "@/features/emails/segments";
 import { isResendConfigured } from "@/features/emails/resend-provider";
+import { getEmailBrand } from "@/features/emails/brand";
 import { CampaignForm } from "@/features/emails/campaign-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +55,7 @@ export default async function EmailsPage({
     .filter((value) => UUID_REGEX.test(value))
     .slice(0, 500);
 
-  const [counts, customRecipients, overview, pendingRecipients] =
+  const [counts, customRecipients, overview, pendingRecipients, brand] =
     await Promise.all([
       getSegmentCounts(),
       customerIds.length > 0
@@ -64,6 +65,7 @@ export default async function EmailsPage({
       getSegmentRecipients("pending").then((recipients) =>
         recipients.slice(0, 25),
       ),
+      getEmailBrand(),
     ]);
   const resendReady = isResendConfigured();
   const summary = [
@@ -132,6 +134,7 @@ export default async function EmailsPage({
         customerIdsParam={customerIds.join(",")}
         pendingRecipients={pendingRecipients}
         initialDispatchId={crypto.randomUUID()}
+        brand={brand}
       />
 
       <CampaignHistory campaigns={overview.history} />

@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/utmify",
-      "schedule": "* * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }

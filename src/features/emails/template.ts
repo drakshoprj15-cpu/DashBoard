@@ -1,5 +1,10 @@
 export const EMAIL_BRAND_NAME = "PCG VIP";
 
+export interface EmailBrand {
+  name: string;
+  logoUrl?: string | null;
+}
+
 export const DEFAULT_CAMPAIGN_TEMPLATE = {
   subject: "{{PRIMEIRO_NOME}}, confirme os dados da sua encomenda",
   preheader:
@@ -110,6 +115,7 @@ export function buildCampaignHtml(input: {
   ctaLabel?: string;
   ctaUrl?: string;
   vars: CampaignTemplateVars;
+  brand?: EmailBrand;
 }): string {
   const renderedBody = renderCampaignText(input.body, input.vars);
   const paragraphs = escapeHtml(renderedBody)
@@ -145,11 +151,20 @@ export function buildCampaignHtml(input: {
     ? `<br><strong>Valor:</strong> ${escapeHtml(input.vars.valor)}`
     : "";
 
+  const brandName = input.brand?.name?.trim() || EMAIL_BRAND_NAME;
+  const brandLogoUrl = input.brand?.logoUrl?.trim();
+  // Clientes de e-mail bloqueiam imagens por padrão: o `alt` garante que a
+  // marca continua legível mesmo com a logo não carregada.
+  const brandHeader =
+    brandLogoUrl && validHttpUrl(brandLogoUrl)
+      ? `<img src="${escapeHtml(brandLogoUrl)}" alt="${escapeHtml(brandName)}" width="160" style="display:block;margin:0 0 12px;max-width:160px;height:auto;border:0">`
+      : `<p style="margin:0 0 8px;color:#cc0000;font-size:20px;font-weight:700">${escapeHtml(brandName)}</p>`;
+
   return `<!doctype html><html lang="pt"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:14px">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
 <div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #cc0000">
 <div style="padding:34px 32px 30px">
-<p style="margin:0 0 8px;color:#cc0000;font-size:20px;font-weight:700">${EMAIL_BRAND_NAME}</p>
+${brandHeader}
 <p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
 <div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">
@@ -159,7 +174,7 @@ ${checkoutButton}
 <p style="margin:0;line-height:1.65">Depois da confirmacao, o pedido podera prosseguir normalmente.</p>
 </div>
 <div style="border-top:1px solid #e5e7eb;padding:20px 32px;text-align:left">
-<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${EMAIL_BRAND_NAME}<br>Este e-mail foi enviado porque existe uma compra iniciada associada a este endereco.<br>Para deixar de receber, responda com "REMOVER".</p>
+<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${escapeHtml(brandName)}<br>Este e-mail foi enviado porque existe uma compra iniciada associada a este endereco.<br>Para deixar de receber, responda com "REMOVER".</p>
 </div>
 </div></body></html>`;
 }

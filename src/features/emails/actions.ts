@@ -30,6 +30,7 @@ import {
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
+import { getEmailBrand } from "@/features/emails/brand";
 import { company } from "@/lib/company";
 import { getAppUrl } from "@/lib/app-url";
 import { getSession } from "@/lib/auth/session";
@@ -205,6 +206,7 @@ export async function sendCampaignAction(
     mode,
   } = parsed.data;
   const appUrl = getAppUrl();
+  const brand = await getEmailBrand();
 
   if (mode === "test") {
     if (!testEmail) {
@@ -221,6 +223,7 @@ export async function sendCampaignAction(
         ctaLabel,
         ctaUrl,
         vars,
+        brand,
       }),
       replyTo: company.email,
       idempotencyKey: `test/${dispatchId}`,
@@ -308,6 +311,7 @@ export async function sendCampaignAction(
             ctaLabel,
             ctaUrl,
             vars,
+            brand,
           }),
           replyTo: company.email,
         };

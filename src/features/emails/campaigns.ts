@@ -8,6 +8,7 @@ import {
   type CampaignTemplateContent,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
+import { getEmailBrand } from "@/features/emails/brand";
 import { getAppUrl } from "@/lib/app-url";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
 
@@ -78,6 +79,7 @@ export async function getEmailDashboardOverview(): Promise<EmailDashboardOvervie
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
   const appUrl = getAppUrl();
+  const brand = await getEmailBrand();
   const [statsRows, historyRows] = await Promise.all([
     db
       .select({
@@ -149,6 +151,7 @@ export async function getEmailDashboardOverview(): Promise<EmailDashboardOvervie
           ctaLabel: content.ctaLabel ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
           ctaUrl: content.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
           vars: previewVars(appUrl),
+          brand,
         }),
         status: row.status,
         createdAt: row.createdAt.toISOString(),

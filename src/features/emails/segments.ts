@@ -1,4 +1,14 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
@@ -126,13 +136,31 @@ export async function getSegmentRecipients(
 
   const statuses = STATUS_BY_SEGMENT[segment];
 
+  // "Compras pagas" também inclui clientes com histórico de compra
+  // importado (first_purchase_at preenchido) sem pedido correspondente na
+  // tabela `orders` — caso de importações antigas de compradores reais.
+  const membershipCondition =
+    segment === "paid"
+      ? or(
+          inArray(orders.status, statuses as never),
+          isNotNull(customers.firstPurchaseAt),
+        )
+      : statuses
+        ? inArray(orders.status, statuses as never)
+        : undefined;
+
+  const orderCountExpr =
+    segment === "paid"
+      ? sql<number>`count(*) filter (where ${orders.status} in ('paid','shipped','delivered'))::int`
+      : sql<number>`count(${orders.id})::int`;
+
   const rows = await db
     .select({
       id: customers.id,
       email: customers.email,
       firstName: customers.firstName,
       lastName: customers.lastName,
-      orderCount: sql<number>`count(${orders.id})::int`,
+      orderCount: orderCountExpr,
       totalSpentCents: sql<number>`coalesce(sum(case when ${orders.status} in ('paid','shipped','delivered') then ${orders.totalCents} else 0 end), 0)::int`,
     })
     .from(customers)
@@ -143,7 +171,7 @@ export async function getSegmentRecipients(
         isNull(customers.deletedAt),
         eq(customers.marketingOptOut, false),
         eq(customers.isBlocked, false),
-        statuses ? inArray(orders.status, statuses as never) : undefined,
+        membershipCondition,
       ),
     )
     .groupBy(

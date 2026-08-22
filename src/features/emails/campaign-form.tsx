@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   AlertCircle,
   Check,
@@ -38,6 +39,7 @@ import {
   DEFAULT_CAMPAIGN_TEMPLATE,
   renderCampaignText,
   type CampaignTemplateVars,
+  type EmailBrand,
 } from "@/features/emails/template";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +99,7 @@ export function CampaignForm({
   customerIdsParam,
   pendingRecipients,
   initialDispatchId,
+  brand,
 }: {
   counts: Record<string, number>;
   resendReady: boolean;
@@ -104,6 +107,7 @@ export function CampaignForm({
   customerIdsParam?: string;
   pendingRecipients: Recipient[];
   initialDispatchId: string;
+  brand: EmailBrand;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
@@ -227,6 +231,7 @@ export function CampaignForm({
     ctaLabel,
     ctaUrl,
     vars: previewVars,
+    brand,
   });
 
   function selectAllPending() {
@@ -686,9 +691,19 @@ export function CampaignForm({
 
             <div className="grid items-start gap-6 border-t pt-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(460px,1.1fr)]">
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <WandSparkles className="text-primary size-4" />
-                  <h3 className="text-sm font-semibold">Personalizar e-mail</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <WandSparkles className="text-primary size-4" />
+                    <h3 className="text-sm font-semibold">
+                      Personalizar e-mail
+                    </h3>
+                  </div>
+                  <Link
+                    href="/configuracoes"
+                    className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
+                  >
+                    {brand.logoUrl ? "Trocar logo" : "Adicionar logo"}
+                  </Link>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Assunto</Label>
