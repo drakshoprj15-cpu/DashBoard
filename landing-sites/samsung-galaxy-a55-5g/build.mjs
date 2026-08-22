@@ -198,11 +198,17 @@ replaceOnce(
 const { brand } = config;
 const brandName =
   brand.logoAlt || `${brand.wordMark} ${brand.wordMarkAccent}`.trim();
-const headerBrand =
-  `<span aria-label="${escapeAttribute(brandName)}" style="display:inline-block;color:#fff;font-size:clamp(1.8rem,7vw,2.4rem);font-weight:900;letter-spacing:-0.055em;line-height:1">` +
-  `${brand.wordMark} <span style="font-weight:700">${brand.wordMarkAccent}</span>` +
-  `</span>`;
-const footerBrand = `<span class="text-primaria-viva">${brand.wordMark}</span><span class="text-white"> ${brand.wordMarkAccent}</span>`;
+const headerBrand = brand.logoUrl
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;width:auto;height:auto;max-width:min(82vw,320px);max-height:84px;object-fit:contain;margin:0 auto">`
+  : `<span aria-label="${escapeAttribute(brandName)}" style="display:inline-block;color:#fff;font-size:clamp(1.8rem,7vw,2.4rem);font-weight:900;letter-spacing:-0.055em;line-height:1">` +
+    `${brand.wordMark} <span style="font-weight:700">${brand.wordMarkAccent}</span>` +
+    `</span>`;
+const headerTagline = brand.logoUrl
+  ? ""
+  : '<span class="block text-center text-[0.6rem] font-semibold uppercase tracking-[2px]" style="color:rgba(255,255,255,0.82)">Portugal</span>';
+const footerBrand = brand.logoUrl
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;width:auto;height:auto;max-width:min(64vw,240px);max-height:72px;object-fit:contain">`
+  : `<span class="text-primaria-viva">${brand.wordMark}</span><span class="text-white"> ${brand.wordMarkAccent}</span>`;
 
 replaceOnce(
   '<header class="sticky top-0 z-[100] bg-white shadow-[0_1px_0_#E3E6EC]">',
@@ -228,8 +234,8 @@ replaceOnce(
 );
 replaceOnce(
   '<span class="block text-center text-[0.6rem] font-medium uppercase tracking-[2px] text-tinta-suave">Portugal</span>',
-  '<span class="block text-center text-[0.6rem] font-semibold uppercase tracking-[2px]" style="color:rgba(255,255,255,0.82)">Portugal</span>',
-  "subtítulo claro no cabeçalho",
+  headerTagline,
+  "subtítulo condicional no cabeçalho",
 );
 replaceOnce(
   "A tua loja de brinquedos online em Portugal. Os brinquedos mais vendidos, com entrega rápida e pagamento seguro por MB WAY e Multibanco.",
