@@ -19,7 +19,7 @@ export function CheckoutBrand({
 
   if (!logoUrl || failedUrl === logoUrl) {
     return (
-      <span className="max-w-[122px] truncate text-[25px] leading-none font-black tracking-[-0.045em] text-white">
+      <span className="max-w-[122px] truncate text-[20px] leading-[25px] font-black tracking-[-0.045em] whitespace-nowrap text-white">
         {resolvedName}
       </span>
     );
