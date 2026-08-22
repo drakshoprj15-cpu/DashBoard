@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
 import {
   customerActivities,
   customerAddresses,
+  customerConsents,
   customerNotes,
   customerSegments,
   customerTagAssignments,
@@ -17,6 +18,10 @@ import {
 } from "@/database/schema";
 import { recordAuditLog } from "@/features/audit/log";
 import { requireCustomerPermission } from "@/features/customers/access";
+import {
+  storedNormalizedCustomerEmail,
+  storedNormalizedCustomerPhone,
+} from "@/features/customers/customer-sql";
 import {
   normalizeDocument,
   normalizeEmail,
@@ -41,7 +46,6 @@ const customerSchema = z.object({
   note: z.string().trim().max(4000).optional().default(""),
   acceptsEmail: z.boolean().default(false),
   acceptsWhatsapp: z.boolean().default(false),
-  forceCreate: z.boolean().default(false),
 });
 
 function value(formData: FormData, key: string): string {
@@ -70,7 +74,6 @@ export async function createCustomerAction(
     note: value(formData, "note"),
     acceptsEmail: formData.get("acceptsEmail") === "true",
     acceptsWhatsapp: formData.get("acceptsWhatsapp") === "true",
-    forceCreate: formData.get("forceCreate") === "true",
   });
   if (!parsed.success) {
     return {
@@ -95,17 +98,21 @@ export async function createCustomerAction(
     return { ok: false, error: "CPF/NIF inválido." };
 
   const db = getDb();
-  const duplicateConditions = [eq(customers.normalizedEmail, normalizedEmail)];
+  const duplicateConditions = [
+    sql`${storedNormalizedCustomerEmail} = ${normalizedEmail}`,
+  ];
   if (normalizedPhone)
-    duplicateConditions.push(eq(customers.normalizedPhone, normalizedPhone));
+    duplicateConditions.push(
+      sql`${storedNormalizedCustomerPhone} = ${normalizedPhone}`,
+    );
   if (normalizedDocument)
     duplicateConditions.push(eq(customers.document, normalizedDocument));
 
   const duplicateCandidates = await db
     .select({
       id: customers.id,
-      normalizedEmail: customers.normalizedEmail,
-      normalizedPhone: customers.normalizedPhone,
+      normalizedEmail: storedNormalizedCustomerEmail,
+      normalizedPhone: storedNormalizedCustomerPhone,
       normalizedDocument: customers.document,
     })
     .from(customers)
@@ -123,7 +130,7 @@ export async function createCustomerAction(
     normalizedDocument,
   });
 
-  if (duplicate && !input.forceCreate) {
+  if (duplicate) {
     return {
       ok: false,
       duplicateId: duplicate.id,
@@ -204,14 +211,16 @@ export async function createCustomerAction(
     workspaceId: access.workspaceId,
     actorId: access.userId,
   });
-  await recordAuditLog({
-    action: "customer.note_added",
-    entityType: "customer",
-    entityId: customerId,
-    changes: {},
-    workspaceId: access.workspaceId,
-    actorId: access.userId,
-  });
+  if (input.note) {
+    await recordAuditLog({
+      action: "customer.note_added",
+      entityType: "customer",
+      entityId: customerId,
+      changes: {},
+      workspaceId: access.workspaceId,
+      actorId: access.userId,
+    });
+  }
   revalidatePath("/clientes");
   return { ok: true, customerId, message: "Cliente adicionado com sucesso." };
 }
@@ -496,17 +505,21 @@ export async function updateCustomerAction(
 
   const changedIdentities = [];
   if (normalizedEmail)
-    changedIdentities.push(eq(customers.normalizedEmail, normalizedEmail));
+    changedIdentities.push(
+      sql`${storedNormalizedCustomerEmail} = ${normalizedEmail}`,
+    );
   if (normalizedPhone)
-    changedIdentities.push(eq(customers.normalizedPhone, normalizedPhone));
+    changedIdentities.push(
+      sql`${storedNormalizedCustomerPhone} = ${normalizedPhone}`,
+    );
   if (normalizedDocument)
     changedIdentities.push(eq(customers.document, normalizedDocument));
   if (changedIdentities.length > 0) {
     const identityMatches = await db
       .select({
         id: customers.id,
-        normalizedEmail: customers.normalizedEmail,
-        normalizedPhone: customers.normalizedPhone,
+        normalizedEmail: storedNormalizedCustomerEmail,
+        normalizedPhone: storedNormalizedCustomerPhone,
         normalizedDocument: customers.document,
       })
       .from(customers)
@@ -567,9 +580,14 @@ export async function anonymizeCustomersAction(
   customerIds: string[],
 ): Promise<CustomerMutationResult> {
   const access = await requireCustomerPermission("delete");
-  const ids = Array.from(new Set(customerIds)).slice(0, 100);
+  const ids = Array.from(new Set(customerIds));
   if (ids.length === 0)
     return { ok: false, error: "Nenhum cliente selecionado." };
+  if (ids.length > 500)
+    return {
+      ok: false,
+      error: "Selecione no máximo 500 clientes por vez.",
+    };
   const db = getDb();
   const valid = await db
     .select({ id: customers.id })
@@ -581,20 +599,58 @@ export async function anonymizeCustomersAction(
         isNull(customers.deletedAt),
       ),
     );
+  if (valid.length === 0)
+    return { ok: false, error: "Nenhum cliente válido selecionado." };
+
+  const validIds = valid.map((customer) => customer.id);
   const now = new Date();
-  for (const customer of valid) {
-    const token = crypto.randomUUID();
-    await db
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(customerAddresses)
+      .where(
+        and(
+          eq(customerAddresses.workspaceId, access.workspaceId),
+          inArray(customerAddresses.customerId, validIds),
+        ),
+      );
+    await tx
+      .delete(customerConsents)
+      .where(
+        and(
+          eq(customerConsents.workspaceId, access.workspaceId),
+          inArray(customerConsents.customerId, validIds),
+        ),
+      );
+    await tx
+      .delete(customerNotes)
+      .where(
+        and(
+          eq(customerNotes.workspaceId, access.workspaceId),
+          inArray(customerNotes.customerId, validIds),
+        ),
+      );
+    await tx
+      .delete(customerTagAssignments)
+      .where(
+        and(
+          eq(customerTagAssignments.workspaceId, access.workspaceId),
+          inArray(customerTagAssignments.customerId, validIds),
+        ),
+      );
+
+    await tx
       .update(customers)
       .set({
         firstName: "Cliente",
         lastName: "anonimizado",
-        email: `anonimizado+${token}@privacy.infinity.local`,
-        normalizedEmail: `anonimizado+${token}@privacy.infinity.local`,
+        email: sql<string>`'anonimizado+' || ${customers.id}::text || '@privacy.infinity.local'`,
+        normalizedEmail: sql<string>`'anonimizado+' || ${customers.id}::text || '@privacy.infinity.local'`,
         emailStatus: "unavailable",
         phone: null,
         normalizedPhone: null,
+        phoneCountryCode: null,
         document: null,
+        country: null,
         notes: null,
         tags: [],
         marketingOptOut: true,
@@ -607,11 +663,11 @@ export async function anonymizeCustomersAction(
       })
       .where(
         and(
-          eq(customers.id, customer.id),
+          inArray(customers.id, validIds),
           eq(customers.workspaceId, access.workspaceId),
         ),
       );
-  }
+  });
   await recordAuditLog({
     action: "customer.anonymized",
     entityType: "customer",

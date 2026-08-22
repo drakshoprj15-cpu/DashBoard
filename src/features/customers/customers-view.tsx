@@ -68,9 +68,52 @@ const CUSTOMER_TYPE_LABELS: Record<string, string> = {
   no_purchase: "Clientes sem compra confirmada",
 };
 
+const VALID_CUSTOMER_TYPES = new Set([
+  "all",
+  ...Object.keys(CUSTOMER_TYPE_LABELS),
+]);
+
+const FILTER_LABELS: Record<string, string> = {
+  orderStatus: "Status",
+  origin: "Origem",
+  country: "País",
+  state: "Estado",
+  city: "Cidade",
+  hasEmail: "Possui e-mail",
+  hasPhone: "Possui telefone",
+  emailValid: "E-mail válido",
+  phoneValid: "Telefone válido",
+  acceptsCommunication: "Aceita comunicações",
+  hasAbandoned: "Carrinho abandonado",
+  hasPending: "Pedido pendente",
+  from: "Primeiro contato desde",
+  to: "Primeiro contato até",
+  lastOrderFrom: "Último pedido desde",
+  lastOrderTo: "Último pedido até",
+  minOrders: "Pedidos mínimos",
+  maxOrders: "Pedidos máximos",
+  minSpent: "Gasto mínimo",
+  maxSpent: "Gasto máximo",
+};
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  paid: "Pago",
+  created: "Criado",
+  awaiting_payment: "Aguardando pagamento",
+  processing: "Processando",
+  refused: "Recusado",
+  cancelled: "Cancelado",
+  expired: "Expirado",
+  refunded: "Reembolsado",
+  chargeback: "Chargeback",
+};
+
 function activeFilterLabel(key: string, value: string): string {
   if (key === "type") return CUSTOMER_TYPE_LABELS[value] ?? value;
-  return `${key}: ${value}`;
+  if (key === "orderStatus")
+    return `Status: ${ORDER_STATUS_LABELS[value] ?? value}`;
+  if (value === "true") return FILTER_LABELS[key] ?? key;
+  return `${FILTER_LABELS[key] ?? key}: ${value}`;
 }
 
 function selectClass() {
@@ -95,11 +138,13 @@ function StatCard({
           <Icon className="size-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-muted-foreground truncate text-[11px]">{label}</p>
+          <p className="text-muted-foreground text-[11px] leading-tight">
+            {label}
+          </p>
           <p className="text-lg leading-tight font-bold tracking-tight">
             {value}
           </p>
-          <p className="text-muted-foreground truncate text-[10px]">
+          <p className="text-muted-foreground text-[10px] leading-tight">
             {description}
           </p>
         </div>
@@ -129,9 +174,18 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
   const [bulkPending, setBulkPending] = React.useState(false);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-  const pageSize = Number(searchParams.get("pageSize") ?? "20") || 20;
-  const type = searchParams.get("type") ?? "all";
-  const sort = searchParams.get("sort") ?? "activity_desc";
+  const requestedPageSize = Number(searchParams.get("pageSize") ?? "20");
+  const pageSize = PAGE_SIZES.includes(
+    requestedPageSize as (typeof PAGE_SIZES)[number],
+  )
+    ? requestedPageSize
+    : 20;
+  const requestedType = searchParams.get("type") ?? "all";
+  const type = VALID_CUSTOMER_TYPES.has(requestedType) ? requestedType : "all";
+  const requestedSort = searchParams.get("sort") ?? "activity_desc";
+  const sort = SORT_OPTIONS.some(([value]) => value === requestedSort)
+    ? requestedSort
+    : "activity_desc";
   const queryString = React.useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(page));
@@ -163,6 +217,14 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
     return () => window.clearTimeout(timeout);
   }, [search, searchParams, updateParams]);
 
+  const urlSearch = searchParams.get("q") ?? "";
+  const previousUrlSearch = React.useRef(urlSearch);
+  React.useEffect(() => {
+    if (urlSearch === previousUrlSearch.current) return;
+    previousUrlSearch.current = urlSearch;
+    setSearch(urlSearch);
+  }, [urlSearch]);
+
   React.useEffect(() => {
     function focusSearch(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -187,6 +249,11 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
         if (!response.ok) throw new Error(String(response.status));
         const json = (await response.json()) as CustomerListResponse;
         if (!active) return;
+        const lastPage = Math.max(1, Math.ceil(json.total / pageSize));
+        if (page > lastPage) {
+          updateParams({ page: lastPage }, false);
+          return;
+        }
         setData(json);
         setStatus("success");
       } catch (error) {
@@ -201,10 +268,29 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
       active = false;
       controller.abort();
     };
-  }, [queryString, refreshToken]);
+  }, [page, pageSize, queryString, refreshToken, updateParams]);
 
   const rows = data?.rows ?? [];
   const stats = data?.stats;
+  function resolvedFilterLabel(key: string, value: string) {
+    if (key === "productId") {
+      const name = products.find((product) => product.id === value)?.name;
+      return `Produto: ${name ?? value}`;
+    }
+    if (key === "landingPageId") {
+      const name = data?.facets.landingPages.find(
+        (pageOption) => pageOption.id === value,
+      )?.name;
+      return `Landing page: ${name ?? value}`;
+    }
+    if (key === "campaignId") {
+      const name = data?.facets.campaigns.find(
+        (campaign) => campaign.id === value,
+      )?.name;
+      return `Campanha: ${name ?? value}`;
+    }
+    return activeFilterLabel(key, value);
+  }
   const activeFilters = [
     ["type", type !== "all" ? type : ""],
     ["orderStatus", searchParams.get("orderStatus") ?? ""],
@@ -277,7 +363,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
     anchor.href = url;
     anchor.download = `clientes-${new Date().toISOString().slice(0, 10)}.csv`;
     anchor.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
     toast.success("Exportação concluída.");
   }
 
@@ -511,9 +597,12 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Atualizar dados"
+                disabled={status === "loading"}
                 onClick={() => setRefreshToken((token) => token + 1)}
               >
-                <RefreshCw />
+                <RefreshCw
+                  className={status === "loading" ? "animate-spin" : undefined}
+                />
               </Button>
             </div>
           </div>
@@ -766,6 +855,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                 className="h-9 text-xs"
               />
               <Input
+                aria-label="Mínimo de pedidos"
                 type="number"
                 min="0"
                 placeholder="Mínimo de pedidos"
@@ -776,6 +866,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                 className="h-9 text-xs"
               />
               <Input
+                aria-label="Máximo de pedidos"
                 type="number"
                 min="0"
                 placeholder="Máximo de pedidos"
@@ -786,6 +877,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                 className="h-9 text-xs"
               />
               <Input
+                aria-label="Gasto mínimo"
                 type="number"
                 min="0"
                 step="0.01"
@@ -797,6 +889,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                 className="h-9 text-xs"
               />
               <Input
+                aria-label="Gasto máximo"
                 type="number"
                 min="0"
                 step="0.01"
@@ -830,7 +923,7 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
                   className="bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px]"
                   onClick={() => updateParams({ [key]: "" })}
                 >
-                  {activeFilterLabel(key, value)} <X className="size-3" />
+                  {resolvedFilterLabel(key, value)} <X className="size-3" />
                 </button>
               ))}
             </div>

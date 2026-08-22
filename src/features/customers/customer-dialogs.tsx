@@ -54,12 +54,23 @@ export function AddCustomerDialog({
   const [duplicate, setDuplicate] = React.useState<string | null>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
 
-  function submit(forceCreate = false) {
+  function resetDialog() {
+    setDuplicate(null);
+    formRef.current?.reset();
+    setAcceptsEmail(false);
+    setAcceptsWhatsapp(false);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) resetDialog();
+    onOpenChange(nextOpen);
+  }
+
+  function submit() {
     if (!formRef.current) return;
     const formData = new FormData(formRef.current);
     formData.set("acceptsEmail", String(acceptsEmail));
     formData.set("acceptsWhatsapp", String(acceptsWhatsapp));
-    formData.set("forceCreate", String(forceCreate));
     startTransition(async () => {
       const result = await createCustomerAction(formData);
       if (result.duplicateId) {
@@ -72,17 +83,14 @@ export function AddCustomerDialog({
         return;
       }
       toast.success(result.message);
-      setDuplicate(null);
-      formRef.current?.reset();
-      setAcceptsEmail(false);
-      setAcceptsWhatsapp(false);
+      resetDialog();
       onOpenChange(false);
       onCreated(result.customerId);
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Adicionar cliente</DialogTitle>
@@ -94,9 +102,10 @@ export function AddCustomerDialog({
         <form
           ref={formRef}
           className="grid gap-4 overflow-y-auto pr-1 sm:grid-cols-2"
+          onChange={() => duplicate && setDuplicate(null)}
           onSubmit={(event) => {
             event.preventDefault();
-            submit(false);
+            submit();
           }}
         >
           <div className="space-y-1.5">
@@ -197,17 +206,13 @@ export function AddCustomerDialog({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => onDuplicate(duplicate)}
+                onClick={() => {
+                  const duplicateId = duplicate;
+                  resetDialog();
+                  onDuplicate(duplicateId);
+                }}
               >
                 Abrir cliente existente
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => submit(true)}
-              >
-                Criar mesmo assim
               </Button>
             </div>
           </div>
@@ -216,15 +221,11 @@ export function AddCustomerDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
           >
             Cancelar
           </Button>
-          <Button
-            type="button"
-            disabled={pending}
-            onClick={() => submit(false)}
-          >
+          <Button type="button" disabled={pending} onClick={submit}>
             {pending ? "Salvando..." : "Adicionar cliente"}
           </Button>
         </DialogFooter>
@@ -284,6 +285,19 @@ export function ImportCustomersDialog({
     null,
   );
 
+  function resetDialog() {
+    setFile(null);
+    setClassification("contact");
+    setProductChoice("spreadsheet");
+    setCustomProductName("");
+    setResult(null);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) resetDialog();
+    onOpenChange(nextOpen);
+  }
+
   function downloadErrors() {
     const errors = Array.isArray(result?.errors)
       ? (result.errors as Array<{ line?: unknown; message?: unknown }>)
@@ -303,7 +317,7 @@ export function ImportCustomersDialog({
     anchor.href = url;
     anchor.download = "erros-importacao-clientes.csv";
     anchor.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   async function submit() {
@@ -325,7 +339,12 @@ export function ImportCustomersDialog({
       if (!response.ok && response.status !== 207)
         throw new Error(String(json.error ?? "Falha"));
       setResult(json);
-      toast.success("Importação concluída.");
+      const invalid = Number(json.invalid ?? 0);
+      if (response.status === 207 || invalid > 0)
+        toast.warning(
+          `Importação concluída com ${invalid} linha(s) inválida(s). Baixe o arquivo de erros para revisar.`,
+        );
+      else toast.success("Importação concluída.");
       onImported();
     } catch (error) {
       toast.error(
@@ -337,7 +356,7 @@ export function ImportCustomersDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Importar clientes</DialogTitle>
@@ -529,7 +548,7 @@ export function ImportCustomersDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
           >
             Fechar
           </Button>

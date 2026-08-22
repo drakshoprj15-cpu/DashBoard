@@ -75,7 +75,18 @@ function optionArray(value: unknown): Array<{ id: string; name: string }> {
 
 function customerBaseCte(workspaceId: string) {
   return sql`
-    with order_stats as (
+    with workspace_settings as (
+      select coalesce(
+        (
+          select wb.currency
+          from workspace_branding wb
+          where wb.workspace_id = ${workspaceId}
+          limit 1
+        ),
+        'EUR'
+      ) as currency
+    ),
+    order_stats as (
       select
         o.customer_id,
         count(*)::int as order_count,
@@ -190,7 +201,7 @@ function customerBaseCte(workspaceId: string) {
         coalesce(cs.abandoned_carts, 0)::int as abandoned_carts,
         os.first_order_at,
         os.last_order_at,
-        coalesce(os.currency, 'BRL') as currency,
+        coalesce(os.currency, ws.currency) as currency,
         greatest(
           0,
           coalesce(ap.approved_cents, 0) -
@@ -198,6 +209,7 @@ function customerBaseCte(workspaceId: string) {
           coalesce(dp.chargeback_cents, 0)
         )::bigint as total_spent_cents
       from customers c
+      cross join workspace_settings ws
       left join order_stats os on os.customer_id = c.id
       left join order_products op on op.customer_id = c.id
       left join approved_payments ap on ap.customer_id = c.id
@@ -411,7 +423,7 @@ function mapRow(row: RawRow, canViewSensitiveData = true): CustomerListRow {
     averageTicketCents:
       paidCount > 0 ? Math.round(totalSpentCents / paidCount) : 0,
     approvalRate: orderCount > 0 ? paidCount / orderCount : 0,
-    currency: stringValue(row.currency, "BRL"),
+    currency: stringValue(row.currency, "EUR"),
     firstOrderAt: isoValue(row.first_order_at),
     lastOrderAt,
     lastActivityAt,
@@ -467,7 +479,7 @@ export async function listCustomers(
         count(*) filter (where b.pending_count > 0)::int as pending,
         count(*) filter (where b.refused_count > 0)::int as refused,
         coalesce(sum(b.total_spent_cents), 0)::bigint as total_spent_cents,
-        coalesce((array_agg(b.currency order by b.paid_count desc))[1], 'BRL') as currency
+        coalesce((array_agg(b.currency order by b.paid_count desc))[1], 'EUR') as currency
       from base b
     `),
       db.execute(sql`${base}
@@ -506,7 +518,7 @@ export async function listCustomers(
     pending: numberValue(statsRow.pending),
     refused: numberValue(statsRow.refused),
     totalSpentCents: numberValue(statsRow.total_spent_cents),
-    currency: stringValue(statsRow.currency, "BRL"),
+    currency: stringValue(statsRow.currency, "EUR"),
   };
   const facets: CustomerFacets = {
     countries: stringArray(facetsRow.countries).sort(),
