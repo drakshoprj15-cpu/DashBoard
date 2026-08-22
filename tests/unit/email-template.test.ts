@@ -63,6 +63,7 @@ describe("email campaign template", () => {
     });
 
     expect(html).toContain("Loja &lt;Principal&gt;");
+    expect(html).toContain('color:#cc0000">Loja &lt;Principal&gt;</p>');
     expect(html).not.toContain("PCDIGA");
     expect(html).not.toContain("cdn.example.com/logo.png");
     expect(html).not.toContain("<img");

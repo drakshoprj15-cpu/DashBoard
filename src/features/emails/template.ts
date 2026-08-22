@@ -170,7 +170,7 @@ export function buildCampaignHtml(input: {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
 <div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #cc0000">
 <div style="padding:34px 32px 30px">
-${headerName ? `<p style="margin:0 0 10px;font-size:18px;font-weight:700;line-height:1.3;color:#111827">${escapeHtml(headerName)}</p>` : ""}
+${headerName ? `<p style="margin:0 0 10px;font-size:18px;font-weight:700;line-height:1.3;color:#cc0000">${escapeHtml(headerName)}</p>` : ""}
 <p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
 <div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">
