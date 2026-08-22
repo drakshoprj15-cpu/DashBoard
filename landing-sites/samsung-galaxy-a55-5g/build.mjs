@@ -199,8 +199,8 @@ const { brand } = config;
 const brandName =
   brand.logoAlt || `${brand.wordMark} ${brand.wordMarkAccent}`.trim();
 const headerBrand = brand.logoUrl
-  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;width:auto;height:auto;max-width:min(82vw,320px);max-height:84px;object-fit:contain;margin:0 auto">`
-  : `<span aria-label="${escapeAttribute(brandName)}" style="display:inline-block;color:#fff;font-size:clamp(1.8rem,7vw,2.4rem);font-weight:900;letter-spacing:-0.055em;line-height:1">` +
+  ? `<img src="${escapeAttribute(brand.logoUrl)}" alt="${escapeAttribute(brandName)}" style="display:block;width:auto;height:auto;max-width:min(72vw,240px);max-height:40px;object-fit:contain;margin:0 auto">`
+  : `<span aria-label="${escapeAttribute(brandName)}" style="display:inline-block;color:#fff;font-size:1.5rem;font-weight:900;letter-spacing:-0.055em;line-height:1">` +
     `${brand.wordMark} <span style="font-weight:700">${brand.wordMarkAccent}</span>` +
     `</span>`;
 const headerTagline = brand.logoUrl
