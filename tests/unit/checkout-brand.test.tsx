@@ -11,7 +11,10 @@ describe("CheckoutBrand", () => {
   it("usa Minha Loja quando não existe uma logo configurada", () => {
     render(<CheckoutBrand logoUrl={null} storeName="" />);
 
-    expect(screen.getByText("Minha Loja")).toBeTruthy();
+    const fallback = screen.getByText("Minha Loja");
+    expect(fallback).toBeTruthy();
+    expect(fallback.className).toContain("text-[20px]");
+    expect(fallback.className).toContain("leading-[25px]");
     expect(screen.queryByRole("img")).toBeNull();
   });
 
