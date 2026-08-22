@@ -8,6 +8,7 @@ import {
   updateCheckoutThemeAction,
   type CheckoutActionResult,
 } from "@/features/checkouts/actions";
+import { CheckoutBrand } from "@/features/branding/checkout-brand";
 import type { CheckoutTheme } from "@/features/checkouts/queries";
 import { LogoDropzone } from "@/components/logo-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -167,21 +168,10 @@ export function CheckoutThemeSheet({
               className="flex h-[65px] items-center justify-center rounded-lg px-4"
               style={{ backgroundColor: bannerColor }}
             >
-              {logoUrl || inheritedLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl || inheritedLogoUrl || ""}
-                  alt={storeName}
-                  className="h-[25px] w-auto max-w-[122px] object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <span className="text-[25px] leading-none font-black tracking-[-0.045em] text-white">
-                  {storeName || "Minha Loja"}
-                </span>
-              )}
+              <CheckoutBrand
+                logoUrl={logoUrl || inheritedLogoUrl}
+                storeName={storeName}
+              />
             </div>
 
             <div

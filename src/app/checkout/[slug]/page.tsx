@@ -12,15 +12,19 @@ import {
   DEFAULT_CHECKOUT_THEME,
   getPublishedCheckoutBySlug,
 } from "@/features/checkouts/queries";
+import { CheckoutBrand } from "@/features/branding/checkout-brand";
 import { getWorkspaceBranding } from "@/features/branding/queries";
 import {
   listCheckoutVariants,
   pickDefaultVariant,
 } from "@/features/variants/resolve";
 
-export const metadata: Metadata = {
-  title: "Checkout · Minha Loja",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getWorkspaceBranding();
+  const storeName = branding.storeName.trim() || "Minha Loja";
+
+  return { title: `Checkout · ${storeName}` };
+}
 
 /**
  * Checkout público (/checkout/[slug]).
@@ -112,18 +116,7 @@ export default async function CheckoutSlugPage(
             className="flex items-center justify-center"
             aria-label={storeName}
           >
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt={storeName}
-                className="h-[25px] w-auto max-w-[122px] object-contain"
-              />
-            ) : (
-              <span className="text-[25px] leading-none font-black tracking-[-0.045em] text-white">
-                {storeName}
-              </span>
-            )}
+            <CheckoutBrand logoUrl={logoUrl} storeName={storeName} />
           </Link>
         </div>
       </header>

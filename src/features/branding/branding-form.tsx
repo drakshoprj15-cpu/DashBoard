@@ -7,6 +7,7 @@ import {
   updateBrandingAction,
   type BrandingActionResult,
 } from "@/features/branding/actions";
+import { CheckoutBrand } from "@/features/branding/checkout-brand";
 import type { WorkspaceBranding } from "@/features/branding/queries";
 import { LogoDropzone } from "@/components/logo-dropzone";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -76,18 +77,7 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
               className="flex h-[65px] items-center justify-center rounded-lg px-4"
               style={{ backgroundColor: "#e30613" }}
             >
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt={storeName}
-                  className="h-[25px] w-auto max-w-[122px] object-contain"
-                />
-              ) : (
-                <span className="text-[25px] leading-none font-black tracking-[-0.045em] text-white">
-                  {storeName || "Minha Loja"}
-                </span>
-              )}
+              <CheckoutBrand logoUrl={logoUrl} storeName={storeName} />
             </div>
             <p className="text-muted-foreground text-[11px]">
               Área da logo: até 122 × 25 px, centralizada no celular e no
