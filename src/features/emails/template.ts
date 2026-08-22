@@ -1,4 +1,4 @@
-export interface EmailBrand {
+interface LegacyEmailBrand {
   name: string;
   logoUrl?: string | null;
 }
@@ -7,7 +7,6 @@ export const DEFAULT_CAMPAIGN_TEMPLATE = {
   subject: "{{PRIMEIRO_NOME}}, confirme os dados do seu pedido",
   preheader:
     "Retome o seu pedido e confirme os dados de entrega em poucos segundos.",
-  headerName: "Sua Empresa",
   title: "Atualização do seu pedido",
   body: "Olá {{PRIMEIRO_NOME}},\n\nO seu pedido encontra-se pendente de conclusão. Para continuar, confirme os dados no botão abaixo apenas se reconhecer esta compra.",
   articleName: "O seu Produto",
@@ -41,7 +40,6 @@ export interface CampaignTemplateVars {
 
 export interface CampaignTemplateContent {
   body: string;
-  headerName?: string;
   title?: string;
   articleName?: string;
   ctaLabel?: string;
@@ -115,6 +113,7 @@ export function isValidCtaUrlTemplate(value: string): boolean {
 export function buildCampaignHtml(input: {
   body: string;
   preheader?: string;
+  /** Valores antigos são aceitos apenas para não quebrar campanhas salvas. */
   headerName?: string;
   title?: string;
   articleName?: string;
@@ -122,7 +121,8 @@ export function buildCampaignHtml(input: {
   ctaUrl?: string;
   fallbackText?: string;
   vars: CampaignTemplateVars;
-  brand?: EmailBrand;
+  /** A marca visual de campanhas antigas é ignorada intencionalmente. */
+  brand?: LegacyEmailBrand;
 }): string {
   const renderedBody = renderCampaignText(input.body, input.vars);
   const paragraphs = escapeHtml(renderedBody)
@@ -136,20 +136,6 @@ export function buildCampaignHtml(input: {
   const preheader = input.preheader
     ? renderCampaignText(input.preheader, input.vars)
     : "";
-  const headerName = renderCampaignText(
-    input.headerName ?? DEFAULT_CAMPAIGN_TEMPLATE.headerName,
-    input.vars,
-  );
-  const brandName = input.brand?.name?.trim() || headerName;
-  const brandLogoUrl = input.brand?.logoUrl?.trim();
-  // Clientes de e-mail bloqueiam imagens por padrão: o `alt` garante que a
-  // marca continua legível mesmo com a logo não carregada.
-  const header =
-    brandLogoUrl && validHttpUrl(brandLogoUrl)
-      ? `<img src="${escapeHtml(brandLogoUrl)}" alt="${escapeHtml(brandName)}" width="160" style="display:block;margin:0 0 12px;max-width:160px;height:auto;border:0">`
-      : headerName
-        ? `<p style="margin:0 0 8px;color:#cc0000;font-size:20px;font-weight:700">${escapeHtml(headerName)}</p>`
-        : "";
   const title = renderCampaignText(
     input.title ?? DEFAULT_CAMPAIGN_TEMPLATE.title,
     input.vars,
@@ -180,7 +166,6 @@ export function buildCampaignHtml(input: {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${"&#8199;&#65279;&#847; ".repeat(24)}</div>
 <div style="max-width:600px;margin:0 auto;background:#ffffff;border-top:6px solid #cc0000">
 <div style="padding:34px 32px 30px">
-${header}
 <p style="margin:0 0 24px;color:#4b5563;font-size:14px">${escapeHtml(title)}</p>
 ${paragraphs}
 <div style="margin:22px 0 24px;background:#f7f7f7;padding:22px 24px;line-height:1.65">
@@ -190,7 +175,7 @@ ${checkoutButton}
 <p style="margin:0;line-height:1.65">Depois da confirmação, o pedido poderá prosseguir normalmente.</p>
 </div>
 <div style="border-top:1px solid #e5e7eb;padding:20px 32px;text-align:left">
-<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">${headerName ? `${escapeHtml(headerName)}<br>` : ""}Este e-mail foi enviado porque existe uma compra iniciada associada a este endereço.<br>Para deixar de receber, responda a este e-mail com "REMOVER".</p>
+<p style="margin:0;font-size:12px;line-height:1.6;color:#4b5563">Este e-mail foi enviado porque existe uma compra iniciada associada a este endereço.<br>Para deixar de receber, responda a este e-mail com "REMOVER".</p>
 </div>
 </div></body></html>`;
 }

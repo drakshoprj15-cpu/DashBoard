@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   AlertCircle,
   Check,
@@ -39,7 +38,6 @@ import {
   DEFAULT_CAMPAIGN_TEMPLATE,
   renderCampaignText,
   type CampaignTemplateVars,
-  type EmailBrand,
 } from "@/features/emails/template";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -99,7 +97,6 @@ export function CampaignForm({
   customerIdsParam,
   pendingRecipients,
   initialDispatchId,
-  brand,
 }: {
   counts: Record<string, number>;
   resendReady: boolean;
@@ -107,7 +104,6 @@ export function CampaignForm({
   customerIdsParam?: string;
   pendingRecipients: Recipient[];
   initialDispatchId: string;
-  brand: EmailBrand;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
@@ -135,9 +131,6 @@ export function CampaignForm({
   );
   const [preheader, setPreheader] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.preheader,
-  );
-  const [headerName, setHeaderName] = React.useState<string>(
-    brand.name || DEFAULT_CAMPAIGN_TEMPLATE.headerName,
   );
   const [title, setTitle] = React.useState<string>(
     DEFAULT_CAMPAIGN_TEMPLATE.title,
@@ -236,14 +229,12 @@ export function CampaignForm({
   const previewHtml = buildCampaignHtml({
     body,
     preheader,
-    headerName,
     title,
     articleName,
     ctaLabel,
     ctaUrl,
     fallbackText,
     vars: previewVars,
-    brand,
   });
 
   function selectAllPending() {
@@ -703,19 +694,13 @@ export function CampaignForm({
 
             <div className="grid items-start gap-6 border-t pt-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(460px,1.1fr)]">
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <div className="flex items-center gap-2">
                     <WandSparkles className="text-primary size-4" />
                     <h3 className="text-sm font-semibold">
                       Personalizar e-mail
                     </h3>
                   </div>
-                  <Link
-                    href="/configuracoes"
-                    className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
-                  >
-                    Configurar marca
-                  </Link>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Assunto</Label>
@@ -736,33 +721,6 @@ export function CampaignForm({
                     onChange={(event) => setPreheader(event.target.value)}
                     maxLength={180}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="headerName"
-                    className="flex items-center gap-2"
-                  >
-                    <span
-                      className="size-3 rounded-sm bg-[#cc0000]"
-                      aria-hidden="true"
-                    />
-                    Nome no cabeçalho (opcional)
-                  </Label>
-                  <Input
-                    id="headerName"
-                    name="headerName"
-                    value={headerName}
-                    onChange={(event) => setHeaderName(event.target.value)}
-                    placeholder="Nome da sua marca"
-                    maxLength={80}
-                  />
-                  {brand.logoUrl && (
-                    <p className="text-muted-foreground text-xs">
-                      O logo salvo em Configurações substitui este nome no topo.
-                      O nome continua no rodapé. Para mostrar texto no
-                      cabeçalho, remova o logo da loja em Configurações.
-                    </p>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="title">Titulo interno</Label>

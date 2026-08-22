@@ -31,7 +31,6 @@ import {
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
-import { getEmailBrand } from "@/features/emails/brand";
 import { company } from "@/lib/company";
 import { getAppUrl } from "@/lib/app-url";
 import { getSession } from "@/lib/auth/session";
@@ -46,7 +45,6 @@ const campaignSchema = z.object({
   customerIds: z.string().trim().optional().or(z.literal("")),
   subject: z.string().trim().min(3, "Escreva um assunto").max(160),
   preheader: z.string().trim().max(180).optional().or(z.literal("")),
-  headerName: z.string().trim().max(80).optional().or(z.literal("")),
   title: z.string().trim().min(3, "Escreva o titulo do e-mail").max(160),
   articleName: z.string().trim().min(2, "Escreva o nome do artigo").max(160),
   body: z.string().trim().min(10, "Escreva a mensagem").max(10_000),
@@ -186,7 +184,6 @@ export async function sendCampaignAction(
     customerIds: formData.get("customerIds") ?? "",
     subject: formData.get("subject"),
     preheader: formData.get("preheader") ?? "",
-    headerName: formData.get("headerName") ?? "",
     title: formData.get("title"),
     articleName: formData.get("articleName"),
     body: formData.get("body"),
@@ -214,7 +211,6 @@ export async function sendCampaignAction(
     customerIds,
     subject,
     preheader,
-    headerName,
     title,
     articleName,
     body,
@@ -225,7 +221,6 @@ export async function sendCampaignAction(
     mode,
   } = parsed.data;
   const appUrl = getAppUrl();
-  const brand = await getEmailBrand();
 
   if (mode === "test") {
     if (!testEmail) {
@@ -238,14 +233,12 @@ export async function sendCampaignAction(
       html: buildCampaignHtml({
         body,
         preheader,
-        headerName,
         title,
         articleName,
         ctaLabel,
         ctaUrl,
         fallbackText,
         vars,
-        brand,
       }),
       replyTo: company.email,
       idempotencyKey: `test/${dispatchId}`,
@@ -285,7 +278,6 @@ export async function sendCampaignAction(
       replyTo: company.email,
       content: {
         body,
-        headerName,
         title,
         articleName,
         ctaLabel,
@@ -330,14 +322,12 @@ export async function sendCampaignAction(
           html: buildCampaignHtml({
             body,
             preheader,
-            headerName,
             title,
             articleName,
             ctaLabel,
             ctaUrl,
             fallbackText,
             vars,
-            brand,
           }),
           replyTo: company.email,
         };

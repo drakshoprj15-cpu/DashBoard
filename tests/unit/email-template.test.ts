@@ -33,7 +33,6 @@ describe("email campaign template", () => {
     const html = buildCampaignHtml({
       body: "Olá {{NOME}}, o seu {{PRODUTO}} está reservado.",
       preheader: "Retome o pedido {{PEDIDO}}.",
-      headerName: "Minha Loja",
       title: "Atualização da encomenda {{PEDIDO}}",
       articleName: "O seu Produto",
       ctaLabel: "Confirmar dados de entrega",
@@ -41,7 +40,6 @@ describe("email campaign template", () => {
       vars,
     });
 
-    expect(html).toContain("Minha Loja");
     expect(html).toContain("Maria Oliveira");
     expect(html).toContain("Curso &lt;Avançado&gt;");
     expect(html).toContain("<strong>Encomenda:</strong> PED-42");
@@ -53,21 +51,21 @@ describe("email campaign template", () => {
     expect(html).not.toContain("{{");
   });
 
-  it("allows an empty or custom red email header without a fixed brand", () => {
-    const withoutHeader = buildCampaignHtml({
-      body: "Olá {{PRIMEIRO_NOME}}.",
-      headerName: "",
-      vars,
-    });
-    const customHeader = buildCampaignHtml({
+  it("ignores old header names and logos", () => {
+    const html = buildCampaignHtml({
       body: "Olá {{PRIMEIRO_NOME}}.",
       headerName: "Loja <Principal>",
       vars,
+      brand: {
+        name: "PCDIGA",
+        logoUrl: "https://cdn.example.com/logo.png",
+      },
     });
 
-    expect(withoutHeader).not.toContain("PCG VIP");
-    expect(customHeader).toContain("Loja &lt;Principal&gt;");
-    expect(customHeader).toContain("color:#cc0000");
+    expect(html).not.toContain("Loja &lt;Principal&gt;");
+    expect(html).not.toContain("PCDIGA");
+    expect(html).not.toContain("cdn.example.com/logo.png");
+    expect(html).not.toContain("<img");
   });
 
   it("uses the saved neutral campaign defaults", () => {
@@ -76,7 +74,6 @@ describe("email campaign template", () => {
       vars,
     });
 
-    expect(html).toContain("Sua Empresa");
     expect(html).toContain("O seu pedido encontra-se pendente de conclusão.");
     expect(html).toContain("apenas se reconhecer esta compra.");
     expect(html).toContain("<strong>Artigo:</strong> O seu Produto");
@@ -85,40 +82,6 @@ describe("email campaign template", () => {
       "Se o botão não funcionar, copie e cole o seguinte endereço na barra do navegador:",
     );
     expect(html).toContain('href="https://suaempresa.site/pagar/6bzge2a64e"');
-  });
-
-  it("uses the workspace logo in the header when configured", () => {
-    const html = buildCampaignHtml({
-      body: "Olá {{NOME}}.",
-      vars,
-      brand: {
-        name: "Loja da Maria",
-        logoUrl: "https://cdn.example.com/logo.png",
-      },
-    });
-
-    expect(html).toContain('src="https://cdn.example.com/logo.png"');
-    expect(html).toContain('alt="Loja da Maria"');
-  });
-
-  it("falls back to the header name when the logo url is unsafe or absent", () => {
-    const withoutLogo = buildCampaignHtml({
-      body: "Olá {{NOME}}.",
-      headerName: "Loja da Maria",
-      vars,
-      brand: { name: "Loja da Maria", logoUrl: null },
-    });
-    expect(withoutLogo).toContain("Loja da Maria");
-    expect(withoutLogo).not.toContain("<img");
-
-    const unsafeLogo = buildCampaignHtml({
-      body: "Olá {{NOME}}.",
-      headerName: "Loja da Maria",
-      vars,
-      brand: { name: "Loja da Maria", logoUrl: "javascript:alert(1)" },
-    });
-    expect(unsafeLogo).not.toContain("<img");
-    expect(unsafeLogo).toContain("Loja da Maria");
   });
 
   it("accepts a dynamic checkout link and rejects unsafe protocols", () => {
