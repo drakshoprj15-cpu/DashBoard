@@ -67,10 +67,14 @@ export function CheckoutThemeSheet({
   checkoutId,
   checkoutName,
   theme,
+  storeName,
+  inheritedLogoUrl,
 }: {
   checkoutId: string;
   checkoutName: string;
   theme: CheckoutTheme;
+  storeName: string;
+  inheritedLogoUrl: string | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const [primaryColor, setPrimaryColor] = React.useState(theme.primaryColor);
@@ -130,8 +134,8 @@ export function CheckoutThemeSheet({
             onChange={setLogoUrl}
           />
           <p className="text-muted-foreground -mt-2 text-xs">
-            Aparece sempre centralizada no banner. Sem logo, mostra o nome da
-            loja.
+            Aparece centralizada neste checkout. Sem uma logo própria, usa a
+            identidade geral definida no Editor de checkout.
           </p>
 
           <ColorField
@@ -160,22 +164,22 @@ export function CheckoutThemeSheet({
             <p className="text-muted-foreground text-xs">Pré-visualização</p>
 
             <div
-              className="flex h-14 items-center justify-center rounded-lg"
+              className="flex h-[65px] items-center justify-center rounded-lg px-4"
               style={{ backgroundColor: bannerColor }}
             >
-              {logoUrl ? (
+              {logoUrl || inheritedLogoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={logoUrl}
-                  alt="Logo"
-                  className="h-8 max-w-[70%] object-contain"
+                  src={logoUrl || inheritedLogoUrl || ""}
+                  alt={storeName}
+                  className="h-[25px] w-auto max-w-[122px] object-contain"
                   onError={(e) => {
                     e.currentTarget.style.display = "none";
                   }}
                 />
               ) : (
-                <span className="text-sm font-black text-white">
-                  {checkoutName}
+                <span className="text-[25px] leading-none font-black tracking-[-0.045em] text-white">
+                  {storeName || "Minha Loja"}
                 </span>
               )}
             </div>

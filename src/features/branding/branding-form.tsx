@@ -27,14 +27,17 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
     FormData
   >(updateBrandingAction, null);
   const [logoUrl, setLogoUrl] = useState(initial.logoUrl ?? "");
+  const [storeName, setStoreName] = useState(
+    initial.storeName.trim() || "Minha Loja",
+  );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Dados da loja</CardTitle>
+        <CardTitle className="text-base">Identidade da loja</CardTitle>
         <CardDescription>
-          Nome, logo e contacto exibidos no cabeçalho e rodapé do checkout, das
-          landing pages públicas e dos e-mails enviados aos clientes.
+          Defina o nome e a logo próprios exibidos no cabeçalho e rodapé do
+          checkout. Você poderá trocar a imagem sempre que precisar.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -56,14 +59,41 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
 
           <LogoDropzone
             id="branding-logoUrl"
-            label="Logo da loja"
+            label="Logo padrão do checkout"
             value={logoUrl}
             onChange={setLogoUrl}
           />
           <p className="text-muted-foreground -mt-2 text-xs">
-            Aparece no banner das landing pages, do checkout e no topo dos
-            e-mails de campanha. Sem logo, mostra o nome da loja.
+            Use uma marca própria. Sem imagem, o checkout mostra “Minha Loja” ou
+            o nome definido abaixo.
           </p>
+
+          <div className="space-y-2 rounded-xl border p-4">
+            <p className="text-muted-foreground text-xs font-medium">
+              Pré-visualização do cabeçalho
+            </p>
+            <div
+              className="flex h-[65px] items-center justify-center rounded-lg px-4"
+              style={{ backgroundColor: "#e30613" }}
+            >
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={storeName}
+                  className="h-[25px] w-auto max-w-[122px] object-contain"
+                />
+              ) : (
+                <span className="text-[25px] leading-none font-black tracking-[-0.045em] text-white">
+                  {storeName || "Minha Loja"}
+                </span>
+              )}
+            </div>
+            <p className="text-muted-foreground text-[11px]">
+              Área da logo: até 122 × 25 px, centralizada no celular e no
+              computador.
+            </p>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -71,7 +101,8 @@ export function BrandingForm({ initial }: { initial: WorkspaceBranding }) {
               <Input
                 id="storeName"
                 name="storeName"
-                defaultValue={initial.storeName}
+                value={storeName}
+                onChange={(event) => setStoreName(event.target.value)}
                 placeholder="Ex.: Minha Loja"
                 required
               />

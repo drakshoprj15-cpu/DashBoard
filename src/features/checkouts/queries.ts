@@ -17,8 +17,8 @@ export interface CheckoutTheme {
 export const DEFAULT_CHECKOUT_THEME: CheckoutTheme = {
   primaryColor: STANDARD_STOREFRONT.primaryColor,
   buttonColor: STANDARD_STOREFRONT.buttonColor,
-  bannerColor: STANDARD_STOREFRONT.headerBackground,
-  logoUrl: STANDARD_STOREFRONT.logoUrl,
+  bannerColor: "#e30613",
+  logoUrl: null,
 };
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;

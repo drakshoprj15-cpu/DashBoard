@@ -55,11 +55,13 @@ export async function updateBrandingAction(
       });
 
     revalidatePath("/configuracoes");
+    revalidatePath("/editor/checkout");
+    revalidatePath("/checkouts");
     revalidatePath("/emails");
     revalidatePath("/checkout/[slug]", "page");
     revalidatePath("/p/[slug]", "page");
 
-    return { ok: true, message: "Dados da loja atualizados." };
+    return { ok: true, message: "Identidade do checkout atualizada." };
   } catch (error) {
     console.error("[branding] erro ao atualizar:", error);
     return { ok: false, error: "Não foi possível salvar os dados da loja." };

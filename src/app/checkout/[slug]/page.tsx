@@ -12,14 +12,14 @@ import {
   DEFAULT_CHECKOUT_THEME,
   getPublishedCheckoutBySlug,
 } from "@/features/checkouts/queries";
-import { STANDARD_STOREFRONT } from "@/features/storefront/standard-brand";
+import { getWorkspaceBranding } from "@/features/branding/queries";
 import {
   listCheckoutVariants,
   pickDefaultVariant,
 } from "@/features/variants/resolve";
 
 export const metadata: Metadata = {
-  title: `Checkout · ${STANDARD_STOREFRONT.name}`,
+  title: "Checkout · Minha Loja",
 };
 
 /**
@@ -35,9 +35,10 @@ export default async function CheckoutSlugPage(
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const [checkout, shippingMethods] = await Promise.all([
+  const [checkout, shippingMethods, branding] = await Promise.all([
     getPublishedCheckoutBySlug(slug),
     listActiveShippingMethods(),
+    getWorkspaceBranding(),
   ]);
 
   const product = await getProductBySlug(checkout?.productSlug ?? slug);
@@ -64,6 +65,9 @@ export default async function CheckoutSlugPage(
     ) ?? pickDefaultVariant(variants);
 
   const unitPriceCents = selectedVariant?.priceCents ?? product.priceCents;
+  const theme = checkout?.theme ?? DEFAULT_CHECKOUT_THEME;
+  const storeName = branding.storeName.trim() || "Minha Loja";
+  const logoUrl = theme.logoUrl ?? branding.logoUrl;
 
   const utm = {
     src: asString(searchParams.src),
@@ -99,17 +103,27 @@ export default async function CheckoutSlugPage(
       />
       {/* Cabeçalho — a logo (ou nome da loja) fica sempre centralizada. */}
       <header
-        className="py-6 md:py-7"
-        style={{ backgroundColor: DEFAULT_CHECKOUT_THEME.bannerColor }}
+        className="h-[65px]"
+        style={{ backgroundColor: theme.bannerColor }}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-center px-4">
-          <Link href={`/p/${product.slug}`} className="flex items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={STANDARD_STOREFRONT.logoUrl}
-              alt={STANDARD_STOREFRONT.name}
-              className="h-10 max-w-[220px] object-contain md:h-12"
-            />
+        <div className="mx-auto flex h-full max-w-6xl items-center justify-center px-4">
+          <Link
+            href={`/p/${product.slug}`}
+            className="flex items-center justify-center"
+            aria-label={storeName}
+          >
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={storeName}
+                className="h-[25px] w-auto max-w-[122px] object-contain"
+              />
+            ) : (
+              <span className="text-[25px] leading-none font-black tracking-[-0.045em] text-white">
+                {storeName}
+              </span>
+            )}
           </Link>
         </div>
       </header>
@@ -119,9 +133,9 @@ export default async function CheckoutSlugPage(
           product={product}
           initialQuantity={quantity}
           shippingMethods={shippingMethods}
-          theme={DEFAULT_CHECKOUT_THEME}
+          theme={theme}
           utm={utm}
-          storeName={STANDARD_STOREFRONT.name}
+          storeName={storeName}
           landingPageId={asString(searchParams.lp)}
           variants={variants}
           initialVariantId={selectedVariant?.publicId ?? ""}
@@ -130,8 +144,8 @@ export default async function CheckoutSlugPage(
 
       <footer className="border-t bg-white py-5 text-center text-xs text-zinc-500">
         <p>
-          © {new Date().getFullYear()} {STANDARD_STOREFRONT.name} · Pagamento
-          seguro por MB WAY e Multibanco
+          © {new Date().getFullYear()} {storeName} · Pagamento seguro por MB WAY
+          e Multibanco
         </p>
         <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
           <Link href="/legal/termos" className="hover:text-zinc-800">

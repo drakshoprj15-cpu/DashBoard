@@ -13,6 +13,8 @@ import {
 
 import { isDatabaseConfigured } from "@/database/client";
 import { listCheckouts } from "@/features/checkouts/queries";
+import { CheckoutThemeSheet } from "@/features/checkouts/checkout-theme-sheet";
+import { getWorkspaceBranding } from "@/features/branding/queries";
 import {
   deleteCheckoutAction,
   duplicateCheckoutAction,
@@ -61,9 +63,10 @@ export default async function CheckoutsPage() {
     );
   }
 
-  const [rows, products] = await Promise.all([
+  const [rows, products, branding] = await Promise.all([
     listCheckouts(),
     listProductOptions(),
+    getWorkspaceBranding(),
   ]);
   const appUrl = getAppUrl();
 
@@ -147,6 +150,13 @@ export default async function CheckoutsPage() {
                       </td>
                       <td className="py-3">
                         <div className="flex justify-end gap-1.5">
+                          <CheckoutThemeSheet
+                            checkoutId={c.id}
+                            checkoutName={c.name}
+                            theme={c.theme}
+                            storeName={branding.storeName}
+                            inheritedLogoUrl={branding.logoUrl}
+                          />
                           {c.productId && (
                             <Button size="sm" variant="ghost" asChild>
                               <Link
