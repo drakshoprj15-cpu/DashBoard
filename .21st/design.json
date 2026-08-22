@@ -393,8 +393,8 @@
     {
       "date": "2026-08-22",
       "area": "checkout-footer",
-      "decision": "Use a red, responsive ecommerce footer with merchant branding, accepted payment badges, trust messages, grouped public navigation, legal links, and a copyright bar. Show only MB WAY and Multibanco because they are the supported payment methods.",
-      "reason": "This matches the selected Flash Shopping footer direction while keeping every claim, method, and link consistent with the checkout's actual capabilities and legal pages."
+      "decision": "Use a compact red, responsive ecommerce footer with merchant branding, accepted payment badges, trust messages, grouped public navigation, legal links, and a copyright bar. Keep vertical spacing intentionally tighter on desktop and mobile, and show only MB WAY and Multibanco because they are the supported payment methods.",
+      "reason": "This keeps the selected Flash Shopping footer structure while reducing page length and preserving every claim, method, and link consistent with the checkout's actual capabilities and legal pages."
     }
   ],
   "evidence": [
