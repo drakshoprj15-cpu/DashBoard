@@ -38,23 +38,6 @@
   }
 
   // -------------------------------------------------------------------------
-  // Carrossel de avisos do topo
-  // -------------------------------------------------------------------------
-
-  function setupTicker() {
-    var track = $('[data-lp="ticker"]');
-    if (!track) return;
-    var slides = track.children.length;
-    if (slides < 2) return;
-
-    var index = 0;
-    setInterval(function () {
-      index = (index + 1) % slides;
-      track.style.transform = "translateX(-" + index * 100 + "%)";
-    }, 4000);
-  }
-
-  // -------------------------------------------------------------------------
   // Galeria: setas e miniaturas operam o mesmo contentor com deslize nativo,
   // então o gesto de toque no telemóvel continua a ser o do navegador.
   // -------------------------------------------------------------------------
@@ -276,7 +259,6 @@
   // -------------------------------------------------------------------------
 
   function start() {
-    setupTicker();
     setupGallery();
     setupPurchase();
     setupTabs();
