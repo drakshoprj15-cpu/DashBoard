@@ -20,6 +20,7 @@ import {
 } from "@/features/emails/segments";
 import { isResendConfigured } from "@/features/emails/resend-provider";
 import { CampaignForm } from "@/features/emails/campaign-form";
+import { PaidCustomersImport } from "@/features/emails/paid-customers-import";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,17 +84,20 @@ export default async function EmailsPage({
             clientes
           </p>
         </div>
-        <Badge variant={resendReady ? "success" : "muted"}>
-          {resendReady ? (
-            <>
-              <CheckCircle2 /> Resend conectado
-            </>
-          ) : (
-            <>
-              <XCircle /> Resend não configurado
-            </>
-          )}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={resendReady ? "success" : "muted"}>
+            {resendReady ? (
+              <>
+                <CheckCircle2 /> Resend conectado
+              </>
+            ) : (
+              <>
+                <XCircle /> Resend não configurado
+              </>
+            )}
+          </Badge>
+          <PaidCustomersImport />
+        </div>
       </div>
 
       {!resendReady && (

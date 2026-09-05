@@ -272,6 +272,7 @@ export function activityLabel(type: string): string {
   const labels: Record<string, string> = {
     customer_created: "Cliente criado",
     customer_imported: "Cliente importado",
+    customer_import_reviewed: "Importação de cliente revisada",
     landing_page_lead: "Lead captado pela landing page",
     order_created: "Pedido criado",
     payment_approved: "Compra aprovada",
