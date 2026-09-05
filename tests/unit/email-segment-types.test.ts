@@ -13,4 +13,8 @@ describe("segmentos de email", () => {
         "Clientes com pedido pago ou pagamento informado na aba Clientes",
     });
   });
+
+  it("mantém o público pago identificado para o atalho da aba Clientes", () => {
+    expect(SEGMENTS.some((segment) => segment.key === "paid")).toBe(true);
+  });
 });

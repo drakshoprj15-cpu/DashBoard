@@ -96,6 +96,7 @@ export function CampaignForm({
   customRecipients,
   customerIdsParam,
   pendingRecipients,
+  initialSegment,
   initialDispatchId,
 }: {
   counts: Record<string, number>;
@@ -103,6 +104,7 @@ export function CampaignForm({
   customRecipients?: CustomRecipientsResult | null;
   customerIdsParam?: string;
   pendingRecipients: Recipient[];
+  initialSegment: Exclude<SegmentKey, "custom">;
   initialDispatchId: string;
 }) {
   const router = useRouter();
@@ -114,7 +116,7 @@ export function CampaignForm({
     customRecipients && customRecipients.recipients.length > 0,
   );
   const [segment, setSegment] = React.useState<SegmentKey>(
-    hasCustomRecipients ? "custom" : "pending",
+    hasCustomRecipients ? "custom" : initialSegment,
   );
   const [submittingMode, setSubmittingMode] = React.useState<"test" | "send">(
     "test",
@@ -412,6 +414,18 @@ export function CampaignForm({
                   </button>
                 ))}
               </div>
+
+              {segment !== "pending" && segment !== "custom" && (
+                <div className="border-primary/20 bg-primary/5 rounded-md border px-3 py-2">
+                  <p className="text-sm">
+                    <strong>{counts[segment] ?? 0}</strong>{" "}
+                    {(counts[segment] ?? 0) === 1
+                      ? "cliente elegível será incluído"
+                      : "clientes elegíveis serão incluídos"}{" "}
+                    neste disparo.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

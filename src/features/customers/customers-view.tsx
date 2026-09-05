@@ -8,6 +8,7 @@ import {
   Download,
   Filter,
   ListFilter,
+  Mail,
   Plus,
   RefreshCw,
   Search,
@@ -473,7 +474,21 @@ export function CustomersView({ products }: { products: ProductOption[] }) {
           >
             <Plus /> Adicionar cliente
           </Button>
-          <Button type="button" size="sm" onClick={() => setExportOpen(true)}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() =>
+              router.push("/emails?segment=paid&source=clientes")
+            }
+          >
+            <Mail /> Usar pagantes em Emails
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+          >
             <Download /> Exportar clientes
           </Button>
         </div>

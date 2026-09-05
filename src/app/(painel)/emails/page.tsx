@@ -18,6 +18,7 @@ import {
   getSegmentCounts,
   getSegmentRecipients,
 } from "@/features/emails/segments";
+import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
 import { isResendConfigured } from "@/features/emails/resend-provider";
 import { CampaignForm } from "@/features/emails/campaign-form";
 import { PaidCustomersImport } from "@/features/emails/paid-customers-import";
@@ -36,7 +37,11 @@ const UUID_REGEX =
 export default async function EmailsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ recipients?: string }>;
+  searchParams: Promise<{
+    recipients?: string | string[];
+    segment?: string | string[];
+    source?: string | string[];
+  }>;
 }) {
   if (!isDatabaseConfigured()) {
     return (
@@ -49,7 +54,21 @@ export default async function EmailsPage({
     );
   }
 
-  const { recipients: recipientsParamRaw } = await searchParams;
+  const query = await searchParams;
+  const recipientsParamRaw = Array.isArray(query.recipients)
+    ? query.recipients[0]
+    : query.recipients;
+  const requestedSegment = Array.isArray(query.segment)
+    ? query.segment[0]
+    : query.segment;
+  const requestedSource = Array.isArray(query.source)
+    ? query.source[0]
+    : query.source;
+  const initialSegment: Exclude<SegmentKey, "custom"> = SEGMENTS.some(
+    (segment) => segment.key === requestedSegment,
+  )
+    ? (requestedSegment as Exclude<SegmentKey, "custom">)
+    : "pending";
   const customerIds = (recipientsParamRaw ?? "")
     .split(",")
     .map((value) => value.trim())
@@ -129,12 +148,25 @@ export default async function EmailsPage({
         ))}
       </div>
 
+      {requestedSource === "clientes" && initialSegment === "paid" && (
+        <Alert variant="success">
+          <CheckCircle2 />
+          <AlertTitle>Clientes pagantes prontos para uso</AlertTitle>
+          <AlertDescription>
+            O público Compras pagas foi selecionado com {counts.paid} contatos
+            elegíveis da aba Clientes. Bloqueados e descadastrados continuam
+            excluídos automaticamente.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <CampaignForm
         counts={counts}
         resendReady={resendReady}
         customRecipients={customRecipients}
         customerIdsParam={customerIds.join(",")}
         pendingRecipients={pendingRecipients}
+        initialSegment={initialSegment}
         initialDispatchId={crypto.randomUUID()}
       />
 

@@ -18,6 +18,7 @@ import {
   orders,
 } from "@/database/schema";
 import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { CUSTOMER_IMPORT_STATUS_TAGS } from "@/features/customers/customer-utils";
 
 import { SEGMENTS, type SegmentKey } from "@/features/emails/types";
 
@@ -34,6 +35,10 @@ const STATUS_BY_SEGMENT: Record<string, string[]> = {
   pending: ["created", "awaiting_payment", "processing"],
   refused: ["refused", "expired", "cancelled"],
 };
+
+const IMPORTED_PAID_STATUS = JSON.stringify([
+  CUSTOMER_IMPORT_STATUS_TAGS.paid,
+]);
 
 export interface Recipient {
   id: string;
@@ -136,14 +141,15 @@ export async function getSegmentRecipients(
   const blocked = new Set(suppressed.map((s) => s.email.toLowerCase()));
 
   const statuses = STATUS_BY_SEGMENT[segment];
-  // A tag de importação foi gravada em praticamente toda a base, então não
-  // distingue quem pagou. `first_purchase_at` é o sinal confiável de compra
-  // anterior nos registos importados.
+  // A aba Clientes considera tanto pedidos aprovados quanto a classificação
+  // explícita "Pago" da importação. Emails precisa usar exatamente a mesma
+  // fonte para não perder pagantes que ainda não possuem um pedido local.
   const audienceCondition = statuses
     ? segment === "paid"
       ? or(
           inArray(orders.status, statuses as never),
           isNotNull(customers.firstPurchaseAt),
+          sql`coalesce(${customers.tags}, '[]'::jsonb) @> ${IMPORTED_PAID_STATUS}::jsonb`,
         )
       : inArray(orders.status, statuses as never)
     : undefined;
