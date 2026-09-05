@@ -90,6 +90,10 @@ function money(value: number | null, currency: string | null) {
   }).format(value / 100);
 }
 
+function formatCount(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value);
+}
+
 export function CampaignForm({
   counts,
   resendReady,
@@ -97,6 +101,7 @@ export function CampaignForm({
   customerIdsParam,
   pendingRecipients,
   initialSegment,
+  consolidatedCustomerCount,
   initialDispatchId,
 }: {
   counts: Record<string, number>;
@@ -105,6 +110,7 @@ export function CampaignForm({
   customerIdsParam?: string;
   pendingRecipients: Recipient[];
   initialSegment: Exclude<SegmentKey, "custom">;
+  consolidatedCustomerCount: number;
   initialDispatchId: string;
 }) {
   const router = useRouter();
@@ -324,7 +330,7 @@ export function CampaignForm({
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <Badge variant={segment === "pending" ? "success" : "muted"}>
-                    {counts.pending ?? 0}
+                    {formatCount(counts.pending ?? 0)}
                   </Badge>
                   {segment === "pending" && (
                     <CheckCircle2 className="text-primary size-5" />
@@ -335,7 +341,7 @@ export function CampaignForm({
               {segment === "pending" && (
                 <div className="border-primary/20 bg-primary/5 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                   <p className="text-sm">
-                    <strong>{counts.pending ?? 0}</strong>{" "}
+                    <strong>{formatCount(counts.pending ?? 0)}</strong>{" "}
                     {(counts.pending ?? 0) === 1
                       ? "cliente sera incluido"
                       : "clientes serao incluidos"}{" "}
@@ -385,45 +391,63 @@ export function CampaignForm({
                 Outros publicos
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {SEGMENTS.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCustomerIds([]);
-                      setSegment(item.key);
-                    }}
-                    className={cn(
-                      "rounded-md border p-3 text-left transition-colors",
-                      segment === item.key
-                        ? "border-primary bg-accent/40"
-                        : "border-border hover:bg-muted/40",
-                    )}
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold">
-                        {item.label}
+                {SEGMENTS.map((item) => {
+                  const displayCount =
+                    item.key === "all"
+                      ? consolidatedCustomerCount
+                      : (counts[item.key] ?? 0);
+
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCustomerIds([]);
+                        setSegment(item.key);
+                      }}
+                      className={cn(
+                        "rounded-md border p-3 text-left transition-colors",
+                        segment === item.key
+                          ? "border-primary bg-accent/40"
+                          : "border-border hover:bg-muted/40",
+                      )}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold">
+                          {item.label}
+                        </span>
+                        <span className="text-primary text-sm font-bold tabular-nums">
+                          {formatCount(displayCount)}
+                        </span>
                       </span>
-                      <span className="text-primary text-sm font-bold">
-                        {counts[item.key] ?? 0}
+                      <span className="text-muted-foreground mt-0.5 block text-xs">
+                        {item.key === "all"
+                          ? `Base consolidada da aba Clientes · ${formatCount(counts.all ?? 0)} elegíveis para envio`
+                          : item.description}
                       </span>
-                    </span>
-                    <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {item.description}
-                    </span>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
 
               {segment !== "pending" && segment !== "custom" && (
                 <div className="border-primary/20 bg-primary/5 rounded-md border px-3 py-2">
-                  <p className="text-sm">
-                    <strong>{counts[segment] ?? 0}</strong>{" "}
-                    {(counts[segment] ?? 0) === 1
-                      ? "cliente elegível será incluído"
-                      : "clientes elegíveis serão incluídos"}{" "}
-                    neste disparo.
-                  </p>
+                  {segment === "all" ? (
+                    <p className="text-sm">
+                      <strong>{formatCount(consolidatedCustomerCount)}</strong>{" "}
+                      clientes na base consolidada;{" "}
+                      <strong>{formatCount(counts.all ?? 0)}</strong> elegíveis
+                      serão incluídos neste disparo.
+                    </p>
+                  ) : (
+                    <p className="text-sm">
+                      <strong>{formatCount(counts[segment] ?? 0)}</strong>{" "}
+                      {(counts[segment] ?? 0) === 1
+                        ? "cliente elegível será incluído"
+                        : "clientes elegíveis serão incluídos"}{" "}
+                      neste disparo.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -569,7 +593,8 @@ export function CampaignForm({
                     size="sm"
                     onClick={selectAllPending}
                   >
-                    <Check /> Selecionar todos ({counts.pending ?? 0})
+                    <Check /> Selecionar todos (
+                    {formatCount(counts.pending ?? 0)})
                   </Button>
                 </div>
                 <div className="divide-border divide-y rounded-md border sm:hidden">
@@ -934,7 +959,7 @@ export function CampaignForm({
                 disabled={!resendReady || total === 0 || !dispatchId}
                 onClick={() => setSubmittingMode("send")}
               >
-                <Send /> Enviar para {total}{" "}
+                <Send /> Enviar para {formatCount(total)}{" "}
                 {total === 1 ? "cliente" : "clientes"}
               </Button>
             </div>

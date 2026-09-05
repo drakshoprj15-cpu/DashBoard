@@ -14,6 +14,7 @@ import { isDatabaseConfigured } from "@/database/client";
 import { getEmailDashboardOverview } from "@/features/emails/campaigns";
 import { CampaignHistory } from "@/features/emails/campaign-history";
 import {
+  getConsolidatedCustomerCount,
   getCustomRecipients,
   getSegmentCounts,
   getSegmentRecipients,
@@ -74,17 +75,23 @@ export default async function EmailsPage({
     .map((value) => value.trim())
     .filter((value) => UUID_REGEX.test(value));
 
-  const [counts, customRecipients, overview, pendingRecipients] =
-    await Promise.all([
-      getSegmentCounts(),
-      customerIds.length > 0
-        ? getCustomRecipients(customerIds)
-        : Promise.resolve(null),
-      getEmailDashboardOverview(),
-      getSegmentRecipients("pending").then((recipients) =>
-        recipients.slice(0, 25),
-      ),
-    ]);
+  const [
+    counts,
+    consolidatedCustomerCount,
+    customRecipients,
+    overview,
+    pendingRecipients,
+  ] = await Promise.all([
+    getSegmentCounts(),
+    getConsolidatedCustomerCount(),
+    customerIds.length > 0
+      ? getCustomRecipients(customerIds)
+      : Promise.resolve(null),
+    getEmailDashboardOverview(),
+    getSegmentRecipients("pending").then((recipients) =>
+      recipients.slice(0, 25),
+    ),
+  ]);
   const resendReady = isResendConfigured();
   const summary = [
     { label: "Total", value: overview.stats.total, icon: Send },
@@ -167,6 +174,7 @@ export default async function EmailsPage({
         customerIdsParam={customerIds.join(",")}
         pendingRecipients={pendingRecipients}
         initialSegment={initialSegment}
+        consolidatedCustomerCount={consolidatedCustomerCount}
         initialDispatchId={crypto.randomUUID()}
       />
 

@@ -17,4 +17,12 @@ describe("segmentos de email", () => {
   it("mantém o público pago identificado para o atalho da aba Clientes", () => {
     expect(SEGMENTS.some((segment) => segment.key === "paid")).toBe(true);
   });
+
+  it("identifica Todos os clientes como a base consolidada de Clientes", () => {
+    expect(SEGMENTS.find((segment) => segment.key === "all")).toEqual({
+      key: "all",
+      label: "Todos os clientes",
+      description: "Base consolidada da aba Clientes",
+    });
+  });
 });

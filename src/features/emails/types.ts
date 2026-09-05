@@ -42,5 +42,9 @@ export const SEGMENTS: SegmentDefinition[] = [
     label: "Sem pedidos",
     description: "Estão no cadastro mas nunca iniciaram uma compra",
   },
-  { key: "all", label: "Todos os clientes", description: "Toda a base" },
+  {
+    key: "all",
+    label: "Todos os clientes",
+    description: "Base consolidada da aba Clientes",
+  },
 ];

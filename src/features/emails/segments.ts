@@ -36,9 +36,7 @@ const STATUS_BY_SEGMENT: Record<string, string[]> = {
   refused: ["refused", "expired", "cancelled"],
 };
 
-const IMPORTED_PAID_STATUS = JSON.stringify([
-  CUSTOMER_IMPORT_STATUS_TAGS.paid,
-]);
+const IMPORTED_PAID_STATUS = JSON.stringify([CUSTOMER_IMPORT_STATUS_TAGS.paid]);
 
 export interface Recipient {
   id: string;
@@ -283,6 +281,22 @@ export async function getSegmentCounts(): Promise<Record<SegmentKey, number>> {
     }),
   );
   return Object.fromEntries(entries) as Record<SegmentKey, number>;
+}
+
+/** Total bruto da base consolidada exibida na aba Clientes. */
+export async function getConsolidatedCustomerCount(): Promise<number> {
+  if (!isDatabaseConfigured()) return 0;
+
+  const db = getDb();
+  const workspaceId = await getOrCreateDefaultWorkspace();
+  const [row] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(customers)
+    .where(
+      and(eq(customers.workspaceId, workspaceId), isNull(customers.deletedAt)),
+    );
+
+  return Number(row?.total ?? 0);
 }
 
 export interface CustomRecipientsResult {
