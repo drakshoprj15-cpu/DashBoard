@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { isLandAt } from "@/features/analytics/world-land-mask";
 import {
-  useSimulatedLivePoints,
   type LiveGlobePoint,
 } from "@/features/analytics/live-globe-data";
 
@@ -318,8 +317,9 @@ interface ArcInstance {
 }
 
 function LiveGlobeImpl({ points, className }: LiveGlobeProps) {
-  const simulated = useSimulatedLivePoints();
-  const livePoints = points && points.length > 0 ? points : simulated;
+  // Sem visitantes reais o globo fica vazio, de propósito: inventar pontos
+  // simulados fazia a loja parecer movimentada quando não havia ninguém.
+  const livePoints = React.useMemo(() => points ?? [], [points]);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
