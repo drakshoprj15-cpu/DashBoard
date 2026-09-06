@@ -11,6 +11,7 @@ import {
   normalizeEmail,
   normalizeImportedProductName,
   normalizePhone,
+  parseImportedEmailConsent,
   parseCustomerFilters,
   readCustomerImportedStatus,
   resolveDuplicateCandidate,
@@ -38,6 +39,24 @@ describe("normalização de clientes", () => {
     );
     expect(normalizeImportedProductName(" \n\t ")).toBeNull();
     expect(normalizeImportedProductName("x".repeat(161))).toBeNull();
+  });
+
+  it("não transforma ausência de consentimento em descadastro explícito", () => {
+    expect(parseImportedEmailConsent("")).toEqual({
+      explicit: false,
+      acceptsEmail: false,
+      marketingOptOut: false,
+    });
+    expect(parseImportedEmailConsent("sim")).toEqual({
+      explicit: true,
+      acceptsEmail: true,
+      marketingOptOut: false,
+    });
+    expect(parseImportedEmailConsent("não")).toEqual({
+      explicit: true,
+      acceptsEmail: false,
+      marketingOptOut: true,
+    });
   });
 
   it("calcula gasto líquido sem permitir total negativo", () => {

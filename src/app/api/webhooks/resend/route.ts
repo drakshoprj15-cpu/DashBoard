@@ -12,6 +12,7 @@ import {
   isResendWebhookConfigured,
   verifyResendWebhook,
 } from "@/features/emails/resend-provider";
+import { suppressionReasonForResendEvent } from "@/features/emails/suppression";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -142,27 +143,21 @@ export async function POST(request: NextRequest) {
         .where(eq(emailRecipients.id, recipient.id));
     }
 
-    if (
-      event.type === "email.bounced" ||
-      event.type === "email.complained" ||
-      event.type === "email.suppressed"
-    ) {
-      const reason =
-        event.type === "email.bounced"
-          ? "bounce"
-          : event.type === "email.complained"
-            ? "complaint"
-            : "manual";
+    const suppressionReason = suppressionReasonForResendEvent(
+      event.type,
+      event.data as unknown as Record<string, unknown>,
+    );
+    if (suppressionReason) {
       await db
         .insert(emailSuppressions)
         .values({
           workspaceId: recipient.workspaceId,
           email: recipient.email.toLowerCase(),
-          reason,
+          reason: suppressionReason,
         })
         .onConflictDoUpdate({
           target: [emailSuppressions.workspaceId, emailSuppressions.email],
-          set: { reason, updatedAt: new Date() },
+          set: { reason: suppressionReason, updatedAt: new Date() },
         });
     }
 

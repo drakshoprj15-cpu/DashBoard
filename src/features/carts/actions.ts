@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured, type Database } from "@/database/client";
 import {
@@ -145,6 +145,7 @@ async function checkReminderEligibility(
       and(
         eq(emailSuppressions.workspaceId, workspaceId),
         eq(emailSuppressions.email, customer.email),
+        ne(emailSuppressions.reason, "transient_bounce"),
       ),
     )
     .limit(1);

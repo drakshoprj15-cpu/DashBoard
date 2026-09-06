@@ -99,6 +99,24 @@ export function normalizeImportedProductName(value: string): string | null {
   return normalized;
 }
 
+export interface ImportedEmailConsent {
+  explicit: boolean;
+  acceptsEmail: boolean;
+  marketingOptOut: boolean;
+}
+
+/** Ausência de coluna não equivale a um pedido explícito de descadastro. */
+export function parseImportedEmailConsent(value: string): ImportedEmailConsent {
+  const normalized = value.trim().toLocaleLowerCase("pt");
+  if (/^(sim|yes|true|1)$/.test(normalized)) {
+    return { explicit: true, acceptsEmail: true, marketingOptOut: false };
+  }
+  if (/^(não|nao|no|false|0)$/.test(normalized)) {
+    return { explicit: true, acceptsEmail: false, marketingOptOut: true };
+  }
+  return { explicit: false, acceptsEmail: false, marketingOptOut: false };
+}
+
 export interface CustomerIdentityCandidate {
   id: string;
   email?: string | null;

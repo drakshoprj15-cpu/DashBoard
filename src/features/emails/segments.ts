@@ -6,6 +6,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
   or,
   sql,
 } from "drizzle-orm";
@@ -135,7 +136,12 @@ export async function getSegmentRecipients(
   const suppressed = await db
     .select({ email: emailSuppressions.email })
     .from(emailSuppressions)
-    .where(eq(emailSuppressions.workspaceId, workspaceId));
+    .where(
+      and(
+        eq(emailSuppressions.workspaceId, workspaceId),
+        ne(emailSuppressions.reason, "transient_bounce"),
+      ),
+    );
   const blocked = new Set(suppressed.map((s) => s.email.toLowerCase()));
 
   const statuses = STATUS_BY_SEGMENT[segment];
@@ -226,7 +232,12 @@ export async function searchEmailRecipients(
     db
       .select({ email: emailSuppressions.email })
       .from(emailSuppressions)
-      .where(eq(emailSuppressions.workspaceId, workspaceId)),
+      .where(
+        and(
+          eq(emailSuppressions.workspaceId, workspaceId),
+          ne(emailSuppressions.reason, "transient_bounce"),
+        ),
+      ),
     db
       .select({
         id: customers.id,
@@ -351,7 +362,12 @@ export async function getCustomRecipients(
   const suppressed = await db
     .select({ email: emailSuppressions.email })
     .from(emailSuppressions)
-    .where(eq(emailSuppressions.workspaceId, workspaceId));
+    .where(
+      and(
+        eq(emailSuppressions.workspaceId, workspaceId),
+        ne(emailSuppressions.reason, "transient_bounce"),
+      ),
+    );
   const suppressedEmails = new Set(
     suppressed.map((s) => s.email.toLowerCase()),
   );

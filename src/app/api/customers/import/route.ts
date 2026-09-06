@@ -20,6 +20,7 @@ import {
   normalizeEmail,
   normalizeImportedProductName,
   normalizePhone,
+  parseImportedEmailConsent,
   resolveDuplicateCandidate,
 } from "@/features/customers/customer-utils";
 import {
@@ -330,7 +331,7 @@ export async function POST(request: Request) {
           .map((tag) => tag.trim())
           .filter(Boolean)
           .slice(0, 20);
-        const consent = /^(sim|yes|true|1)$/i.test(
+        const consent = parseImportedEmailConsent(
           cellValue(row, columns.consent),
         );
         const classifiedTags = mergeCustomerImportTags(
@@ -356,8 +357,10 @@ export async function POST(request: Request) {
               importedProductName: importedProductName || undefined,
               tags: classifiedTags,
               normalizedEmail: email,
-              acceptsEmail: consent,
-              marketingOptOut: !consent,
+              acceptsEmail: consent.explicit ? consent.acceptsEmail : undefined,
+              marketingOptOut: consent.explicit
+                ? consent.marketingOptOut
+                : undefined,
               lastActivityAt: now,
               updatedAt: now,
             })
@@ -391,8 +394,8 @@ export async function POST(request: Request) {
             tags: classifiedTags,
             source: "import",
             firstSource: "import",
-            acceptsEmail: consent,
-            marketingOptOut: !consent,
+            acceptsEmail: consent.acceptsEmail,
+            marketingOptOut: consent.marketingOptOut,
             firstSeenAt: now,
             lastActivityAt: now,
           });

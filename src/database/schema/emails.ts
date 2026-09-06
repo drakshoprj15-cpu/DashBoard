@@ -106,7 +106,7 @@ export const emailSuppressions = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
-    /** unsubscribe | bounce | complaint | manual */
+    /** unsubscribe | bounce | transient_bounce | complaint | manual | provider */
     reason: text("reason").notNull(),
     ...timestamps,
   },
