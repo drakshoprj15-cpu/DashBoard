@@ -14,7 +14,7 @@ import { isDatabaseConfigured } from "@/database/client";
 import { getEmailDashboardOverview } from "@/features/emails/campaigns";
 import { CampaignHistory } from "@/features/emails/campaign-history";
 import {
-  getConsolidatedCustomerCount,
+  getConsolidatedCustomerCounts,
   getCustomRecipients,
   getSegmentCounts,
   getSegmentRecipients,
@@ -27,6 +27,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatNumber } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Emails" };
 export const dynamic = "force-dynamic";
@@ -77,13 +78,13 @@ export default async function EmailsPage({
 
   const [
     counts,
-    consolidatedCustomerCount,
+    consolidatedCustomerCounts,
     customRecipients,
     overview,
     pendingRecipients,
   ] = await Promise.all([
     getSegmentCounts(),
-    getConsolidatedCustomerCount(),
+    getConsolidatedCustomerCounts(),
     customerIds.length > 0
       ? getCustomRecipients(customerIds)
       : Promise.resolve(null),
@@ -160,8 +161,10 @@ export default async function EmailsPage({
           <CheckCircle2 />
           <AlertTitle>Clientes pagantes prontos para uso</AlertTitle>
           <AlertDescription>
-            O público Compras pagas foi selecionado com {counts.paid} contatos
-            elegíveis da aba Clientes. Bloqueados e descadastrados continuam
+            O público Pedidos pagos foi selecionado com{" "}
+            {formatNumber(consolidatedCustomerCounts.importedPaid)} pagos
+            informados na aba Clientes; {formatNumber(counts.paid)} estão
+            elegíveis para envio. Bloqueados e descadastrados continuam
             excluídos automaticamente.
           </AlertDescription>
         </Alert>
@@ -174,7 +177,8 @@ export default async function EmailsPage({
         customerIdsParam={customerIds.join(",")}
         pendingRecipients={pendingRecipients}
         initialSegment={initialSegment}
-        consolidatedCustomerCount={consolidatedCustomerCount}
+        consolidatedCustomerCount={consolidatedCustomerCounts.total}
+        consolidatedPaidCustomerCount={consolidatedCustomerCounts.importedPaid}
         initialDispatchId={crypto.randomUUID()}
       />
 

@@ -102,6 +102,7 @@ export function CampaignForm({
   pendingRecipients,
   initialSegment,
   consolidatedCustomerCount,
+  consolidatedPaidCustomerCount,
   initialDispatchId,
 }: {
   counts: Record<string, number>;
@@ -111,6 +112,7 @@ export function CampaignForm({
   pendingRecipients: Recipient[];
   initialSegment: Exclude<SegmentKey, "custom">;
   consolidatedCustomerCount: number;
+  consolidatedPaidCustomerCount: number;
   initialDispatchId: string;
 }) {
   const router = useRouter();
@@ -304,7 +306,19 @@ export function CampaignForm({
             )}
 
             <div className="space-y-2">
-              <Label>Destinatários</Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label>Destinatários</Label>
+                <p className="text-muted-foreground text-xs tabular-nums">
+                  <strong className="text-foreground font-semibold">
+                    {formatCount(consolidatedCustomerCount)}
+                  </strong>{" "}
+                  contatos ·{" "}
+                  <strong className="text-foreground font-semibold">
+                    {formatCount(consolidatedPaidCustomerCount)}
+                  </strong>{" "}
+                  pagos informados
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={selectAllPending}
@@ -388,14 +402,16 @@ export function CampaignForm({
               )}
 
               <p className="text-muted-foreground pt-2 text-xs font-medium">
-                Outros publicos
+                Outros públicos
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {SEGMENTS.map((item) => {
                   const displayCount =
                     item.key === "all"
                       ? consolidatedCustomerCount
-                      : (counts[item.key] ?? 0);
+                      : item.key === "paid"
+                        ? consolidatedPaidCustomerCount
+                        : (counts[item.key] ?? 0);
 
                   return (
                     <button
@@ -423,7 +439,9 @@ export function CampaignForm({
                       <span className="text-muted-foreground mt-0.5 block text-xs">
                         {item.key === "all"
                           ? `Base consolidada da aba Clientes · ${formatCount(counts.all ?? 0)} elegíveis para envio`
-                          : item.description}
+                          : item.key === "paid"
+                            ? `Pagos informados na aba Clientes · ${formatCount(counts.paid ?? 0)} elegíveis para envio`
+                            : item.description}
                       </span>
                     </button>
                   );
@@ -437,6 +455,15 @@ export function CampaignForm({
                       <strong>{formatCount(consolidatedCustomerCount)}</strong>{" "}
                       clientes na base consolidada;{" "}
                       <strong>{formatCount(counts.all ?? 0)}</strong> elegíveis
+                      serão incluídos neste disparo.
+                    </p>
+                  ) : segment === "paid" ? (
+                    <p className="text-sm">
+                      <strong>
+                        {formatCount(consolidatedPaidCustomerCount)}
+                      </strong>{" "}
+                      pagos informados na aba Clientes;{" "}
+                      <strong>{formatCount(counts.paid ?? 0)}</strong> elegíveis
                       serão incluídos neste disparo.
                     </p>
                   ) : (

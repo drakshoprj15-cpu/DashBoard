@@ -283,20 +283,33 @@ export async function getSegmentCounts(): Promise<Record<SegmentKey, number>> {
   return Object.fromEntries(entries) as Record<SegmentKey, number>;
 }
 
-/** Total bruto da base consolidada exibida na aba Clientes. */
-export async function getConsolidatedCustomerCount(): Promise<number> {
-  if (!isDatabaseConfigured()) return 0;
+export interface ConsolidatedCustomerCounts {
+  total: number;
+  importedPaid: number;
+}
+
+/** Totais brutos exibidos na aba Clientes, antes das regras de envio. */
+export async function getConsolidatedCustomerCounts(): Promise<ConsolidatedCustomerCounts> {
+  if (!isDatabaseConfigured()) return { total: 0, importedPaid: 0 };
 
   const db = getDb();
   const workspaceId = await getOrCreateDefaultWorkspace();
   const [row] = await db
-    .select({ total: sql<number>`count(*)::int` })
+    .select({
+      total: sql<number>`count(*)::int`,
+      importedPaid: sql<number>`count(*) filter (
+        where coalesce(${customers.tags}, '[]'::jsonb) @> ${IMPORTED_PAID_STATUS}::jsonb
+      )::int`,
+    })
     .from(customers)
     .where(
       and(eq(customers.workspaceId, workspaceId), isNull(customers.deletedAt)),
     );
 
-  return Number(row?.total ?? 0);
+  return {
+    total: Number(row?.total ?? 0),
+    importedPaid: Number(row?.importedPaid ?? 0),
+  };
 }
 
 export interface CustomRecipientsResult {
