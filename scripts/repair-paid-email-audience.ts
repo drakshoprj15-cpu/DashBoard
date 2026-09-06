@@ -37,8 +37,39 @@ async function audit(sql: Sql) {
   return summary;
 }
 
-async function repair(sql: Sql) {
+async function repair(sql: Sql, repairImportedConsent: boolean) {
   return sql.begin(async (tx) => {
+    const consentRepaired = repairImportedConsent
+      ? await tx`
+          update customers c
+          set
+            accepts_email = true,
+            marketing_opt_out = false,
+            updated_at = now()
+          from workspaces w
+          where w.id = c.workspace_id
+            and w.slug = 'infinity-principal'
+            and c.deleted_at is null
+            and c.marketing_opt_out
+            and c.unsubscribed_at is null
+            and coalesce(c.tags, '[]'::jsonb)
+              @> '["__infinity_import_status:paid"]'::jsonb
+            and not exists (
+              select 1
+              from email_suppressions protected_suppression
+              where protected_suppression.workspace_id = c.workspace_id
+                and lower(trim(protected_suppression.email)) = lower(trim(c.email))
+                and protected_suppression.reason in (
+                  'unsubscribe',
+                  'complaint',
+                  'manual',
+                  'provider'
+                )
+            )
+          returning c.id
+        `
+      : [];
+
     const transientSuppressionsReleased = await tx`
       update email_suppressions s
       set
@@ -83,6 +114,7 @@ async function repair(sql: Sql) {
     `;
 
     return {
+      consentRepaired: consentRepaired.length,
       transientSuppressionsReleased: transientSuppressionsReleased.length,
     };
   });
@@ -110,7 +142,10 @@ async function main() {
       return;
     }
 
-    const changes = await repair(sql);
+    const changes = await repair(
+      sql,
+      process.argv.includes("--repair-import-consent"),
+    );
     const after = await audit(sql);
     console.log(
       JSON.stringify({ mode: "applied", before, changes, after }, null, 2),
