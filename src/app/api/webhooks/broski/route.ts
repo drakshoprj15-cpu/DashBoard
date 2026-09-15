@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
 import { getDb, isDatabaseConfigured } from "@/database/client";
@@ -41,6 +41,11 @@ import {
   type NotificationEvent,
 } from "@/features/notifications/create";
 import { pushEvent } from "@/features/notifications/pushcut";
+import { syncMilluniCustomers } from "@/features/integrations/milluni/sync";
+import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /** Que notificação gerar para cada estado devolvido pelo gateway. */
 const NOTIFICATION_BY_STATUS: Record<
@@ -570,6 +575,58 @@ export async function POST(request: Request) {
         );
       }
     } else {
+      // A mesma conta Broski também processa as vendas da Milluni. Como esse
+      // pedido pertence à Milluni, ele não existe na tabela `payments` do
+      // Infinity. O evento assinado serve de gatilho imediato para buscar o
+      // pedido já pago na origem e cadastrar/atualizar o comprador no CRM.
+      //
+      // A sincronização roda depois da resposta para o gateway não estourar o
+      // prazo de 10 s. O agendamento de 5 minutos continua como contingência.
+      if (event.type === "order.paid" && event.status === "approved") {
+        const verifiedWorkspaceId = verifier.workspaceId;
+        after(async () => {
+          try {
+            // Dá tempo para o webhook da própria Milluni persistir o estado
+            // "pago" antes de consultarmos /api/off/pedidos.
+            await new Promise((resolve) => setTimeout(resolve, 2_000));
+            const workspaceId =
+              verifiedWorkspaceId ?? (await getOrCreateDefaultWorkspace());
+            const result = await syncMilluniCustomers(workspaceId);
+
+            await db
+              .update(paymentWebhooks)
+              .set({
+                processedAt: new Date(),
+                processingError: null,
+                payload: {
+                  type: event.type,
+                  paymentExternalId: event.paymentExternalId,
+                  delegatedTo: "milluni_customer_sync",
+                  result,
+                },
+              })
+              .where(eq(paymentWebhooks.id, webhookId));
+          } catch (error) {
+            console.error(
+              "[webhook/broski] falha ao sincronizar comprador da Milluni:",
+              error,
+            );
+            await db
+              .update(paymentWebhooks)
+              .set({
+                processingError: "milluni_customer_sync_failed",
+                updatedAt: new Date(),
+              })
+              .where(eq(paymentWebhooks.id, webhookId));
+          }
+        });
+
+        return NextResponse.json(
+          { received: true, delegated: "milluni_customer_sync" },
+          { status: 202 },
+        );
+      }
+
       await db
         .update(paymentWebhooks)
         .set({ processingError: "payment_not_found", updatedAt: new Date() })
