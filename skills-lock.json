@@ -43,6 +43,12 @@
       "skillPath": "skills/attribution/SKILL.md",
       "computedHash": "6bc4819e64d8d71f824be4ded75bb4991ea52d7483fb416b69bd6a0c6614f549"
     },
+    "browser-use": {
+      "source": "browser-use/browser-use",
+      "sourceType": "github",
+      "skillPath": "skills/browser-use/SKILL.md",
+      "computedHash": "24ae0a305c37ffd91b58e592a6b48342d68e4071eba979e4cc85823f52b91c42"
+    },
     "churn-prevention": {
       "source": "coreyhaines31/marketingskills",
       "sourceType": "github",
