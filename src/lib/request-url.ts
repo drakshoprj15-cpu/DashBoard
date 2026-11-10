@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 
 import { getAppUrl } from "@/lib/app-url";
+import { isLocalHostname } from "@/lib/secure-url";
 
 /**
  * URL base do domínio pelo qual esta requisição chegou.
@@ -18,11 +19,12 @@ export async function getRequestUrl(): Promise<string> {
   const host = h.get("x-forwarded-host") ?? h.get("host");
   if (!host) return getAppUrl();
 
-  const proto =
-    h.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") || host.startsWith("127.0.0.1")
-      ? "http"
-      : "https");
+  // Só o desenvolvimento local segue o protocolo do pedido. Em qualquer
+  // domínio público a resposta é HTTPS, independentemente do que um proxy
+  // intermédio tenha posto em `x-forwarded-proto`.
+  const hostname = host.replace(/:\d+$/, "");
+  if (!isLocalHostname(hostname)) return `https://${host}`;
 
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() || "http";
   return `${proto}://${host}`;
 }

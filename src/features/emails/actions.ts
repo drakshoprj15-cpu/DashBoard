@@ -28,6 +28,7 @@ import {
 import {
   buildCampaignHtml,
   isValidCtaUrlTemplate,
+  normalizeCtaUrlTemplate,
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
@@ -55,9 +56,10 @@ const campaignSchema = z.object({
     .trim()
     .min(1, "Informe o link do botao")
     .max(2_048)
+    .transform(normalizeCtaUrlTemplate)
     .refine(
       isValidCtaUrlTemplate,
-      "Use um link http(s) valido ou {{CHECKOUT_URL}}.",
+      "Use um link https:// valido ou {{CHECKOUT_URL}}.",
     ),
   fallbackText: z
     .string()

@@ -36,6 +36,8 @@ import {
   EMAIL_VARIABLES,
   buildCampaignHtml,
   DEFAULT_CAMPAIGN_TEMPLATE,
+  isValidCtaUrlTemplate,
+  normalizeCtaUrlTemplate,
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
@@ -239,6 +241,8 @@ export function CampaignForm({
     ? recipientPreviewVars(selectedPreviewRecipient)
     : PREVIEW_VARS;
   const renderedSubject = renderCampaignText(subject, previewVars);
+  const ctaUrlInvalid =
+    ctaUrl.trim().length > 0 && !isValidCtaUrlTemplate(ctaUrl);
   const previewHtml = buildCampaignHtml({
     body,
     preheader,
@@ -884,11 +888,32 @@ export function CampaignForm({
                         name="ctaUrl"
                         value={ctaUrl}
                         onChange={(event) => setCtaUrl(event.target.value)}
+                        onBlur={(event) =>
+                          setCtaUrl(normalizeCtaUrlTemplate(event.target.value))
+                        }
                         placeholder="{{CHECKOUT_URL}}"
                         className="pl-9 font-mono text-xs"
+                        aria-invalid={ctaUrlInvalid}
+                        aria-describedby="ctaUrl-hint"
+                        inputMode="url"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         required
                       />
                     </div>
+                    <p
+                      id="ctaUrl-hint"
+                      className={cn(
+                        "text-xs",
+                        ctaUrlInvalid
+                          ? "text-destructive"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {ctaUrlInvalid
+                        ? "Este link não é válido. Use um endereço https:// ou {{CHECKOUT_URL}}."
+                        : "Sai sempre em HTTPS: um endereço http:// é convertido automaticamente."}
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-2">
