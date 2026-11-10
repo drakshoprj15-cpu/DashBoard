@@ -41,7 +41,7 @@ export function MetricCard({
   const negative = hasChange && changePercent < 0;
 
   return (
-    <Card className="min-h-[142px] gap-0 rounded-lg border-white/[0.07] bg-[#141019] py-0 shadow-[0_16px_42px_rgba(6,0,8,0.25)] ring-1 ring-fuchsia-400/[0.02] transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-fuchsia-300/[0.16] hover:shadow-[0_20px_48px_rgba(40,0,28,0.28)] motion-reduce:transform-none">
+    <Card className="min-h-[142px] gap-0 rounded-lg border-white/[0.07] bg-[#141019]/70 py-0 backdrop-blur-xl shadow-[0_16px_42px_rgba(6,0,8,0.25)] ring-1 ring-fuchsia-400/[0.02] transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-fuchsia-300/[0.16] hover:shadow-[0_20px_48px_rgba(40,0,28,0.28)] motion-reduce:transform-none">
       <CardContent className="flex h-full flex-col justify-between px-5 py-5">
         <div className="flex items-start justify-between gap-3">
           <p className="text-sm font-medium text-[#9aa5b5]">{label}</p>

@@ -36,10 +36,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DASHBOARD_THEME =
-  "-m-4 min-h-full overflow-hidden bg-[#0b080f] p-4 text-[#f8f5f8] md:-m-6 md:p-6 lg:p-7 [--accent:#291725] [--accent-foreground:#fff7fb] [--border:rgba(255,255,255,0.08)] [--card:#141019] [--card-foreground:#f8f5f8] [--destructive:#f87171] [--foreground:#f8f5f8] [--input:rgba(255,255,255,0.12)] [--muted:#241923] [--muted-foreground:#a596a2] [--popover:#1a121c] [--popover-foreground:#fff7fb] [--primary:#e91e8f] [--primary-foreground:#ffffff] [--ring:#f472b6] [--secondary:#241923] [--secondary-foreground:#f1e8ee] [--success:#34d399] [--warning:#fbbf24]";
+  "dashboard-ambient -m-4 min-h-[calc(100%+2rem)] overflow-hidden md:min-h-[calc(100%+3rem)] bg-[#0b080f] p-4 text-[#f8f5f8] md:-m-6 md:p-6 lg:p-7 [--glass-edge:rgba(255,255,255,0.06)] [--glass-fill:66%] [--glass-shadow:rgba(0,0,0,0.5)] [--accent:#291725] [--accent-foreground:#fff7fb] [--border:rgba(255,255,255,0.08)] [--card:#141019] [--card-foreground:#f8f5f8] [--destructive:#f87171] [--foreground:#f8f5f8] [--input:rgba(255,255,255,0.12)] [--muted:#241923] [--muted-foreground:#a596a2] [--popover:#1a121c] [--popover-foreground:#fff7fb] [--primary:#e91e8f] [--primary-foreground:#ffffff] [--ring:#f472b6] [--secondary:#241923] [--secondary-foreground:#f1e8ee] [--success:#34d399] [--warning:#fbbf24]";
 
 const PANEL_CLASS =
-  "gap-0 rounded-lg border-white/[0.07] bg-[#141019] py-0 shadow-[0_18px_55px_rgba(6,0,8,0.3)] ring-1 ring-fuchsia-400/[0.025] transition-colors hover:border-fuchsia-300/[0.12]";
+  "gap-0 rounded-lg border-white/[0.07] bg-[#141019]/70 py-0 backdrop-blur-xl shadow-[0_18px_55px_rgba(6,0,8,0.3)] ring-1 ring-fuchsia-400/[0.025] transition-colors hover:border-fuchsia-300/[0.12]";
 
 function timeAgoShort(iso: string): string {
   const diffSeconds = Math.max(

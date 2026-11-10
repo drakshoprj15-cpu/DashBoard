@@ -56,6 +56,16 @@
   --sidebar-border: oklch(0.26 0.014 290);
   --sidebar-ring: oklch(0.62 0.24 350);
   --sidebar-muted: oklch(0.55 0.012 286);
+
+  /* Vidro: quanto do cartão é opaco, desfoque, brilho da aresta e sombra */
+  --glass-fill: 76%;
+  --glass-blur: 18px;
+  --glass-edge: oklch(1 0 0 / 70%);
+  --glass-shadow: oklch(0.35 0.06 300 / 14%);
+  /* Luz ambiente por trás do painel */
+  --ambient-1: oklch(0.62 0.24 350 / 13%);
+  --ambient-2: oklch(0.6 0.16 250 / 11%);
+  --ambient-grid: oklch(0.17 0.012 286 / 3.5%);
 }
 
 .dark {
@@ -101,6 +111,13 @@
   --sidebar-border: oklch(0.22 0.014 290);
   --sidebar-ring: oklch(0.68 0.23 350);
   --sidebar-muted: oklch(0.52 0.012 286);
+
+  --glass-fill: 56%;
+  --glass-edge: oklch(1 0 0 / 7%);
+  --glass-shadow: oklch(0 0 0 / 55%);
+  --ambient-1: oklch(0.68 0.23 350 / 21%);
+  --ambient-2: oklch(0.68 0.14 250 / 17%);
+  --ambient-grid: oklch(1 0 0 / 3%);
 }
 
 @theme inline {
@@ -179,5 +196,146 @@
         transparent
       )
       transparent;
+  }
+}
+
+/*
+  Superfícies de vidro
+  --------------------
+  Ficam em `@layer components` de propósito: qualquer utilitário passado por
+  `className` (bg-*, shadow-*, border-*) continua a ganhar, por isso os
+  cartões que já têm aparência própria não mudam.
+
+  Só o painel e as telas de login usam `Card`; o checkout e as landing pages
+  públicas não, e mantêm o tema de cada loja.
+*/
+@layer components {
+  /* Fundo do painel: dois focos de luz e uma grelha quase invisível. */
+  .ambient-surface {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--background);
+  }
+  .ambient-surface::before,
+  .ambient-surface::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .ambient-surface::before {
+    background-image:
+      radial-gradient(
+        52rem 34rem at 88% -8%,
+        var(--ambient-1),
+        transparent 62%
+      ),
+      radial-gradient(
+        46rem 32rem at 30% 108%,
+        var(--ambient-2),
+        transparent 62%
+      );
+  }
+  .ambient-surface::after {
+    background-image:
+      linear-gradient(var(--ambient-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--ambient-grid) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(110% 80% at 50% 0%, #000 30%, transparent 100%);
+  }
+
+  [data-slot="card"] {
+    background-color: color-mix(
+      in oklch,
+      var(--card) var(--glass-fill),
+      transparent
+    );
+    border-color: color-mix(in oklch, var(--card-foreground) 9%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 var(--glass-edge),
+      0 1px 2px 0 oklch(0 0 0 / 4%),
+      0 16px 40px -20px var(--glass-shadow);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+    transition:
+      border-color 200ms ease,
+      box-shadow 250ms ease,
+      background-color 200ms ease;
+  }
+
+  @media (hover: hover) {
+    [data-slot="card"]:hover {
+      border-color: color-mix(
+        in oklch,
+        var(--primary) 20%,
+        color-mix(in oklch, var(--card-foreground) 9%, transparent)
+      );
+      box-shadow:
+        inset 0 1px 0 0 var(--glass-edge),
+        0 1px 2px 0 oklch(0 0 0 / 5%),
+        0 22px 48px -22px var(--glass-shadow);
+    }
+  }
+
+  /* Sidebar: mesma cor de sempre, com um reflexo no topo e aresta suave. */
+  .sidebar-surface {
+    background-image:
+      radial-gradient(
+        28rem 14rem at 0% 0%,
+        color-mix(in oklch, var(--sidebar-primary) 11%, transparent),
+        transparent 70%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--sidebar-foreground) 3%, transparent),
+        transparent 40%
+      );
+    box-shadow: inset -1px 0 0 0
+      color-mix(in oklch, var(--sidebar-foreground) 8%, transparent);
+  }
+
+  .nav-active {
+    box-shadow:
+      inset 0 0 0 1px
+        color-mix(in oklch, var(--sidebar-primary) 24%, transparent),
+      0 8px 20px -14px var(--sidebar-primary);
+  }
+
+  /* Luz ambiente da Dashboard, que tem paleta escura própria. */
+  .dashboard-ambient {
+    background-image:
+      radial-gradient(
+        48rem 30rem at 94% -8%,
+        rgb(233 30 143 / 13%),
+        transparent 62%
+      ),
+      radial-gradient(
+        42rem 28rem at -6% 36%,
+        rgb(124 58 237 / 10%),
+        transparent 62%
+      );
+    background-repeat: no-repeat;
+  }
+
+  /* Sem suporte a desfoque, ou com transparência reduzida: cartão opaco. */
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    [data-slot="card"] {
+      background-color: var(--card);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    [data-slot="card"] {
+      background-color: var(--card);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="card"] {
+      transition: none;
+    }
   }
 }

@@ -13,7 +13,7 @@ export default function AuthLayout({
   const demoAllowed = isDemoModeAllowed();
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6">
+    <div className="ambient-surface flex min-h-svh flex-col items-center justify-center gap-6 p-6">
       <Link href="/" className="flex items-center gap-2">
         <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
           <Zap className="size-5" />
