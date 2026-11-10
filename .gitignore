@@ -1,6 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# dependências
 /node_modules
 /tools/drizzle/node_modules/
 /.pnp
@@ -11,38 +9,49 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# next.js / build
 /.next/
 /out/
-
-# production
 /build
+/dist
+.turbo
+*.tsbuildinfo
+next-env.d.ts
 
-# misc
-.DS_Store
-*.pem
+# testes
+/coverage
+/playwright-report
+/test-results
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
+# variáveis de ambiente — só o modelo sem valores é versionado
 .env*
+!.env.example
 
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# logs e temporários
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tmp
+*.bak
+*.orig
+/tmp
 
-# claude local settings (pode conter credenciais usadas em comandos)
+# sistema operacional e editores
+.DS_Store
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# chaves
+*.pem
+
+# claude: definições locais (podem conter credenciais usadas em comandos)
 .claude/settings.local.json
-
-.vercel
-.env*
+.claude/worktrees
