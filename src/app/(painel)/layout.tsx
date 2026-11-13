@@ -19,7 +19,7 @@ export default async function PainelLayout({
   const initialCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "true";
 
   return (
-    <div className="flex h-svh w-full overflow-hidden">
+    <div className="ambient-surface flex h-svh w-full overflow-hidden">
       <div className="hidden md:flex">
         <Sidebar
           user={session.user}

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildCampaignHtml,
   DEFAULT_CAMPAIGN_TEMPLATE,
+  EMAIL_CTA_STYLE,
   isValidCtaUrlTemplate,
+  normalizeCtaUrlTemplate,
   renderCampaignText,
   type CampaignTemplateVars,
 } from "@/features/emails/template";
@@ -91,5 +93,74 @@ describe("email campaign template", () => {
       true,
     );
     expect(isValidCtaUrlTemplate("javascript:alert(1)")).toBe(false);
+  });
+
+  it("sends the checkout link over HTTPS even when it was saved as http", () => {
+    const html = buildCampaignHtml({
+      body: "Olá {{PRIMEIRO_NOME}}.",
+      ctaUrl: "{{CHECKOUT_URL}}",
+      vars: { ...vars, checkoutUrl: "http://loja.example.com/pagar/abc?x=1" },
+    });
+
+    expect(html).not.toContain("http://");
+    // Botão e link alternativo apontam para o mesmo endereço seguro.
+    expect(
+      html.split('href="https://loja.example.com/pagar/abc?x=1"'),
+    ).toHaveLength(3);
+  });
+
+  it("drops the button when the destination is not a safe web address", () => {
+    for (const ctaUrl of [
+      "javascript:alert(1)",
+      "data:text/html,<p>x</p>",
+      "https://banco.example.com@outro.example.net/pagar",
+      "ftp://example.com/ficheiro",
+    ]) {
+      const html = buildCampaignHtml({
+        body: "Olá {{PRIMEIRO_NOME}}.",
+        ctaLabel: "Ver Pedido",
+        ctaUrl,
+        vars,
+      });
+      expect(html).not.toContain("<a ");
+      expect(html).not.toContain("Ver Pedido");
+    }
+  });
+
+  it("renders a red button with the label chosen for the campaign", () => {
+    const html = buildCampaignHtml({
+      body: "Olá {{PRIMEIRO_NOME}}.",
+      ctaLabel: "Ver Pedido <{{PEDIDO}}>",
+      ctaUrl: "{{CHECKOUT_URL}}",
+      vars,
+    });
+
+    expect(EMAIL_CTA_STYLE.background).toBe("#ff0000");
+    expect(html).toContain("background:#ff0000;color:#ffffff");
+    expect(html).toContain(">Ver Pedido &lt;PED-42&gt;</a>");
+  });
+
+  it("normalizes the link template typed in the campaign form", () => {
+    expect(normalizeCtaUrlTemplate(" http://loja.pt/pagar/{{PEDIDO}} ")).toBe(
+      "https://loja.pt/pagar/{{PEDIDO}}",
+    );
+    expect(normalizeCtaUrlTemplate("loja.pt/pagar/abc")).toBe(
+      "https://loja.pt/pagar/abc",
+    );
+    expect(normalizeCtaUrlTemplate("//loja.pt/pagar")).toBe(
+      "https://loja.pt/pagar",
+    );
+    expect(normalizeCtaUrlTemplate("{{CHECKOUT_URL}}")).toBe(
+      "{{CHECKOUT_URL}}",
+    );
+    expect(normalizeCtaUrlTemplate("https://loja.pt/x")).toBe(
+      "https://loja.pt/x",
+    );
+    expect(normalizeCtaUrlTemplate("http://localhost:3000/x")).toBe(
+      "http://localhost:3000/x",
+    );
+    expect(isValidCtaUrlTemplate("http://loja.pt/pagar")).toBe(true);
+    expect(isValidCtaUrlTemplate("loja.pt/pagar")).toBe(true);
+    expect(isValidCtaUrlTemplate("pagar")).toBe(false);
   });
 });

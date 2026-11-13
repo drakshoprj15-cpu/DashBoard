@@ -1,0 +1,12 @@
+# Ficheiros que não participam do build de produção e não precisam de subir
+# para a Vercel. `landing-sites/` fica de fora desta lista de propósito: é
+# lido do disco em produção pelo botão "Republicar na Vercel".
+
+/.agents
+/.claude
+/.21st
+/.github
+/docs
+/tests
+/skills-lock.json
+/vitest.config.ts

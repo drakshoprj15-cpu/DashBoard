@@ -59,7 +59,7 @@ Quando `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` não existem:
 
 - `getSession()` retorna uma sessão demo (`demoMode: true`);
 - o painel exibe banner permanente "Modo demonstração";
-- as telas usam dados de `src/lib/demo-data.ts`, rotulados como fictícios;
+- as telas que dependem do banco mostram um estado vazio explícito, sem dados inventados;
 - login/cadastro mostram claramente que o Supabase não está configurado.
 
 Com credenciais presentes, o fluxo real assume automaticamente (login obrigatório via proxy, dados do banco).

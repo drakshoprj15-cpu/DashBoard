@@ -1,7 +1,19 @@
+import { isLocalHostname, toSecureUrl } from "@/lib/secure-url";
+
 interface LegacyEmailBrand {
   name: string;
   logoUrl?: string | null;
 }
+
+/**
+ * Aparência do botão principal do e-mail. O texto do botão não fica aqui:
+ * é o campo "Texto do botão" de cada campanha (`ctaLabel`), cujo valor
+ * inicial é `DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel`.
+ */
+export const EMAIL_CTA_STYLE = {
+  background: "#ff0000",
+  text: "#ffffff",
+} as const;
 
 export const DEFAULT_CAMPAIGN_TEMPLATE = {
   subject: "{{PRIMEIRO_NOME}}, confirme os dados do seu pedido",
@@ -89,13 +101,27 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function validHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
+/**
+ * Acerta o protocolo do link enquanto ainda é um modelo (pode conter
+ * variáveis como `{{CHECKOUT_URL}}`): `http://` vira `https://` e um domínio
+ * escrito sem protocolo recebe `https://`. Usado no formulário e antes de
+ * gravar a campanha, para o que fica guardado já estar correto.
+ */
+export function normalizeCtaUrlTemplate(value: string): string {
+  const raw = value.trim();
+  if (!raw || raw.startsWith("{{")) return raw;
+  if (raw.startsWith("//")) return `https:${raw}`;
+
+  const insecure = /^http:\/\//i.exec(raw);
+  if (insecure) {
+    const rest = raw.slice(insecure[0].length);
+    const hostname = rest.split(/[/:?#]/)[0] ?? "";
+    return isLocalHostname(hostname) ? raw : `https://${rest}`;
   }
+
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw);
+  const looksLikeDomain = /^[^\s/{}]+\.[^\s/{}]+/.test(raw);
+  return !hasScheme && looksLikeDomain ? `https://${raw}` : raw;
 }
 
 export function isValidCtaUrlTemplate(value: string): boolean {
@@ -109,7 +135,7 @@ export function isValidCtaUrlTemplate(value: string): boolean {
     checkoutUrl: "https://example.com/checkout/PED-1234",
     lojaUrl: "https://example.com",
   };
-  return validHttpUrl(renderCampaignText(value, sampleVars));
+  return toSecureUrl(renderCampaignText(value, sampleVars)) !== null;
 }
 
 export function buildCampaignHtml(input: {
@@ -152,18 +178,21 @@ export function buildCampaignHtml(input: {
     input.ctaLabel ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaLabel,
     input.vars,
   );
-  const ctaUrl = renderCampaignText(
-    input.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
-    input.vars,
+  // O destino sai sempre em HTTPS, mesmo que o modelo ou o link guardado no
+  // pedido ainda estejam em `http://`; um endereço inválido remove o botão.
+  const ctaUrl = toSecureUrl(
+    renderCampaignText(
+      input.ctaUrl ?? DEFAULT_CAMPAIGN_TEMPLATE.ctaUrl,
+      input.vars,
+    ),
   );
   const fallbackText = renderCampaignText(
     input.fallbackText ?? DEFAULT_CAMPAIGN_TEMPLATE.fallbackText,
     input.vars,
   );
-  const hasCtaUrl = validHttpUrl(ctaUrl);
-  const checkoutButton = hasCtaUrl
+  const checkoutButton = ctaUrl
     ? `<p style="margin:26px 0 18px;line-height:1.65">Para continuar com o pedido, confirme os seus dados através do botão abaixo:</p>
-<div style="margin:0 0 28px;text-align:center"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#cc0000;color:#ffffff;text-decoration:none;padding:15px 28px;border-radius:4px;font-weight:700">${escapeHtml(ctaLabel)}</a></div>
+<div style="margin:0 0 28px;text-align:center"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:${EMAIL_CTA_STYLE.background};color:${EMAIL_CTA_STYLE.text};text-decoration:none;padding:15px 28px;border-radius:6px;font-size:16px;font-weight:700">${escapeHtml(ctaLabel)}</a></div>
 <p style="margin:0 0 26px;line-height:1.55;color:#4b5563;font-size:12px">${escapeHtml(fallbackText)}<br><a href="${escapeHtml(ctaUrl)}" style="color:#cc0000;word-break:break-all">${escapeHtml(ctaUrl)}</a></p>`
     : "";
   return `<!doctype html><html lang="pt"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:14px">

@@ -59,7 +59,7 @@ export function Header({ user, demoMode }: HeaderProps) {
     .toUpperCase();
 
   return (
-    <header className="bg-background/80 sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur-sm md:px-6">
+    <header className="bg-background/55 border-border/70 sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur-xl backdrop-saturate-150 md:px-6">
       {/* Drawer mobile */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetTrigger asChild>

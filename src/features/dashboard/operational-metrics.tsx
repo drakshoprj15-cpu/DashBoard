@@ -77,7 +77,7 @@ export function OperationalMetrics({ snapshot }: OperationalMetricsProps) {
           return (
             <div
               key={metric.label}
-              className="min-h-[118px] min-w-0 rounded-lg border border-white/[0.07] bg-[#141019] px-4 py-4 shadow-[0_14px_34px_rgba(6,0,8,0.22)] ring-1 ring-fuchsia-400/[0.02] transition-[border-color,transform] hover:-translate-y-0.5 hover:border-fuchsia-300/[0.15] motion-reduce:transform-none sm:px-5"
+              className="min-h-[118px] min-w-0 rounded-lg border border-white/[0.07] bg-[#141019]/70 px-4 py-4 backdrop-blur-xl shadow-[0_14px_34px_rgba(6,0,8,0.22)] ring-1 ring-fuchsia-400/[0.02] transition-[border-color,transform] hover:-translate-y-0.5 hover:border-fuchsia-300/[0.15] motion-reduce:transform-none sm:px-5"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
